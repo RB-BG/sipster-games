@@ -13,6 +13,7 @@ import type {
   PlayerProfile,
   PlayerState,
   RuleConfig,
+  TiebreakState,
   TurnState,
 } from './types'
 import { DEFAULT_RULES } from './types'
@@ -131,7 +132,18 @@ export function reduce(state: GameState, cmd: Command, rng: RollSource): ReduceR
       break
 
     case 'FORFEIT_TURN':
-      finalizeTurn(draft, events)
+      if (draft.phase === 'tiebreak') {
+        // Wie de kamp verlaat, verliest hem: hij stond toch al op verlies.
+        applyRoundLoss(draft, events, cmd.playerId, (draft.tiebreak as TiebreakState).multiplier)
+      } else {
+        const turn = draft.turn as TurnState
+        if (turn.pending31) {
+          // Een liggende 31 is nooit een eindscore (rank 31 zou onder 32 duiken).
+          turn.pending31 = false
+          turn.dice = null
+        }
+        finalizeTurn(draft, events)
+      }
       break
 
     case 'FLIP_65':
@@ -240,7 +252,10 @@ function applyRoll(draft: GameState, events: EngineEvent[], rng: RollSource): vo
     draft.rules.afslaan && is32(a, b) && turn.throwsUsed < turn.maxThrows
 
   if (turn.throwsUsed >= turn.maxThrows) {
-    finalizeTurn(draft, events)
+    // 65 op de laatste worp blijft open als omgekeerde mex aanstaat:
+    // de gooier kiest zelf tussen flippen en blijven staan.
+    const keepOpen = draft.rules.omgekeerdeMex && scoreRank(a, b) === 65
+    if (!keepOpen) finalizeTurn(draft, events)
   }
 }
 

@@ -50,6 +50,9 @@ export function createHostTransport(callbacks: HostCallbacks): Promise<HostTrans
             if (msg) callbacks.onIntent(conn.peer, msg as Intent)
           })
           conn.on('close', () => {
+            // Een reconnect vervangt de map-entry; de trage close van de OUDE
+            // verbinding mag de nieuwe niet weggooien.
+            if (connections.get(conn.peer) !== conn) return
             connections.delete(conn.peer)
             callbacks.onGuestDisconnect(conn.peer)
           })
@@ -89,28 +92,38 @@ export function createGuestTransport(
     const peer = new Peer()
     let conn: DataConnection | null = null
     let reconnectAttempts = 0
+    let reconnectScheduled = false
     let closed = false
 
     function connect() {
       callbacks.onStatus(reconnectAttempts === 0 ? 'connecting' : 'reconnecting')
-      const next = peer.connect(PEER_PREFIX + roomCode.toUpperCase(), { reliable: true })
-      conn = next
+      const mine = peer.connect(PEER_PREFIX + roomCode.toUpperCase(), { reliable: true })
+      conn = mine
 
-      next.on('open', () => {
+      // Alle handlers negeren verouderde verbindingen: close en error vuren
+      // vaak allebei, en een vervangen conn sterft pas seconden later.
+      mine.on('open', () => {
+        if (conn !== mine) return
         reconnectAttempts = 0
         callbacks.onStatus('open')
         callbacks.onOpen()
       })
-      next.on('data', (data) => {
+      mine.on('data', (data) => {
+        if (conn !== mine) return
         const msg = unwrap(data)
         if (msg) callbacks.onEvent(msg as GameEvent)
       })
-      next.on('close', scheduleReconnect)
-      next.on('error', scheduleReconnect)
+      const failed = () => {
+        if (conn !== mine) return
+        scheduleReconnect()
+      }
+      mine.on('close', failed)
+      mine.on('error', failed)
     }
 
     function scheduleReconnect() {
-      if (closed) return
+      if (closed || reconnectScheduled) return
+      reconnectScheduled = true
       reconnectAttempts++
       if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
         callbacks.onStatus('closed')
@@ -118,6 +131,7 @@ export function createGuestTransport(
       }
       callbacks.onStatus('reconnecting')
       setTimeout(() => {
+        reconnectScheduled = false
         if (closed) return
         // PeerJS verliest soms ook de signaling-verbinding; eerst die herstellen.
         if (peer.disconnected) peer.reconnect()

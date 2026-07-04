@@ -298,6 +298,17 @@ export default function GameScreen() {
                     {strings.waitingForTiebreak(nextTiebreakPlayer?.name ?? '')}
                   </p>
                 ))}
+              {nextTiebreakPlayer && !nextTiebreakPlayer.connected && isHost && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    dispatch({ t: 'FORFEIT_TURN', playerId: nextTiebreakPlayer.id })
+                  }
+                  className="rounded-lg bg-destructive/80 px-4 py-2 font-semibold text-ivory active:scale-95"
+                >
+                  {strings.skipTurn}
+                </button>
+              )}
             </Coaster>
           </Overlay>
         )}
