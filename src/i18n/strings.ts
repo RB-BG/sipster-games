@@ -44,6 +44,40 @@ export const strings = {
   nextRound: 'Volgende ronde',
   stopGame: 'Stop het potje',
 
+  // Lobby & netwerk
+  lobbyTitle: 'Tafel',
+  roomCodeLabel: 'tafelcode',
+  scanToJoin: 'Scan om mee te doen',
+  copyLink: 'Kopieer link',
+  copied: 'Gekopieerd!',
+  shareLink: 'Deel link',
+  leaveTable: 'Verlaat tafel',
+  closeTable: 'Sluit tafel',
+  waitingForPlayers: 'Wachten op spelers…',
+  connected: 'verbonden',
+  reconnecting: 'opnieuw verbinden…',
+  yourName: 'Jouw naam',
+  codePlaceholder: 'Code (bv. ABCD)',
+  makeTable: 'Maak tafel',
+  joinNow: 'Doe mee',
+  connecting: 'Verbinden…',
+  startWhenReady: 'Multiplayer spelen volgt in de volgende update',
+  rulesTitle: 'Regels',
+  ruleLabels: {
+    standaardSlokken: 'Standaard slokken',
+    tempo: 'Eerste bepaalt het tempo',
+    omgekeerdeMex: 'Omgekeerde mex (65 → 21)',
+    ridder: 'Ridder',
+    dubbeleRidder: 'Dubbele ridder',
+    afslaan: 'Afslaan',
+    tiebreakHoogsteVerliest: 'Kamp: hoogste verliest',
+  },
+  net: {
+    hostFailed: 'Tafel maken lukt niet; check je internet en probeer opnieuw',
+    joinFailed: 'Meedoen lukt niet; klopt de code?',
+    tableClosed: 'De tafel is gesloten of onbereikbaar',
+  },
+
   // Fouten
   errors: {
     WRONG_PHASE: 'Dat kan nu niet',

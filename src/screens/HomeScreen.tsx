@@ -1,4 +1,4 @@
-import { Dices, Smartphone } from 'lucide-react'
+import { Dices, Smartphone, Users } from 'lucide-react'
 import { strings } from '@/i18n/strings'
 import { useGameStore } from '@/store/gameStore'
 
@@ -18,22 +18,27 @@ export default function HomeScreen() {
       <div className="flex w-full max-w-xs flex-col gap-3">
         <button
           type="button"
-          onClick={() => setScreen('setup')}
+          onClick={() => setScreen('host')}
           className="flex items-center justify-center gap-2 rounded-lg bg-primary px-8 py-3 text-lg font-semibold text-primary-foreground shadow-lg transition-transform active:scale-95"
+        >
+          <Users className="size-5" />
+          {strings.createTable}
+        </button>
+        <button
+          type="button"
+          onClick={() => setScreen('join')}
+          className="rounded-lg bg-secondary px-8 py-3 text-lg font-semibold text-secondary-foreground shadow-lg transition-transform active:scale-95"
+        >
+          {strings.joinTable}
+        </button>
+        <button
+          type="button"
+          onClick={() => setScreen('setup')}
+          className="flex items-center justify-center gap-2 rounded-lg bg-secondary px-8 py-3 text-lg font-semibold text-secondary-foreground shadow-lg transition-transform active:scale-95"
         >
           <Smartphone className="size-5" />
           {strings.hotseat}
         </button>
-        <button
-          type="button"
-          disabled
-          className="rounded-lg bg-secondary px-8 py-3 text-lg font-semibold text-secondary-foreground shadow-lg disabled:opacity-50"
-        >
-          {strings.createTable}
-        </button>
-        <p className="text-sm text-muted-foreground">
-          {strings.createTable}: {strings.comingSoon.toLowerCase()}
-        </p>
       </div>
     </main>
   )

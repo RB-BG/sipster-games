@@ -2,8 +2,11 @@ import { lazy, Suspense } from 'react'
 import HomeScreen from '@/screens/HomeScreen'
 import DebugScreen from '@/screens/DebugScreen'
 import HotseatSetupScreen from '@/screens/HotseatSetupScreen'
+import LobbyScreen from '@/screens/LobbyScreen'
+import ProfileScreen from '@/screens/ProfileScreen'
 import { strings } from '@/i18n/strings'
 import { useGameStore } from '@/store/gameStore'
+import { useNetStore } from '@/store/netStore'
 
 // Lazy zodat three/rapier niet in de startbundel zitten.
 const DiceLabScreen = lazy(() => import('@/screens/DiceLabScreen'))
@@ -14,6 +17,7 @@ const loader = <p className="p-8 text-muted-foreground">{strings.rolling}</p>
 export default function App() {
   const hasGame = useGameStore((s) => s.state !== null)
   const screen = useGameStore((s) => s.screen)
+  const role = useNetStore((s) => s.role)
 
   // Dev-hulpschermen: /?debug (engine), /?dice (3D-steering).
   const params = new URLSearchParams(window.location.search)
@@ -22,9 +26,22 @@ export default function App() {
     return <Suspense fallback={loader}>{<DiceLabScreen />}</Suspense>
   }
 
+  // Verbonden (host of guest): de lobby is leidend. Game zelf volgt in chunk 6.
+  if (role !== 'none') return <LobbyScreen />
+
+  // Hotseat-potje op dit toestel.
   if (hasGame) {
     return <Suspense fallback={loader}>{<GameScreen />}</Suspense>
   }
+
+  // Uitnodigingslink: /?room=ABCD springt direct naar het join-formulier.
+  const roomParam = params.get('room')
+  if (roomParam && screen === 'home') {
+    return <ProfileScreen mode="join" initialCode={roomParam} />
+  }
+
   if (screen === 'setup') return <HotseatSetupScreen />
+  if (screen === 'host') return <ProfileScreen mode="host" />
+  if (screen === 'join') return <ProfileScreen mode="join" />
   return <HomeScreen />
 }
