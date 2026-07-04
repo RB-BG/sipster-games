@@ -1,7 +1,8 @@
-import { X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Hand, X } from 'lucide-react'
 import Coaster from '@/components/Coaster'
 import PlayerChip from '@/components/PlayerChip'
-import { rankLabel, scoreLabel } from '@/engine/score'
+import { rankLabel, scoreLabel, scoreRank } from '@/engine/score'
 import type { Command, DieId } from '@/engine/types'
 import { validateCommand } from '@/engine/validate'
 import DiceScene from '@/game3d/DiceScene'
@@ -16,11 +17,23 @@ export default function GameScreen() {
     isHost,
     animating,
     rollAnim,
+    flipAnim,
+    afslaanToast,
     lastError,
     dispatch,
     onRollSettled,
     leave,
   } = useGameAdapter()
+
+  // Afslaan-meldingen kort tonen: zichtbaar tot de timer het huidige id wegtikt.
+  const [dismissedToastId, setDismissedToastId] = useState(0)
+  const toastId = afslaanToast?.id ?? 0
+  useEffect(() => {
+    if (toastId === 0) return
+    const timer = setTimeout(() => setDismissedToastId(toastId), 3500)
+    return () => clearTimeout(timer)
+  }, [toastId])
+  const toastVisible = afslaanToast !== null && toastId !== dismissedToastId
 
   // Scherm aan: vergrendeling doodt de P2P-verbinding midden in het potje.
   useWakeLock()
@@ -66,6 +79,21 @@ export default function GameScreen() {
   // Actieve speler offline: de host mag de beurt overslaan zodat de tafel niet vastloopt.
   const showSkip =
     phase === 'playing' && turn && activePlayer && !activePlayer.connected && isHost && !animating
+  // Omgekeerde mex: 65 mag omgedraaid worden zolang de beurt loopt.
+  const showFlip =
+    state.rules.omgekeerdeMex &&
+    phase === 'playing' &&
+    turn?.dice &&
+    !turn.locked &&
+    !turn.pending31 &&
+    !animating &&
+    canAct(turn.playerId) &&
+    scoreRank(turn.dice[0].value, turn.dice[1].value) === 65
+  // Afslaan is een reactiesnelheids-race: alleen zinnig met eigen toestellen.
+  const showAfslaan =
+    state.rules.afslaan && phase === 'playing' && myPlayerId !== null && !animating
+  const toastPlayer =
+    afslaanToast && state.players.find((p) => p.id === afslaanToast.byPlayerId)
 
   return (
     <main className="flex h-dvh flex-col">
@@ -86,12 +114,38 @@ export default function GameScreen() {
             player={player}
             active={player.id === turn?.playerId}
             hideScore={animating && player.id === turn?.playerId}
+            ridder={
+              state.ridderId === player.id ? (state.ridderDubbel ? 'dubbel' : 'ridder') : null
+            }
           />
         ))}
       </div>
 
       <div className="relative min-h-0 flex-1">
-        <DiceScene roll={rollAnim} held={held} onDieClick={onDieClick} onSettled={onRollSettled} />
+        <DiceScene
+          roll={rollAnim}
+          flip={flipAnim}
+          held={held}
+          onDieClick={onDieClick}
+          onSettled={onRollSettled}
+        />
+
+        {toastVisible && afslaanToast && toastPlayer && (
+          <p className="absolute inset-x-4 top-2 z-20 rounded-lg bg-wood-950/90 px-3 py-2 text-center text-sm text-amber-soft">
+            {strings.afslaanVerdict(toastPlayer.name, afslaanToast.verdict)}
+          </p>
+        )}
+
+        {showAfslaan && (
+          <button
+            type="button"
+            onClick={() => dispatch({ t: 'AFSLAAN', playerId: myPlayerId as string })}
+            className="absolute bottom-3 right-3 z-20 flex items-center gap-1.5 rounded-full bg-destructive px-4 py-3 font-bold text-ivory shadow-lg active:scale-90"
+          >
+            <Hand className="size-5" />
+            {strings.slaAf}
+          </button>
+        )}
 
         {show31 && activePlayer && turn && (
           <Overlay>
@@ -251,6 +305,16 @@ export default function GameScreen() {
               className="rounded-lg bg-destructive/80 px-4 py-2 font-semibold text-ivory active:scale-95"
             >
               {strings.skipTurn}
+            </button>
+          )}
+
+          {showFlip && (
+            <button
+              type="button"
+              onClick={() => dispatch({ t: 'FLIP_65', playerId: turn.playerId })}
+              className="rounded-lg bg-amber-soft px-4 py-2 font-bold text-wood-950 active:scale-95"
+            >
+              {strings.flipToMex}
             </button>
           )}
 

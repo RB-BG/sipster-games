@@ -66,7 +66,16 @@ export interface TurnState {
   pending31: boolean
   /** Beurt definitief voorbij (mex, worpen op, blijven staan). */
   locked: boolean
+  /** Er ligt een afslaanbare 32: open tot de gooier een steen oppakt of doorgaat. */
+  afslaanWindow: boolean
 }
+
+export type AfslaanVerdict =
+  | 'terecht'
+  | 'onterecht'
+  | 'zelfAfgeklopt'
+  | 'mexAfgeklopt'
+  | 'eigenMexAfgeklopt'
 
 export type SipReason = 'verliezer' | 'gekregen31' | 'straf' | 'ridder'
 
@@ -103,6 +112,9 @@ export interface GameState {
   round: RoundState
   turn: TurnState | null
   ridderId: string | null
+  ridderDubbel: boolean
+  /** Laatst afgeronde beurt; nodig om een afgeklopte mex te herkennen. */
+  lastTurnSummary: { playerId: string; wasMex: boolean } | null
   tiebreak: TiebreakState | null
   sipsLog: SipEntry[]
 }
@@ -123,11 +135,18 @@ export type Command =
   | { t: 'SET_CONNECTED'; playerId: string; connected: boolean }
   /** Host beëindigt de beurt van een weggevallen speler; zonder worp geen score. */
   | { t: 'FORFEIT_TURN'; playerId: string }
+  /** Omgekeerde mex: 65 omdraaien naar 21. */
+  | { t: 'FLIP_65'; playerId: string }
+  | { t: 'AFSLAAN'; playerId: string }
 
 /** Transiente gebeurtenissen voor animatie, geluid en toasts; state is al bijgewerkt. */
 export type EngineEvent =
   | { t: 'DICE_ROLLED'; playerId: string; dieIds: DieId[]; values: Die[]; animSeed: number }
   | { t: 'MEX_ROLLED'; playerId: string }
+  | { t: 'FLIPPED_65'; playerId: string; values: [Die, Die] }
+  | { t: 'AFSLAAN'; byPlayerId: string; verdict: AfslaanVerdict }
+  | { t: 'RIDDER_GESLAGEN'; playerId: string; dubbel: boolean }
+  | { t: 'RIDDER_DRINKT'; playerId: string; amount: number }
   | { t: 'SIPS_GIVEN'; fromPlayerId: string; toPlayerId: string; amount: number }
   | { t: 'TURN_ENDED'; playerId: string }
   | { t: 'TIEBREAK_STARTED'; playerIds: string[] }

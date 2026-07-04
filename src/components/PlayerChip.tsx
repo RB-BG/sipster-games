@@ -7,9 +7,11 @@ interface PlayerChipProps {
   active: boolean
   /** Verberg de rondescore zolang de worp-animatie nog loopt. */
   hideScore?: boolean
+  /** 'ridder' of 'dubbel' toont het schildje. */
+  ridder?: 'ridder' | 'dubbel' | null
 }
 
-export default function PlayerChip({ player, active, hideScore }: PlayerChipProps) {
+export default function PlayerChip({ player, active, hideScore, ridder }: PlayerChipProps) {
   return (
     <div
       className={cn(
@@ -18,7 +20,10 @@ export default function PlayerChip({ player, active, hideScore }: PlayerChipProp
         !player.connected && 'opacity-40 grayscale',
       )}
     >
-      <span className="text-lg leading-none">{player.emoji}</span>
+      <span className="text-lg leading-none">
+        {player.emoji}
+        {ridder && <span className="text-sm">🛡️{ridder === 'dubbel' ? '²' : ''}</span>}
+      </span>
       <span className="max-w-20 truncate font-semibold">{player.name}</span>
       <span className={active ? 'opacity-80' : 'text-muted-foreground'}>
         {player.roundScore !== null && !hideScore ? rankLabel(player.roundScore) : '·'}

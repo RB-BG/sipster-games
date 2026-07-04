@@ -18,6 +18,12 @@ export interface RollAnim {
   animSeed: number
 }
 
+/** Omdraai-animatie (omgekeerde mex): per die-id de nieuwe waarde. */
+export interface FlipAnim {
+  id: number
+  values: (Die | null)[]
+}
+
 export type Screen = 'home' | 'setup' | 'host' | 'join'
 
 interface GameStore {
@@ -26,6 +32,7 @@ interface GameStore {
   /** true zolang de 3D-worp nog speelt; UI verklapt de uitslag dan nog niet. */
   animating: boolean
   rollAnim: RollAnim | null
+  flipAnim: FlipAnim | null
   lastError: ErrorCode | null
   setScreen: (screen: Screen) => void
   startHotseat: (profiles: PlayerProfile[]) => void
@@ -42,6 +49,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   screen: 'home',
   animating: false,
   rollAnim: null,
+  flipAnim: null,
   lastError: null,
 
   setScreen: (screen) => set({ screen }),
@@ -52,7 +60,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       state = reduce(state, { t: 'ADD_PLAYER', profile }, rng).state
     }
     state = reduce(state, { t: 'START_GAME' }, rng).state
-    set({ state, animating: false, rollAnim: null, lastError: null })
+    set({ state, animating: false, rollAnim: null, flipAnim: null, lastError: null })
   },
 
   dispatch: (cmd) => {
@@ -65,6 +73,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     let rollAnim = get().rollAnim
+    let flipAnim = get().flipAnim
     let startsAnim = false
     for (const event of result.events) {
       if (event.t === 'DICE_ROLLED') {
@@ -84,14 +93,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
           animSeed: event.animSeed,
         }
         startsAnim = true
+      } else if (event.t === 'FLIPPED_65') {
+        flipAnim = { id: result.state.version, values: [event.values[0], event.values[1]] }
       }
     }
 
-    set({ state: result.state, lastError: null, rollAnim, animating: startsAnim })
+    set({ state: result.state, lastError: null, rollAnim, flipAnim, animating: startsAnim })
   },
 
   onRollSettled: () => set({ animating: false }),
 
   reset: () =>
-    set({ state: null, screen: 'home', animating: false, rollAnim: null, lastError: null }),
+    set({
+      state: null,
+      screen: 'home',
+      animating: false,
+      rollAnim: null,
+      flipAnim: null,
+      lastError: null,
+    }),
 }))

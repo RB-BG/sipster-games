@@ -30,6 +30,37 @@ export const strings = {
   // 31
   give31Title: '31! Deel slokken uit aan:',
 
+  // Rulesets
+  flipToMex: 'Draai om: mex!',
+  slaAf: 'SLA AF!',
+  ridderBadge: '🛡️',
+  afslaanVerdict: (name: string, verdict: string): string => {
+    switch (verdict) {
+      case 'terecht':
+        return `${name} slaat af! De 32 ligt vast`
+      case 'onterecht':
+        return `${name} slaat onterecht af: 2 slokken`
+      case 'zelfAfgeklopt':
+        return `${name} klopt zichzelf af: 4 slokken`
+      case 'mexAfgeklopt':
+        return `${name} slaat een mex af: 4 slokken`
+      case 'eigenMexAfgeklopt':
+        return `${name} slaat zijn eigen mex af: 8 slokken`
+      default:
+        return `${name} slaat af`
+    }
+  },
+  rulesExplainTitle: 'Hoe werken de regels?',
+  rulesExplain: [
+    ['Basis', 'Gooi 21 (mex) in max 3 worpen. Hoogste steen is het tiental, dubbel is een honderdtal. Een 1 of 2 blijft verplicht liggen. Laagste score drinkt: standaard slokken × aantal mexxen.'],
+    ['31', 'Gooi je 31, dan deel je slokken uit en gooi je gratis opnieuw.'],
+    ['Eerste bepaalt het tempo', 'De rest krijgt max evenveel worpen als de eerste speler van de ronde.'],
+    ['Omgekeerde mex', 'Gooi je 65, dan mag je de stenen omdraaien naar 21. Telt niet mee voor de slokken-multiplier.'],
+    ['Ridder', 'Wie 1-1 gooit is de ridder en drinkt bij elk honderdtal het aantal ogen (300 = 3 slokken).'],
+    ['Dubbele ridder', 'Gooit de ridder nóg eens 1-1, dan drinkt hij voortaan dubbel.'],
+    ['Afslaan', 'Ligt er een 32, sla af om hem vast te leggen. De gooier voorkomt dat door een steen op te pakken. Onterecht afslaan: 2 slokken; een mex afslaan: 4; je eigen mex: 8.'],
+  ] as [string, string][],
+
   // Tiebreak
   tiebreakTitle: 'Gelijkspel! Kamp om de laagste',
   tiebreakExplain: (hoogsteVerliest: boolean) =>

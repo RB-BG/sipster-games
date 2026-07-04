@@ -25,14 +25,22 @@ export interface RollRequest {
   animSeed: number
 }
 
+export interface FlipRequest {
+  /** Nieuw id triggert een omdraai-animatie (omgekeerde mex). */
+  id: number
+  /** Per die-id de waarde die boven moet komen, null = niet aanraken. */
+  values: (DieValue | null)[]
+}
+
 interface DiceSceneProps {
   roll: RollRequest | null
+  flip?: FlipRequest | null
   held: [boolean, boolean]
   onDieClick?: (id: DieId) => void
   onSettled?: (rollId: number, values: DieValue[]) => void
 }
 
-export default function DiceScene({ roll, held, onDieClick, onSettled }: DiceSceneProps) {
+export default function DiceScene({ roll, flip, held, onDieClick, onSettled }: DiceSceneProps) {
   const [rolling, setRolling] = useState(false)
 
   return (
@@ -55,6 +63,7 @@ export default function DiceScene({ roll, held, onDieClick, onSettled }: DiceSce
         <Table />
         <RollDirector
           roll={roll}
+          flip={flip}
           held={held}
           rolling={rolling}
           setRolling={setRolling}
@@ -91,6 +100,7 @@ const CORRECTION_MS = 150
 
 interface RollDirectorProps {
   roll: RollRequest | null
+  flip?: FlipRequest | null
   held: [boolean, boolean]
   rolling: boolean
   setRolling: (v: boolean) => void
@@ -98,7 +108,14 @@ interface RollDirectorProps {
   onSettled?: (rollId: number, values: DieValue[]) => void
 }
 
-function RollDirector({ roll, held, setRolling, onDieClick, onSettled }: RollDirectorProps) {
+interface FlipInProgress {
+  list: { dieId: DieId; from: Quaternion; to: Quaternion }[]
+  start: number
+}
+
+const FLIP_MS = 350
+
+function RollDirector({ roll, flip, held, setRolling, onDieClick, onSettled }: RollDirectorProps) {
   const invalidate = useThree((s) => s.invalidate)
   const body0 = useRef<RapierRigidBody | null>(null)
   const body1 = useRef<RapierRigidBody | null>(null)
@@ -107,6 +124,7 @@ function RollDirector({ roll, held, setRolling, onDieClick, onSettled }: RollDir
   const bodies = [body0, body1]
   const visuals = [visual0, visual1]
   const active = useRef<ActiveRoll | null>(null)
+  const flipping = useRef<FlipInProgress | null>(null)
 
   const finishRoll = () => {
     const current = active.current
@@ -135,6 +153,29 @@ function RollDirector({ roll, held, setRolling, onDieClick, onSettled }: RollDir
     finishRoll()
     invalidate()
   }
+
+  // Omgekeerde mex: draai de visuele mesh naar de nieuwe waarde, physics blijft liggen.
+  useEffect(() => {
+    if (!flip) return
+    const list: FlipInProgress['list'] = []
+    flip.values.forEach((value, id) => {
+      const body = bodies[id as DieId].current
+      const visual = visuals[id as DieId].current
+      if (value === null || !body || !visual) return
+      const r = body.rotation()
+      const bodyQ = new Quaternion(r.x, r.y, r.z, r.w)
+      list.push({
+        dieId: id as DieId,
+        from: visual.quaternion.clone(),
+        to: remapQuaternion(bodyQ, value),
+      })
+    })
+    if (list.length > 0) {
+      flipping.current = { list, start: performance.now() }
+      invalidate()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flip?.id])
 
   useEffect(() => {
     if (!roll) return
@@ -210,6 +251,16 @@ function RollDirector({ roll, held, setRolling, onDieClick, onSettled }: RollDir
   }, [roll?.id])
 
   useFrame(() => {
+    const flipNow = flipping.current
+    if (flipNow) {
+      invalidate()
+      const t = Math.min(1, (performance.now() - flipNow.start) / FLIP_MS)
+      for (const item of flipNow.list) {
+        visuals[item.dieId].current?.quaternion.slerpQuaternions(item.from, item.to, t)
+      }
+      if (t >= 1) flipping.current = null
+    }
+
     const current = active.current
     if (!current) return
     invalidate()

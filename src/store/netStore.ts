@@ -1,11 +1,24 @@
 import { create } from 'zustand'
-import type { Command, ErrorCode, GameState, PlayerProfile, RuleConfig } from '@/engine/types'
+import type {
+  AfslaanVerdict,
+  Command,
+  ErrorCode,
+  GameState,
+  PlayerProfile,
+  RuleConfig,
+} from '@/engine/types'
 import { strings } from '@/i18n/strings'
 import { createHostLoop, type HostLoop } from '@/net/hostLoop'
 import { createGuestTransport, createHostTransport } from '@/net/peerTransport'
 import type { GuestStatus, GuestTransport } from '@/net/transport'
 import type { GameEvent, Intent } from '@/protocol/messages'
-import type { RollAnim } from './gameStore'
+import type { FlipAnim, RollAnim } from './gameStore'
+
+export interface AfslaanToast {
+  id: number
+  byPlayerId: string
+  verdict: AfslaanVerdict
+}
 
 // Verbindingen zijn niet-serialiseerbaar; buiten de zustand-state houden.
 let hostLoop: HostLoop | null = null
@@ -25,6 +38,8 @@ interface NetStore {
   myPlayerId: string | null
   animating: boolean
   rollAnim: RollAnim | null
+  flipAnim: FlipAnim | null
+  afslaanToast: AfslaanToast | null
   hostLobby(profile: PlayerProfile): Promise<void>
   joinLobby(roomCode: string, profile: PlayerProfile): Promise<void>
   sendIntent(intent: Intent): void
@@ -57,6 +72,14 @@ export const useNetStore = create<NetStore>((set, get) => {
           animating: true,
         })
         break
+      case 'FLIP_EVENT':
+        set({ flipAnim: { id: ++animCounter, values: [event.values[0], event.values[1]] } })
+        break
+      case 'AFSLAAN_EVENT':
+        set({
+          afslaanToast: { id: ++animCounter, byPlayerId: event.byPlayerId, verdict: event.verdict },
+        })
+        break
       case 'ERROR':
         set({ lastError: event.code })
         break
@@ -73,6 +96,8 @@ export const useNetStore = create<NetStore>((set, get) => {
     myPlayerId: null,
     animating: false,
     rollAnim: null,
+    flipAnim: null,
+    afslaanToast: null,
 
     hostLobby: async (profile) => {
       set({ status: 'connecting', netError: null })
@@ -155,6 +180,8 @@ export const useNetStore = create<NetStore>((set, get) => {
         myPlayerId: null,
         animating: false,
         rollAnim: null,
+        flipAnim: null,
+        afslaanToast: null,
       })
     },
   }

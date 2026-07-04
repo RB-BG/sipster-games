@@ -150,8 +150,11 @@ function intentToCommand(intent: Intent, playerId: string): Command | null {
       return { t: 'TIEBREAK_ROLL', playerId }
     case 'NEXT_ROUND':
       return { t: 'NEXT_ROUND' }
+    case 'FLIP_65':
+      return { t: 'FLIP_65', playerId }
+    case 'AFSLAAN':
+      return { t: 'AFSLAAN', playerId }
     default:
-      // AFSLAAN en FLIP_65 volgen met de extra rulesets (chunk 7).
       return null
   }
 }
@@ -174,6 +177,10 @@ function toGameEvent(event: EngineEvent, version: number): GameEvent | null {
         value: event.value,
         animSeed: event.animSeed,
       }
+    case 'FLIPPED_65':
+      return { t: 'FLIP_EVENT', playerId: event.playerId, values: event.values }
+    case 'AFSLAAN':
+      return { t: 'AFSLAAN_EVENT', byPlayerId: event.byPlayerId, verdict: event.verdict }
     default:
       // Alle overige informatie zit al in de STATE-broadcast.
       return null

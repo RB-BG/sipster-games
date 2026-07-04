@@ -1,3 +1,4 @@
+import { scoreRank } from './score'
 import type { Command, ErrorCode, GameState, TurnState } from './types'
 
 /**
@@ -50,7 +51,8 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
       // Verse en stale 1/2 zijn onaanraakbaar: liggen verplicht, of moeten verplicht mee.
       if (die.vers !== null) return 'INVALID_DIE'
       if (cmd.t === 'HOLD_DIE' && die.onTable) return 'INVALID_DIE'
-      if (cmd.t === 'PICKUP_DIE' && !die.onTable) return 'INVALID_DIE'
+      // Een vrije steen "oppakken" mag als afslaan-preventiegebaar bij een open window.
+      if (cmd.t === 'PICKUP_DIE' && !die.onTable && !turn.afslaanWindow) return 'INVALID_DIE'
       return null
     }
 
@@ -92,6 +94,23 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
       if (state.phase !== 'playing' || state.turn === null || state.turn.locked)
         return 'WRONG_PHASE'
       if (state.turn.playerId !== cmd.playerId) return 'NOT_YOUR_TURN'
+      return null
+
+    case 'FLIP_65': {
+      if (!state.rules.omgekeerdeMex) return 'WRONG_PHASE'
+      const err = requireTurn(state, cmd.playerId)
+      if (err) return err
+      const turn = state.turn as TurnState
+      if (turn.pending31) return 'PENDING_31'
+      if (turn.dice === null) return 'HAS_NOT_THROWN'
+      if (scoreRank(turn.dice[0].value, turn.dice[1].value) !== 65) return 'INVALID_DIE'
+      return null
+    }
+
+    case 'AFSLAAN':
+      // Ook een onterechte afklop is een geldige actie: de reducer velt het oordeel.
+      if (!state.rules.afslaan || state.phase !== 'playing') return 'WRONG_PHASE'
+      if (!state.players.some((p) => p.id === cmd.playerId)) return 'UNKNOWN_PLAYER'
       return null
   }
 }

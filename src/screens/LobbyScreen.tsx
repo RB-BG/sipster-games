@@ -123,6 +123,18 @@ export default function LobbyScreen() {
               />
             </label>
           ))}
+
+          <details className="text-sm text-muted-foreground">
+            <summary className="cursor-pointer">{strings.rulesExplainTitle}</summary>
+            <dl className="mt-2 flex flex-col gap-2">
+              {strings.rulesExplain.map(([title, text]) => (
+                <div key={title}>
+                  <dt className="font-semibold text-ivory">{title}</dt>
+                  <dd>{text}</dd>
+                </div>
+              ))}
+            </dl>
+          </details>
         </Coaster>
       )}
 
