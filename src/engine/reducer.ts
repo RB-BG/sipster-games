@@ -119,6 +119,14 @@ export function reduce(state: GameState, cmd: Command, rng: RollSource): ReduceR
     case 'NEXT_ROUND':
       startNextRound(draft)
       break
+
+    case 'SET_CONNECTED':
+      playerById(draft, cmd.playerId).connected = cmd.connected
+      break
+
+    case 'FORFEIT_TURN':
+      finalizeTurn(draft, events)
+      break
   }
 
   return { state: draft, events }
@@ -205,11 +213,11 @@ function applyRoll(draft: GameState, events: EngineEvent[], rng: RollSource): vo
 
 function finalizeTurn(draft: GameState, events: EngineEvent[]): void {
   const turn = draft.turn as TurnState
-  const dice = turn.dice as [DieState, DieState]
   turn.locked = true
 
   const player = playerById(draft, turn.playerId)
-  player.roundScore = scoreRank(dice[0].value, dice[1].value)
+  // Forfeit vóór de eerste worp: geen dice, dus geen score; kan dan niet verliezen.
+  player.roundScore = turn.dice ? scoreRank(turn.dice[0].value, turn.dice[1].value) : null
   player.hasPlayedThisRound = true
   events.push({ t: 'TURN_ENDED', playerId: player.id })
 
@@ -231,8 +239,15 @@ function nextUnplayedPlayer(draft: GameState, afterId: string): PlayerState | nu
 }
 
 function evaluateRoundEnd(draft: GameState, events: EngineEvent[]): void {
-  const lowest = Math.min(...draft.players.map((p) => p.roundScore as number))
-  const losers = draft.players.filter((p) => p.roundScore === lowest)
+  // Spelers zonder score (forfeit) dingen niet mee naar het verlies.
+  const scored = draft.players.filter((p) => p.roundScore !== null)
+  if (scored.length === 0) {
+    draft.phase = 'roundEnd'
+    draft.turn = null
+    return
+  }
+  const lowest = Math.min(...scored.map((p) => p.roundScore as number))
+  const losers = scored.filter((p) => p.roundScore === lowest)
 
   if (losers.length === 1) {
     applyRoundLoss(draft, events, losers[0].id, 1)

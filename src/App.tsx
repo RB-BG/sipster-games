@@ -18,6 +18,7 @@ export default function App() {
   const hasGame = useGameStore((s) => s.state !== null)
   const screen = useGameStore((s) => s.screen)
   const role = useNetStore((s) => s.role)
+  const netPhase = useNetStore((s) => s.netState?.phase ?? 'lobby')
 
   // Dev-hulpschermen: /?debug (engine), /?dice (3D-steering).
   const params = new URLSearchParams(window.location.search)
@@ -26,8 +27,13 @@ export default function App() {
     return <Suspense fallback={loader}>{<DiceLabScreen />}</Suspense>
   }
 
-  // Verbonden (host of guest): de lobby is leidend. Game zelf volgt in chunk 6.
-  if (role !== 'none') return <LobbyScreen />
+  // Verbonden (host of guest): lobby tot de host start, daarna het spel.
+  if (role !== 'none') {
+    if (netPhase !== 'lobby') {
+      return <Suspense fallback={loader}>{<GameScreen />}</Suspense>
+    }
+    return <LobbyScreen />
+  }
 
   // Hotseat-potje op dit toestel.
   if (hasGame) {

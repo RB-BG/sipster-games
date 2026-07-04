@@ -83,6 +83,16 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
     case 'NEXT_ROUND':
       if (state.phase !== 'roundEnd') return 'WRONG_PHASE'
       return null
+
+    case 'SET_CONNECTED':
+      if (!state.players.some((p) => p.id === cmd.playerId)) return 'UNKNOWN_PLAYER'
+      return null
+
+    case 'FORFEIT_TURN':
+      if (state.phase !== 'playing' || state.turn === null || state.turn.locked)
+        return 'WRONG_PHASE'
+      if (state.turn.playerId !== cmd.playerId) return 'NOT_YOUR_TURN'
+      return null
   }
 }
 

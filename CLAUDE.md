@@ -11,7 +11,7 @@ Het volledige goedgekeurde plan staat in `docs/plan.md`. De spelregels staan in 
 - [x] Chunk 3: 3D dobbelstenen op de kroegtafel
 - [x] Chunk 4: Pass-the-phone basisspel (go/no-go)
 - [x] Chunk 5: P2P lobby
-- [ ] Chunk 6: Multiplayer basisspel
+- [x] Chunk 6: Multiplayer basisspel
 - [ ] Chunk 7: Extra rulesets (tempo, omgekeerde mex, ridder, afslaan)
 - [ ] Chunk 8: Polish (shake-to-roll, geluid, PWA)
 

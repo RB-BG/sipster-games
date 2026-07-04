@@ -14,6 +14,7 @@ export default function LobbyScreen() {
   const netState = useNetStore((s) => s.netState)
   const netError = useNetStore((s) => s.netError)
   const setRules = useNetStore((s) => s.setRules)
+  const sendIntent = useNetStore((s) => s.sendIntent)
   const leave = useNetStore((s) => s.leave)
 
   // Schermvergrendeling doodt de verbinding; lobby open = scherm aan.
@@ -125,14 +126,23 @@ export default function LobbyScreen() {
         </Coaster>
       )}
 
-      <button
-        type="button"
-        disabled
-        className="rounded-lg bg-primary px-8 py-3 text-lg font-semibold text-primary-foreground opacity-50"
-      >
-        {strings.startGame}
-      </button>
-      <p className="text-center text-xs text-muted-foreground">{strings.startWhenReady}</p>
+      {isHost ? (
+        <>
+          <button
+            type="button"
+            disabled={(netState?.players.length ?? 0) < 2}
+            onClick={() => sendIntent({ t: 'START_GAME' })}
+            className="rounded-lg bg-primary px-8 py-3 text-lg font-semibold text-primary-foreground active:scale-95 disabled:opacity-50"
+          >
+            {strings.startGame}
+          </button>
+          {(netState?.players.length ?? 0) < 2 && (
+            <p className="text-center text-xs text-muted-foreground">{strings.needMorePlayers}</p>
+          )}
+        </>
+      ) : (
+        <p className="text-center text-sm text-muted-foreground">{strings.waitForHost}</p>
+      )}
     </main>
   )
 }

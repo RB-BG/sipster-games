@@ -120,6 +120,9 @@ export type Command =
   | { t: 'GIVE_SIPS_31'; playerId: string; targetPlayerId: string }
   | { t: 'TIEBREAK_ROLL'; playerId: string }
   | { t: 'NEXT_ROUND' }
+  | { t: 'SET_CONNECTED'; playerId: string; connected: boolean }
+  /** Host beëindigt de beurt van een weggevallen speler; zonder worp geen score. */
+  | { t: 'FORFEIT_TURN'; playerId: string }
 
 /** Transiente gebeurtenissen voor animatie, geluid en toasts; state is al bijgewerkt. */
 export type EngineEvent =
