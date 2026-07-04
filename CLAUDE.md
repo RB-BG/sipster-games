@@ -7,7 +7,7 @@ Webbased versie van het borrelspel mexen (Utrechtse variant). P2P multiplayer, 3
 Het volledige goedgekeurde plan staat in `docs/plan.md`. De spelregels staan in `docs/mexxen-regels.md`. Werk altijd chunk voor chunk; rond een chunk volledig af (lint/build/test groen + commit) voor je aan de volgende begint.
 
 - [x] Chunk 1: Scaffold + deploy pipeline
-- [ ] Chunk 2: Pure game engine + tests
+- [x] Chunk 2: Pure game engine + tests
 - [ ] Chunk 3: 3D dobbelstenen op de kroegtafel
 - [ ] Chunk 4: Pass-the-phone basisspel (go/no-go)
 - [ ] Chunk 5: P2P lobby
