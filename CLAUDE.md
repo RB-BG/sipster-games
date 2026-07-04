@@ -8,7 +8,7 @@ Het volledige goedgekeurde plan staat in `docs/plan.md`. De spelregels staan in 
 
 - [x] Chunk 1: Scaffold + deploy pipeline
 - [x] Chunk 2: Pure game engine + tests
-- [ ] Chunk 3: 3D dobbelstenen op de kroegtafel
+- [x] Chunk 3: 3D dobbelstenen op de kroegtafel
 - [ ] Chunk 4: Pass-the-phone basisspel (go/no-go)
 - [ ] Chunk 5: P2P lobby
 - [ ] Chunk 6: Multiplayer basisspel
