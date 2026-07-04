@@ -18,14 +18,16 @@ export interface RollAnim {
   animSeed: number
 }
 
+export type Screen = 'home' | 'setup' | 'host' | 'join'
+
 interface GameStore {
   state: GameState | null
-  screen: 'home' | 'setup'
+  screen: Screen
   /** true zolang de 3D-worp nog speelt; UI verklapt de uitslag dan nog niet. */
   animating: boolean
   rollAnim: RollAnim | null
   lastError: ErrorCode | null
-  setScreen: (screen: 'home' | 'setup') => void
+  setScreen: (screen: Screen) => void
   startHotseat: (profiles: PlayerProfile[]) => void
   dispatch: (cmd: Command) => void
   onRollSettled: () => void
