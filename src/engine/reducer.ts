@@ -1,7 +1,8 @@
-import { is31, isMex, scoreRank } from './score'
-import { loserSips, sips31 } from './sips'
+import { is31, is32, isMex, scoreRank } from './score'
+import { afslaanPenalty, loserSips, sips31 } from './sips'
 import type { RollSource } from './rng'
 import type {
+  AfslaanVerdict,
   Command,
   Die,
   DieId,
@@ -33,6 +34,8 @@ export function createGame(host: PlayerProfile, rules: RuleConfig = DEFAULT_RULE
     round: { number: 0, startingPlayerId: host.id, mexCount: 0, tempoLimit: null },
     turn: null,
     ridderId: null,
+    ridderDubbel: false,
+    lastTurnSummary: null,
     tiebreak: null,
     sipsLog: [],
   }
@@ -72,7 +75,7 @@ export function reduce(state: GameState, cmd: Command, rng: RollSource): ReduceR
         mexCount: 0,
         tempoLimit: null,
       }
-      draft.turn = newTurn(draft.players[0].id)
+      draft.turn = newTurn(draft, draft.players[0].id)
       break
 
     case 'ROLL':
@@ -81,10 +84,13 @@ export function reduce(state: GameState, cmd: Command, rng: RollSource): ReduceR
 
     case 'HOLD_DIE':
       dieById(draft, cmd.dieId).onTable = true
+      ;(draft.turn as TurnState).afslaanWindow = false
       break
 
     case 'PICKUP_DIE':
+      // Oppakken is ook het afslaan-preventiegebaar: de 32 ligt niet meer vast te slaan.
       dieById(draft, cmd.dieId).onTable = false
+      ;(draft.turn as TurnState).afslaanWindow = false
       break
 
     case 'END_TURN':
@@ -127,6 +133,14 @@ export function reduce(state: GameState, cmd: Command, rng: RollSource): ReduceR
     case 'FORFEIT_TURN':
       finalizeTurn(draft, events)
       break
+
+    case 'FLIP_65':
+      applyFlip65(draft, events)
+      break
+
+    case 'AFSLAAN':
+      applyAfslaan(draft, events, cmd.playerId)
+      break
   }
 
   return { state: draft, events }
@@ -142,8 +156,21 @@ function newPlayer(profile: PlayerProfile): PlayerState {
   }
 }
 
-function newTurn(playerId: string, maxThrows = 3): TurnState {
-  return { playerId, dice: null, throwsUsed: 0, maxThrows, pending31: false, locked: false }
+function newTurn(draft: GameState, playerId: string): TurnState {
+  // Eerste bepaalt het tempo: latere spelers max evenveel worpen als speler 1.
+  const maxThrows =
+    draft.rules.tempo && draft.round.tempoLimit !== null
+      ? Math.min(3, draft.round.tempoLimit)
+      : 3
+  return {
+    playerId,
+    dice: null,
+    throwsUsed: 0,
+    maxThrows,
+    pending31: false,
+    locked: false,
+    afslaanWindow: false,
+  }
 }
 
 function applyRoll(draft: GameState, events: EngineEvent[], rng: RollSource): void {
@@ -177,19 +204,21 @@ function applyRoll(draft: GameState, events: EngineEvent[], rng: RollSource): vo
   const [a, b] = [turn.dice[0].value, turn.dice[1].value]
   const rolled31 = is31(a, b)
 
-  if (isMex(a, b)) {
-    draft.round.mexCount++
-    events.push({ t: 'MEX_ROLLED', playerId: turn.playerId })
-    finalizeTurn(draft, events)
-    return
-  }
-
   // De 31-worp telt niet mee: niet voor het aantal worpen, niet voor de versheid.
   if (!rolled31) {
     turn.throwsUsed++
     for (const die of turn.dice) {
       if (die.vers === 'fresh' && !dieIds.includes(die.id)) die.vers = 'stale'
     }
+  }
+
+  applyRidder(draft, events, a, b)
+
+  if (isMex(a, b)) {
+    draft.round.mexCount++
+    events.push({ t: 'MEX_ROLLED', playerId: turn.playerId })
+    finalizeTurn(draft, events)
+    return
   }
 
   // Nieuw gegooide 1 of 2 moet blijven liggen en is één worp vers.
@@ -206,24 +235,115 @@ function applyRoll(draft: GameState, events: EngineEvent[], rng: RollSource): vo
     return
   }
 
+  // Een 32 met worpen over ligt open om af te slaan.
+  turn.afslaanWindow =
+    draft.rules.afslaan && is32(a, b) && turn.throwsUsed < turn.maxThrows
+
   if (turn.throwsUsed >= turn.maxThrows) {
     finalizeTurn(draft, events)
   }
 }
 
+/** Ridder-regelset: 1+1 (ont)troont; elk honderdtal laat de ridder drinken. */
+function applyRidder(draft: GameState, events: EngineEvent[], a: Die, b: Die): void {
+  if (!draft.rules.ridder || a !== b) return
+  const roller = (draft.turn as TurnState).playerId
+
+  if (a === 1) {
+    if (draft.ridderId === roller) {
+      if (draft.rules.dubbeleRidder && !draft.ridderDubbel) {
+        draft.ridderDubbel = true
+        events.push({ t: 'RIDDER_GESLAGEN', playerId: roller, dubbel: true })
+      } else {
+        ridderDrinkt(draft, events, 1)
+      }
+    } else {
+      // Nieuwe ridder; die drinkt niet voor het eigen kroningshonderdtal.
+      draft.ridderId = roller
+      draft.ridderDubbel = false
+      events.push({ t: 'RIDDER_GESLAGEN', playerId: roller, dubbel: false })
+    }
+    return
+  }
+
+  if (draft.ridderId) ridderDrinkt(draft, events, a)
+}
+
+function ridderDrinkt(draft: GameState, events: EngineEvent[], ogen: number): void {
+  const amount = ogen * (draft.ridderDubbel ? 2 : 1)
+  const knight = playerById(draft, draft.ridderId as string)
+  knight.sipsTotal += amount
+  draft.sipsLog.push({
+    playerId: knight.id,
+    amount,
+    reason: 'ridder',
+    round: draft.round.number,
+  })
+  events.push({ t: 'RIDDER_DRINKT', playerId: knight.id, amount })
+}
+
+/** Omgekeerde mex: 6 en 5 fysiek omdraaien wordt 1 en 2; telt niet in mexCount. */
+function applyFlip65(draft: GameState, events: EngineEvent[]): void {
+  const turn = draft.turn as TurnState
+  const dice = turn.dice as [DieState, DieState]
+  for (const die of dice) {
+    die.value = die.value === 6 ? 1 : 2
+  }
+  events.push({ t: 'FLIPPED_65', playerId: turn.playerId, values: [dice[0].value, dice[1].value] })
+  finalizeTurn(draft, events)
+}
+
+function applyAfslaan(draft: GameState, events: EngineEvent[], slammerId: string): void {
+  const turn = draft.turn
+  const windowOpen = turn !== null && !turn.locked && turn.afslaanWindow
+
+  let verdict: AfslaanVerdict
+  if (windowOpen) {
+    verdict = slammerId === (turn as TurnState).playerId ? 'zelfAfgeklopt' : 'terecht'
+    ;(turn as TurnState).afslaanWindow = false
+    // De 32 ligt vast: beurt is voorbij, ook bij een (domme) zelf-afklop.
+    finalizeTurn(draft, events)
+  } else if (draft.lastTurnSummary?.wasMex && (draft.turn === null || draft.turn.dice === null)) {
+    // De vorige beurt eindigde nét op mex: die afslaan is extra onterecht.
+    verdict = slammerId === draft.lastTurnSummary.playerId ? 'eigenMexAfgeklopt' : 'mexAfgeklopt'
+  } else {
+    verdict = 'onterecht'
+  }
+
+  const penalty = afslaanPenalty(verdict)
+  if (penalty > 0) {
+    const slammer = playerById(draft, slammerId)
+    slammer.sipsTotal += penalty
+    draft.sipsLog.push({
+      playerId: slammerId,
+      amount: penalty,
+      reason: 'straf',
+      round: draft.round.number,
+    })
+  }
+  events.push({ t: 'AFSLAAN', byPlayerId: slammerId, verdict })
+}
+
 function finalizeTurn(draft: GameState, events: EngineEvent[]): void {
   const turn = draft.turn as TurnState
   turn.locked = true
+  turn.afslaanWindow = false
 
   const player = playerById(draft, turn.playerId)
   // Forfeit vóór de eerste worp: geen dice, dus geen score; kan dan niet verliezen.
   player.roundScore = turn.dice ? scoreRank(turn.dice[0].value, turn.dice[1].value) : null
   player.hasPlayedThisRound = true
+  draft.lastTurnSummary = { playerId: player.id, wasMex: player.roundScore === 1000 }
   events.push({ t: 'TURN_ENDED', playerId: player.id })
+
+  // De eerste beurt van de ronde zet het tempo (forfeit zonder worp telt als 1).
+  if (draft.rules.tempo && draft.round.tempoLimit === null) {
+    draft.round.tempoLimit = Math.max(1, turn.throwsUsed)
+  }
 
   const next = nextUnplayedPlayer(draft, turn.playerId)
   if (next !== null) {
-    draft.turn = newTurn(next.id)
+    draft.turn = newTurn(draft, next.id)
   } else {
     evaluateRoundEnd(draft, events)
   }
@@ -325,7 +445,8 @@ function startNextRound(draft: GameState): void {
     tempoLimit: null,
   }
   draft.phase = 'playing'
-  draft.turn = newTurn(draft.round.startingPlayerId)
+  draft.lastTurnSummary = null
+  draft.turn = newTurn(draft, draft.round.startingPlayerId)
 }
 
 function playerById(draft: GameState, id: string): PlayerState {

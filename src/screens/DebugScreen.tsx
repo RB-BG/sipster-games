@@ -148,5 +148,13 @@ function beschrijfEvent(e: EngineEvent): string {
       return `weer gelijk! inzet x${e.multiplier}`
     case 'ROUND_ENDED':
       return `💀 ${e.loserId} verliest en drinkt ${e.sips} slokken`
+    case 'FLIPPED_65':
+      return `${e.playerId} draait 65 om naar mex`
+    case 'AFSLAAN':
+      return `${e.byPlayerId} slaat af: ${e.verdict}`
+    case 'RIDDER_GESLAGEN':
+      return `🛡️ ${e.playerId} is nu ${e.dubbel ? 'dubbele ' : ''}ridder`
+    case 'RIDDER_DRINKT':
+      return `🛡️ ${e.playerId} drinkt ${e.amount}`
   }
 }

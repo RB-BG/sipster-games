@@ -1,6 +1,6 @@
 import type { Command, ErrorCode, GameState } from '@/engine/types'
-import { useGameStore, type RollAnim } from '@/store/gameStore'
-import { useNetStore } from '@/store/netStore'
+import { useGameStore, type FlipAnim, type RollAnim } from '@/store/gameStore'
+import { useNetStore, type AfslaanToast } from '@/store/netStore'
 
 export interface GameAdapter {
   state: GameState | null
@@ -9,6 +9,8 @@ export interface GameAdapter {
   isHost: boolean
   animating: boolean
   rollAnim: RollAnim | null
+  flipAnim: FlipAnim | null
+  afslaanToast: AfslaanToast | null
   lastError: ErrorCode | null
   dispatch: (cmd: Command) => void
   onRollSettled: () => void
@@ -27,6 +29,8 @@ export function useGameAdapter(): GameAdapter {
       isHost: net.role === 'host',
       animating: net.animating,
       rollAnim: net.rollAnim,
+      flipAnim: net.flipAnim,
+      afslaanToast: net.afslaanToast,
       lastError: net.lastError,
       dispatch: net.sendCommand,
       onRollSettled: net.onRollSettled,
@@ -40,6 +44,8 @@ export function useGameAdapter(): GameAdapter {
     isHost: true,
     animating: hot.animating,
     rollAnim: hot.rollAnim,
+    flipAnim: hot.flipAnim,
+    afslaanToast: null,
     lastError: hot.lastError,
     dispatch: hot.dispatch,
     onRollSettled: hot.onRollSettled,
