@@ -1,0 +1,96 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
+@custom-variant dark (&:is(.dark *));
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    margin: 0;
+    color: var(--ivory);
+    background: radial-gradient(120% 90% at 50% 0%, var(--wood-800) 0%, var(--wood-900) 55%, var(--wood-950) 100%);
+    background-attachment: fixed;
+    min-height: 100dvh;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: 'Geist Variable', sans-serif;
+
+  /* Kroeg-palet */
+  --color-wood-950: var(--wood-950);
+  --color-wood-900: var(--wood-900);
+  --color-wood-800: var(--wood-800);
+  --color-wood-700: var(--wood-700);
+  --color-amber-warm: var(--amber-warm);
+  --color-amber-soft: var(--amber-soft);
+  --color-ivory: var(--ivory);
+  --color-pip: var(--pip);
+  --color-coaster: var(--coaster);
+
+  /* shadcn token bridge */
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+}
+
+:root {
+  /* Kroeg-palet: donker hout, warm amber, ivoren dobbelstenen */
+  --wood-950: #170e07;
+  --wood-900: #241509;
+  --wood-800: #3a2410;
+  --wood-700: #57381c;
+  --amber-warm: #e8a33d;
+  --amber-soft: #f4c06a;
+  --ivory: #f3ecd9;
+  --pip: #17130e;
+  --coaster: #e9dfc6;
+
+  /* shadcn tokens, afgestemd op het donkere kroeg-thema */
+  --background: var(--wood-900);
+  --foreground: var(--ivory);
+  --card: var(--wood-800);
+  --card-foreground: var(--ivory);
+  --popover: var(--wood-800);
+  --popover-foreground: var(--ivory);
+  --primary: var(--amber-warm);
+  --primary-foreground: var(--wood-950);
+  --secondary: var(--wood-700);
+  --secondary-foreground: var(--ivory);
+  --muted: var(--wood-800);
+  --muted-foreground: #b5a488;
+  --accent: var(--wood-700);
+  --accent-foreground: var(--ivory);
+  --destructive: #c8442c;
+  --border: #57381c66;
+  --input: #57381c99;
+  --ring: var(--amber-warm);
+  --radius: 0.625rem;
+}
