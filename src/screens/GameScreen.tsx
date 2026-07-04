@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Hand, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Hand, Volume2, VolumeX, X } from 'lucide-react'
 import Coaster from '@/components/Coaster'
 import PlayerChip from '@/components/PlayerChip'
 import { rankLabel, scoreLabel, scoreRank } from '@/engine/score'
@@ -7,8 +7,10 @@ import type { Command, DieId } from '@/engine/types'
 import { validateCommand } from '@/engine/validate'
 import DiceScene from '@/game3d/DiceScene'
 import { useGameAdapter } from '@/hooks/useGameAdapter'
+import { useShakeToRoll } from '@/hooks/useShakeToRoll'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { strings } from '@/i18n/strings'
+import { isMuted, playMex, playRoll, playSlap, setMuted } from '@/lib/sound'
 
 export default function GameScreen() {
   const {
@@ -20,6 +22,7 @@ export default function GameScreen() {
     flipAnim,
     afslaanToast,
     lastError,
+    connection,
     dispatch,
     onRollSettled,
     leave,
@@ -38,12 +41,59 @@ export default function GameScreen() {
   // Scherm aan: vergrendeling doodt de P2P-verbinding midden in het potje.
   useWakeLock()
 
-  if (!state) return null
-  const { turn, phase } = state
-  const activePlayer = state.players.find((p) => p.id === turn?.playerId)
+  const stateRef = useRef(state)
+  useEffect(() => {
+    stateRef.current = state
+  })
+
+  const [muted, setMutedState] = useState(isMuted)
+  function toggleMuted() {
+    setMuted(!muted)
+    setMutedState(!muted)
+  }
+
+  // Geluid + haptics op de spelmomenten.
+  const rollAnimId = rollAnim?.id ?? 0
+  useEffect(() => {
+    if (rollAnimId === 0) return
+    playRoll()
+    navigator.vibrate?.(30)
+  }, [rollAnimId])
+  useEffect(() => {
+    if (toastId === 0) return
+    playSlap()
+    navigator.vibrate?.(80)
+  }, [toastId])
+  // Mex-fanfare pas als de worp is uitgerold, anders verklapt het geluid de uitslag.
+  const mexPlayedFor = useRef<string | null>(null)
+  useEffect(() => {
+    if (animating) return
+    const last = stateRef.current?.lastTurnSummary
+    if (!last?.wasMex) return
+    const key = `${stateRef.current?.round.number}-${last.playerId}`
+    if (mexPlayedFor.current === key) return
+    mexPlayedFor.current = key
+    playMex()
+    navigator.vibrate?.([50, 60, 50])
+  }, [animating])
 
   /** In hotseat (myPlayerId null) mag alles; online alleen je eigen acties. */
   const canAct = (playerId: string) => myPlayerId === null || myPlayerId === playerId
+  const rollableNow =
+    state !== null &&
+    state.phase === 'playing' &&
+    state.turn !== null &&
+    !animating &&
+    canAct(state.turn.playerId) &&
+    validateCommand(state, { t: 'ROLL', playerId: state.turn.playerId }) === null
+  const shake = useShakeToRoll(rollableNow, () => {
+    const turnNow = stateRef.current?.turn
+    if (turnNow) dispatch({ t: 'ROLL', playerId: turnNow.playerId })
+  })
+
+  if (!state) return null
+  const { turn, phase } = state
+  const activePlayer = state.players.find((p) => p.id === turn?.playerId)
 
   const held: [boolean, boolean] =
     phase === 'playing' && turn?.dice
@@ -102,9 +152,18 @@ export default function GameScreen() {
           {strings.round(state.round.number)}
           {state.round.mexCount > 0 && ` · ${strings.mexCount(state.round.mexCount)}`}
         </span>
-        <button type="button" onClick={leave} aria-label={strings.stopGame}>
-          <X className="size-5" />
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={toggleMuted}
+            aria-label={muted ? strings.soundOn : strings.soundOff}
+          >
+            {muted ? <VolumeX className="size-5" /> : <Volume2 className="size-5" />}
+          </button>
+          <button type="button" onClick={leave} aria-label={strings.stopGame}>
+            <X className="size-5" />
+          </button>
+        </div>
       </header>
 
       <div className="flex gap-2 overflow-x-auto px-4 pb-2">
@@ -129,6 +188,28 @@ export default function GameScreen() {
           onDieClick={onDieClick}
           onSettled={onRollSettled}
         />
+
+        {connection === 'reconnecting' && (
+          <Overlay>
+            <Coaster className="w-72 text-center">
+              <p className="text-amber-soft">{strings.connectionLost}</p>
+            </Coaster>
+          </Overlay>
+        )}
+        {connection === 'closed' && (
+          <Overlay>
+            <Coaster className="flex w-72 flex-col gap-3 text-center">
+              <p className="text-amber-soft">{strings.tableGone}</p>
+              <button
+                type="button"
+                onClick={leave}
+                className="rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground"
+              >
+                {strings.backHome}
+              </button>
+            </Coaster>
+          </Overlay>
+        )}
 
         {toastVisible && afslaanToast && toastPlayer && (
           <p className="absolute inset-x-4 top-2 z-20 rounded-lg bg-wood-950/90 px-3 py-2 text-center text-sm text-amber-soft">
@@ -244,6 +325,20 @@ export default function GameScreen() {
                   </li>
                 ))}
               </ul>
+              {state.sipsLog.length > 0 && (
+                <details className="text-left text-xs text-muted-foreground">
+                  <summary className="cursor-pointer text-center">{strings.sipsLogTitle}</summary>
+                  <ul className="mt-1 flex flex-col gap-0.5">
+                    {state.sipsLog.slice(-12).map((entry, i) => (
+                      <li key={i}>
+                        r{entry.round} ·{' '}
+                        {state.players.find((p) => p.id === entry.playerId)?.name ?? entry.playerId}
+                        : +{entry.amount} ({strings.sipReasons[entry.reason] ?? entry.reason})
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
               {isHost ? (
                 <button
                   type="button"
@@ -321,7 +416,11 @@ export default function GameScreen() {
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => dispatch({ t: 'ROLL', playerId: turn.playerId })}
+              onClick={() => {
+                // iOS DeviceMotion-permissie mag alleen vanuit een tap; lift mee op Gooi.
+                shake.requestFromGesture()
+                dispatch({ t: 'ROLL', playerId: turn.playerId })
+              }}
               disabled={disabled({ t: 'ROLL', playerId: turn.playerId })}
               className="flex-1 rounded-lg bg-primary px-4 py-3 text-lg font-semibold text-primary-foreground active:scale-95 disabled:opacity-50"
             >
@@ -336,6 +435,9 @@ export default function GameScreen() {
               {strings.stay}
             </button>
           </div>
+          {shake.supported && rollableNow && (
+            <p className="text-center text-xs text-muted-foreground">{strings.shakeHint}</p>
+          )}
         </section>
       )}
     </main>

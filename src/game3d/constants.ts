@@ -6,6 +6,9 @@
 export const DIE_HALF = 0.5
 export const DIE_FRICTION = 0.4
 export const DIE_RESTITUTION = 0.35
+/** Lichte demping haalt het zenuwachtige natrillen uit de worp. */
+export const DIE_LINEAR_DAMPING = 0.2
+export const DIE_ANGULAR_DAMPING = 0.3
 export const FLOOR_FRICTION = 0.6
 export const FLOOR_RESTITUTION = 0.25
 

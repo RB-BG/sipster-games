@@ -4,8 +4,10 @@ import { RoundedBox } from '@react-three/drei'
 import { CuboidCollider, RigidBody, type RapierRigidBody } from '@react-three/rapier'
 import type { DieId } from '@/engine/types'
 import {
+  DIE_ANGULAR_DAMPING,
   DIE_FRICTION,
   DIE_HALF,
+  DIE_LINEAR_DAMPING,
   DIE_RESTITUTION,
   HELD_POSITIONS,
   START_POSITIONS,
@@ -75,6 +77,8 @@ export default function Die({ id, held, bodyRef, visualRef, onClick }: DieProps)
       type={held ? 'fixed' : 'dynamic'}
       colliders={false}
       ccd
+      linearDamping={DIE_LINEAR_DAMPING}
+      angularDamping={DIE_ANGULAR_DAMPING}
       position={START_POSITIONS[id]}
     >
       <CuboidCollider
