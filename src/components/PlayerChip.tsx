@@ -15,6 +15,7 @@ export default function PlayerChip({ player, active, hideScore }: PlayerChipProp
       className={cn(
         'flex shrink-0 flex-col items-center gap-0.5 rounded-xl px-3 py-2 text-xs',
         active ? 'bg-primary text-primary-foreground' : 'bg-card text-card-foreground',
+        !player.connected && 'opacity-40 grayscale',
       )}
     >
       <span className="text-lg leading-none">{player.emoji}</span>

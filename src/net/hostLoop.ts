@@ -23,6 +23,8 @@ export function createHostLoop(
   hostProfile: PlayerProfile,
   onState: (state: GameState) => void,
   rng: RollSource = cryptoRollSource(),
+  /** Ook de host-UI wil ROLL_EVENTs en eigen ERRORs zien; broadcast bereikt hemzelf niet. */
+  onEvent?: (event: GameEvent) => void,
 ): HostLoop {
   let state = createGame(hostProfile)
   const peerToPlayer = new Map<string, string>()
@@ -33,12 +35,16 @@ export function createHostLoop(
     const result = reduce(state, cmd, rng)
     if (result.error) {
       if (replyPeer) transport.send(replyPeer, { t: 'ERROR', code: result.error })
+      else onEvent?.({ t: 'ERROR', code: result.error })
       return
     }
     state = result.state
     for (const event of result.events) {
       const wire = toGameEvent(event, state.version)
-      if (wire) transport.broadcast(wire)
+      if (wire) {
+        transport.broadcast(wire)
+        onEvent?.(wire)
+      }
     }
     transport.broadcast({ t: 'STATE', state })
     onState(state)
@@ -50,7 +56,8 @@ export function createHostLoop(
       peerToPlayer.set(peerId, intent.profile.id)
       playerToPeer.set(intent.profile.id, peerId)
       if (state.players.some((p) => p.id === intent.profile.id)) {
-        // Reconnect van een bekende speler: alleen resyncen.
+        // Reconnect van een bekende speler: online markeren en resyncen.
+        apply({ t: 'SET_CONNECTED', playerId: intent.profile.id, connected: true }, peerId)
         transport.send(peerId, { t: 'STATE', state })
         return
       }
@@ -74,9 +81,18 @@ export function createHostLoop(
       return
     }
 
-    const hostOnly = intent.t === 'SET_RULES' || intent.t === 'START_GAME' || intent.t === 'NEXT_ROUND'
+    const hostOnly =
+      intent.t === 'SET_RULES' ||
+      intent.t === 'START_GAME' ||
+      intent.t === 'NEXT_ROUND' ||
+      intent.t === 'FORFEIT_TURN'
     if (hostOnly && playerId !== state.hostId) {
       if (peerId) transport.send(peerId, { t: 'ERROR', code: 'NOT_YOUR_TURN' })
+      return
+    }
+
+    if (intent.t === 'FORFEIT_TURN') {
+      if (state.turn) apply({ t: 'FORFEIT_TURN', playerId: state.turn.playerId }, peerId)
       return
     }
 
@@ -88,8 +104,13 @@ export function createHostLoop(
     const playerId = peerToPlayer.get(peerId)
     if (!playerId) return
     forgetPeer(playerId)
-    // In de lobby is weg gewoon weg; midden in een potje volgt reconnect (chunk 6).
-    if (state.phase === 'lobby') apply({ t: 'REMOVE_PLAYER', playerId }, null)
+    if (state.phase === 'lobby') {
+      // In de lobby is weg gewoon weg.
+      apply({ t: 'REMOVE_PLAYER', playerId }, null)
+    } else {
+      // Midden in een potje: offline markeren; de speler kan terugkomen.
+      apply({ t: 'SET_CONNECTED', playerId, connected: false }, null)
+    }
   }
 
   function forgetPeer(playerId: string): void {

@@ -16,6 +16,8 @@ export type Intent =
   | { t: 'GIVE_SIPS_31'; targetPlayerId: string }
   | { t: 'AFSLAAN' }
   | { t: 'FLIP_65' }
+  /** Host-only: beëindig de beurt van de (weggevallen) actieve speler. */
+  | { t: 'FORFEIT_TURN' }
   | { t: 'TIEBREAK_ROLL' }
   | { t: 'NEXT_ROUND' }
   | { t: 'REQUEST_SYNC' }
