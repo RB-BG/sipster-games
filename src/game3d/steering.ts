@@ -3,8 +3,10 @@ import { Quaternion } from 'three'
 import { mulberry32 } from '@/lib/seededRng'
 import type { DieId } from '@/engine/types'
 import {
+  DIE_ANGULAR_DAMPING,
   DIE_FRICTION,
   DIE_HALF,
+  DIE_LINEAR_DAMPING,
   DIE_RESTITUTION,
   FLOOR_FRICTION,
   FLOOR_RESTITUTION,
@@ -116,6 +118,8 @@ export function presimSettle(input: PresimInput): (SettledPose | null)[] {
         .setRotation(launch.rotation)
         .setLinvel(...launch.linvel)
         .setAngvel({ x: launch.angvel[0], y: launch.angvel[1], z: launch.angvel[2] })
+        .setLinearDamping(DIE_LINEAR_DAMPING)
+        .setAngularDamping(DIE_ANGULAR_DAMPING)
         .setCcdEnabled(true),
     )
     world.createCollider(dieCollider(), body)

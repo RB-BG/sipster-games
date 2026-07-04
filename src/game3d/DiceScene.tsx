@@ -59,7 +59,9 @@ export default function DiceScene({ roll, flip, held, onDieClick, onSettled }: D
         color="#ffd9a0"
         shadow-mapSize={[1024, 1024]}
       />
-      <Physics gravity={GRAVITY} timeStep={TIME_STEP} paused={!rolling}>
+      {/* independent: physics stept op wandkloktijd, niet per frame; anders
+          rolt de worp op een 120Hz-scherm dubbel zo snel ("krokant"). */}
+      <Physics gravity={GRAVITY} timeStep={TIME_STEP} updateLoop="independent" paused={!rolling}>
         <Table />
         <RollDirector
           roll={roll}

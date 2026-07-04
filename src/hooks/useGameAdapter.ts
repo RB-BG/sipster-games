@@ -1,4 +1,5 @@
 import type { Command, ErrorCode, GameState } from '@/engine/types'
+import type { GuestStatus } from '@/net/transport'
 import { useGameStore, type FlipAnim, type RollAnim } from '@/store/gameStore'
 import { useNetStore, type AfslaanToast } from '@/store/netStore'
 
@@ -12,6 +13,8 @@ export interface GameAdapter {
   flipAnim: FlipAnim | null
   afslaanToast: AfslaanToast | null
   lastError: ErrorCode | null
+  /** Verbindingsstatus; hotseat is altijd 'idle'. */
+  connection: GuestStatus | 'idle'
   dispatch: (cmd: Command) => void
   onRollSettled: () => void
   leave: () => void
@@ -32,6 +35,7 @@ export function useGameAdapter(): GameAdapter {
       flipAnim: net.flipAnim,
       afslaanToast: net.afslaanToast,
       lastError: net.lastError,
+      connection: net.status,
       dispatch: net.sendCommand,
       onRollSettled: net.onRollSettled,
       leave: net.leave,
@@ -47,6 +51,7 @@ export function useGameAdapter(): GameAdapter {
     flipAnim: hot.flipAnim,
     afslaanToast: null,
     lastError: hot.lastError,
+    connection: 'idle',
     dispatch: hot.dispatch,
     onRollSettled: hot.onRollSettled,
     leave: hot.reset,

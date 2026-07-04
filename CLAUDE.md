@@ -13,7 +13,7 @@ Het volledige goedgekeurde plan staat in `docs/plan.md`. De spelregels staan in 
 - [x] Chunk 5: P2P lobby
 - [x] Chunk 6: Multiplayer basisspel
 - [x] Chunk 7: Extra rulesets (tempo, omgekeerde mex, ridder, afslaan)
-- [ ] Chunk 8: Polish (shake-to-roll, geluid, PWA)
+- [x] Chunk 8: Polish (shake-to-roll, geluid, PWA)
 
 ## Git-regels
 
