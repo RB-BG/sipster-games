@@ -36,3 +36,8 @@ export function scoreLabel(a: Die, b: Die): string {
   if (isDouble(a, b)) return String(a * 100)
   return String(Math.max(a, b) * 10 + Math.min(a, b))
 }
+
+/** Weergavenaam van een score-rang (zie scoreRank), voor opgeslagen rondescores. */
+export function rankLabel(rank: number): string {
+  return rank === 1000 ? 'mex' : String(rank)
+}
