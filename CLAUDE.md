@@ -4,7 +4,7 @@ Webbased versie van het borrelspel mexen (Utrechtse variant). P2P multiplayer, 3
 
 ## Plan & voortgang
 
-Het volledige goedgekeurde plan staat in `C:\Users\RubenBaggen\.claude\plans\ik-wil-een-webbased-jiggly-hamming.md`. De spelregels staan in `docs/mexxen-regels.md`. Werk altijd chunk voor chunk; rond een chunk volledig af (lint/build/test groen + commit) voor je aan de volgende begint.
+Het volledige goedgekeurde plan staat in `docs/plan.md`. De spelregels staan in `docs/mexxen-regels.md`. Werk altijd chunk voor chunk; rond een chunk volledig af (lint/build/test groen + commit) voor je aan de volgende begint.
 
 - [x] Chunk 1: Scaffold + deploy pipeline
 - [ ] Chunk 2: Pure game engine + tests
