@@ -33,6 +33,8 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
       if (err) return err
       const turn = state.turn as TurnState
       if (turn.pending31) return 'PENDING_31'
+      // Kan alleen bij een open 65-op-laatste-worp (omgekeerde mex): flippen of blijven staan.
+      if (turn.throwsUsed >= turn.maxThrows) return 'WRONG_PHASE'
       if (turn.dice !== null) {
         const rollable = turn.dice.some((d) => !d.onTable || d.vers === 'stale')
         if (!rollable) return 'NO_ROLLABLE_DICE'
@@ -91,6 +93,12 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
       return null
 
     case 'FORFEIT_TURN':
+      // Ook een weggevallen speler in de kamp moet over te slaan zijn.
+      if (state.phase === 'tiebreak' && state.tiebreak !== null) {
+        if (!state.tiebreak.playerIds.includes(cmd.playerId)) return 'NOT_YOUR_TURN'
+        if (state.tiebreak.rolls[cmd.playerId] !== null) return 'ALREADY_ROLLED'
+        return null
+      }
       if (state.phase !== 'playing' || state.turn === null || state.turn.locked)
         return 'WRONG_PHASE'
       if (state.turn.playerId !== cmd.playerId) return 'NOT_YOUR_TURN'

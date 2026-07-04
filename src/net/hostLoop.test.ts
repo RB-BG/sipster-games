@@ -42,13 +42,14 @@ describe('hostLoop lobby', () => {
     expect(stateEvent && stateEvent.t === 'STATE' && stateEvent.state.players.length).toBe(2)
   })
 
-  it('een tweede JOIN met hetzelfde speler-id is een resync, geen duplicaat', () => {
+  it('een tweede JOIN van dezelfde peer is een resync, geen duplicaat', () => {
     const { transport, loop } = setup()
     loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
-    loop.handleIntent('peer-a2', { t: 'JOIN', profile: GUEST })
+    transport.sent.length = 0
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
 
     expect(loop.state.players).toHaveLength(2)
-    const resync = transport.sent.find((m) => m.to === 'peer-a2' && m.event.t === 'STATE')
+    const resync = transport.sent.find((m) => m.to === 'peer-a' && m.event.t === 'STATE')
     expect(resync).toBeDefined()
   })
 
@@ -124,5 +125,63 @@ describe('hostLoop in-game', () => {
     loop.handleIntent('peer-a', { t: 'REQUEST_SYNC' })
     expect(transport.sent[0]?.to).toBe('peer-a')
     expect(transport.sent[0]?.event.t).toBe('STATE')
+  })
+
+  it('LEAVE midden in een potje markeert offline in plaats van verwijderen', () => {
+    const { loop } = setup()
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
+    loop.dispatchLocal({ t: 'START_GAME' })
+    loop.handleIntent('peer-a', { t: 'LEAVE' })
+
+    expect(loop.state.players).toHaveLength(2)
+    expect(loop.state.players[1].connected).toBe(false)
+  })
+
+  it('de host-stoel is niet via JOIN te kapen', () => {
+    const { transport, loop } = setup()
+    loop.handleIntent('peer-x', { t: 'JOIN', profile: { ...HOST } })
+
+    expect(transport.sent.at(-1)?.event).toEqual({ t: 'ERROR', code: 'ALREADY_JOINED' })
+    // De kaper heeft géén speler-mapping en dus geen host-rechten.
+    loop.handleIntent('peer-x', { t: 'START_GAME' })
+    expect(loop.state.phase).toBe('lobby')
+  })
+
+  it('een stoel die live bezet is, is niet vanaf een andere peer te claimen', () => {
+    const { transport, loop } = setup()
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
+    loop.handleIntent('peer-b', { t: 'JOIN', profile: { ...GUEST, name: 'Kaper' } })
+
+    expect(transport.sent.at(-1)).toEqual({
+      to: 'peer-b',
+      event: { t: 'ERROR', code: 'ALREADY_JOINED' },
+    })
+    expect(loop.state.players).toHaveLength(2)
+  })
+
+  it('na een disconnect mag dezelfde speler wél opnieuw joinen', () => {
+    const { loop } = setup()
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
+    loop.dispatchLocal({ t: 'START_GAME' })
+    loop.handleDisconnect('peer-a')
+    expect(loop.state.players[1].connected).toBe(false)
+
+    loop.handleIntent('peer-a2', { t: 'JOIN', profile: GUEST })
+    expect(loop.state.players[1].connected).toBe(true)
+  })
+
+  it('FORFEIT_TURN in de tiebreak slaat de wachtende speler over', () => {
+    const rng = scriptedRollSource([6, 2, 2, 6])
+    const { loop } = setup(rng)
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
+    loop.dispatchLocal({ t: 'START_GAME' })
+    loop.dispatchLocal({ t: 'ROLL' })
+    loop.dispatchLocal({ t: 'END_TURN' })
+    loop.handleIntent('peer-a', { t: 'ROLL' })
+    loop.handleIntent('peer-a', { t: 'END_TURN' })
+    expect(loop.state.phase).toBe('tiebreak')
+
+    loop.dispatchLocal({ t: 'FORFEIT_TURN' })
+    expect(loop.state.phase).toBe('roundEnd')
   })
 })

@@ -20,7 +20,11 @@ let rapierReady: Promise<unknown> | null = null
 
 /** Wasm-init van de headless rapier; eenmalig, hergebruikt daarna. */
 export function initHeadlessRapier(): Promise<unknown> {
-  rapierReady ??= RAPIER.init()
+  // Een mislukte init (flaky wasm-fetch) niet cachen: volgende worp probeert opnieuw.
+  rapierReady ??= RAPIER.init().catch((err) => {
+    rapierReady = null
+    throw err
+  })
   return rapierReady
 }
 

@@ -53,6 +53,14 @@ export function createHostLoop(
   function handleIntent(peerId: string | null, intent: Intent): void {
     if (intent.t === 'JOIN') {
       if (peerId === null) return
+      // De host-stoel is nooit via het netwerk te claimen, en een stoel die
+      // nog live op een andere peer zit evenmin (anders kaapt een guest
+      // andermans identiteit, inclusief host-only rechten).
+      const claimedPeer = playerToPeer.get(intent.profile.id)
+      if (intent.profile.id === state.hostId || (claimedPeer && claimedPeer !== peerId)) {
+        transport.send(peerId, { t: 'ERROR', code: 'ALREADY_JOINED' })
+        return
+      }
       peerToPlayer.set(peerId, intent.profile.id)
       playerToPeer.set(intent.profile.id, peerId)
       if (state.players.some((p) => p.id === intent.profile.id)) {
@@ -77,7 +85,13 @@ export function createHostLoop(
     }
     if (intent.t === 'LEAVE') {
       forgetPeer(playerId)
-      apply({ t: 'REMOVE_PLAYER', playerId }, peerId)
+      if (state.phase === 'lobby') {
+        apply({ t: 'REMOVE_PLAYER', playerId }, peerId)
+      } else {
+        // Midden in een potje kan een speler niet uit de state; offline markeren
+        // zodat de host de beurt kan overslaan.
+        apply({ t: 'SET_CONNECTED', playerId, connected: false }, peerId)
+      }
       return
     }
 
@@ -92,7 +106,13 @@ export function createHostLoop(
     }
 
     if (intent.t === 'FORFEIT_TURN') {
-      if (state.turn) apply({ t: 'FORFEIT_TURN', playerId: state.turn.playerId }, peerId)
+      if (state.turn) {
+        apply({ t: 'FORFEIT_TURN', playerId: state.turn.playerId }, peerId)
+      } else if (state.tiebreak) {
+        // In de kamp: sla de eerstvolgende speler over die nog moet gooien.
+        const pending = state.tiebreak.playerIds.find((id) => state.tiebreak?.rolls[id] === null)
+        if (pending) apply({ t: 'FORFEIT_TURN', playerId: pending }, peerId)
+      }
       return
     }
 

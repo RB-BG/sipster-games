@@ -25,6 +25,10 @@ let hostLoop: HostLoop | null = null
 let guestTransport: GuestTransport | null = null
 let visibilityHandler: (() => void) | null = null
 let animCounter = 0
+// Dubbel-tik-bescherming voor guests: het rondje naar de host duurt even.
+let pendingRoll = false
+let pendingRollTimer: number | null = null
+let lastAfslaanAt = 0
 
 interface NetStore {
   role: 'none' | 'host' | 'guest'
@@ -56,6 +60,7 @@ export const useNetStore = create<NetStore>((set, get) => {
         set({ netState: event.state })
         break
       case 'ROLL_EVENT':
+        clearPendingRoll()
         set({
           rollAnim: {
             id: ++animCounter,
@@ -67,6 +72,7 @@ export const useNetStore = create<NetStore>((set, get) => {
         })
         break
       case 'TIEBREAK_ROLL_EVENT':
+        clearPendingRoll()
         set({
           rollAnim: { id: ++animCounter, dieIds: [0], values: [event.value], animSeed: event.animSeed },
           animating: true,
@@ -81,8 +87,22 @@ export const useNetStore = create<NetStore>((set, get) => {
         })
         break
       case 'ERROR':
-        set({ lastError: event.code })
+        // Een afgewezen worp mag de optimistische animating-blokkade niet laten hangen.
+        if (pendingRoll) {
+          clearPendingRoll()
+          set({ lastError: event.code, animating: false })
+        } else {
+          set({ lastError: event.code })
+        }
         break
+    }
+  }
+
+  function clearPendingRoll() {
+    pendingRoll = false
+    if (pendingRollTimer !== null) {
+      window.clearTimeout(pendingRollTimer)
+      pendingRollTimer = null
     }
   }
 
@@ -152,6 +172,31 @@ export const useNetStore = create<NetStore>((set, get) => {
     sendCommand: (cmd) => {
       const intent = commandToIntent(cmd)
       if (!intent) return
+
+      if (cmd.t === 'ROLL' || cmd.t === 'TIEBREAK_ROLL') {
+        if (get().animating || pendingRoll) return
+        // Optimistisch blokkeren tot het ROLL_EVENT (of een ERROR) terugkomt;
+        // de timeout is het vangnet als de host nooit antwoordt.
+        pendingRoll = true
+        set({ animating: true, lastError: null })
+        pendingRollTimer = window.setTimeout(() => {
+          if (!pendingRoll) return
+          pendingRoll = false
+          pendingRollTimer = null
+          set({ animating: false })
+        }, 4000)
+        get().sendIntent(intent)
+        return
+      }
+
+      if (cmd.t === 'AFSLAAN') {
+        // Eén fysieke klap = één intent; een trillende dubbel-tik zou de
+        // terechte afslager meteen een onterechte tweede klap bezorgen.
+        const now = performance.now()
+        if (now - lastAfslaanAt < 1200) return
+        lastAfslaanAt = now
+      }
+
       set({ lastError: null })
       get().sendIntent(intent)
     },
@@ -161,6 +206,7 @@ export const useNetStore = create<NetStore>((set, get) => {
     onRollSettled: () => set({ animating: false }),
 
     leave: () => {
+      clearPendingRoll()
       if (get().role === 'guest') guestTransport?.sendIntent({ t: 'LEAVE' })
       if (visibilityHandler) {
         document.removeEventListener('visibilitychange', visibilityHandler)

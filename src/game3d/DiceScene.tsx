@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import RAPIER from '@dimforge/rapier3d-compat'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Physics, type RapierRigidBody } from '@react-three/rapier'
 import { Quaternion, type Group } from 'three'
@@ -184,7 +185,13 @@ function RollDirector({ roll, flip, held, setRolling, onDieClick, onSettled }: R
     let cancelled = false
 
     ;(async () => {
-      await initHeadlessRapier()
+      try {
+        await initHeadlessRapier()
+      } catch {
+        // Zonder physics geen animatie; rond de worp direct af zodat de UI niet blokkeert.
+        if (!cancelled) onSettled?.(roll.id, roll.values)
+        return
+      }
       if (cancelled) return
 
       const launches = seededLaunch(roll.animSeed)
@@ -221,6 +228,9 @@ function RollDirector({ roll, flip, held, setRolling, onDieClick, onSettled }: R
         const body = bodies[id].current
         const launch = launches[id]
         if (!body) continue
+        // Bij guests komt het ROLL_EVENT vóór de STATE binnen: een zojuist
+        // opgepakte stale steen kan dan nog 'fixed' zijn en zou de worp negeren.
+        body.setBodyType(RAPIER.RigidBodyType.Dynamic, true)
         const [x, y, z] = launch.position
         body.setTranslation({ x, y, z }, true)
         body.setRotation(launch.rotation, true)
