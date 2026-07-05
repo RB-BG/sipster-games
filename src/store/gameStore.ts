@@ -28,6 +28,11 @@ export type Screen = 'home' | 'setup' | 'host' | 'join'
 
 interface GameStore {
   state: GameState | null
+  /**
+   * Wat de UI rendert: loopt één animatie achter op `state`, zodat chips en
+   * overlays de uitslag niet verklappen terwijl de stenen nog rollen.
+   */
+  viewState: GameState | null
   screen: Screen
   /** true zolang de 3D-worp nog speelt; UI verklapt de uitslag dan nog niet. */
   animating: boolean
@@ -44,8 +49,13 @@ interface GameStore {
 // Hotseat: dit toestel is de host, dus de crypto-bron mag hier draaien.
 const rng = cryptoRollSource()
 
+/** De flip-animatie (350ms) heeft geen settle-callback; een timer rondt af. */
+const FLIP_SETTLE_MS = 450
+let flipTimer: number | null = null
+
 export const useGameStore = create<GameStore>((set, get) => ({
   state: null,
+  viewState: null,
   screen: 'home',
   animating: false,
   rollAnim: null,
@@ -60,7 +70,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       state = reduce(state, { t: 'ADD_PLAYER', profile }, rng).state
     }
     state = reduce(state, { t: 'START_GAME' }, rng).state
-    set({ state, animating: false, rollAnim: null, flipAnim: null, lastError: null })
+    set({ state, viewState: state, animating: false, rollAnim: null, flipAnim: null, lastError: null })
   },
 
   dispatch: (cmd) => {
@@ -95,17 +105,30 @@ export const useGameStore = create<GameStore>((set, get) => ({
         startsAnim = true
       } else if (event.t === 'FLIPPED_65') {
         flipAnim = { id: result.state.version, values: [event.values[0], event.values[1]] }
+        // De flip is een korte animatie zonder settle-callback: timer rondt af.
+        startsAnim = true
+        if (flipTimer !== null) window.clearTimeout(flipTimer)
+        flipTimer = window.setTimeout(() => get().onRollSettled(), FLIP_SETTLE_MS)
       }
     }
 
-    set({ state: result.state, lastError: null, rollAnim, flipAnim, animating: startsAnim })
+    set({
+      state: result.state,
+      // Tijdens een animatie blijft de weergave op de oude stand hangen.
+      viewState: startsAnim ? get().viewState : result.state,
+      lastError: null,
+      rollAnim,
+      flipAnim,
+      animating: startsAnim,
+    })
   },
 
-  onRollSettled: () => set({ animating: false }),
+  onRollSettled: () => set({ animating: false, viewState: get().state }),
 
   reset: () =>
     set({
       state: null,
+      viewState: null,
       screen: 'home',
       animating: false,
       rollAnim: null,

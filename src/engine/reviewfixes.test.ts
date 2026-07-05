@@ -108,6 +108,27 @@ describe('forfeit-randgevallen', () => {
   })
 })
 
+describe('afslaan na een ronde-afsluitende mex', () => {
+  it('een mex die de ronde beëindigde blijft afklopbaar met straf', () => {
+    // Twee spelers: p2 sluit de ronde af met mex; phase is dan roundEnd.
+    let state = roll(setup(2, { afslaan: true }), 'p1', [6, 5])
+    state = ok(state, { t: 'END_TURN', playerId: 'p1' })
+    state = roll(state, 'p2', [2, 1])
+    expect(state.phase).toBe('roundEnd')
+
+    const ander = reduce(state, { t: 'AFSLAAN', playerId: 'p1' }, noRng)
+    expect(ander.error).toBeUndefined()
+    expect(ander.events).toContainEqual({
+      t: 'AFSLAAN',
+      byPlayerId: 'p1',
+      verdict: 'mexAfgeklopt',
+    })
+
+    const eigen = reduce(state, { t: 'AFSLAAN', playerId: 'p2' }, noRng)
+    expect(eigen.state.players[1].sipsTotal).toBe(8)
+  })
+})
+
 describe('potje afsluiten', () => {
   function naRonde(): GameState {
     let state = roll(setup(2), 'p1', [6, 5])

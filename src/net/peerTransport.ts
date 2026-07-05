@@ -58,6 +58,12 @@ export function createHostTransport(callbacks: HostCallbacks): Promise<HostTrans
           })
         })
 
+        // Valt de signaling-verbinding weg (wifi-blip), claim de roomcode
+        // opnieuw; anders kan geen enkele gast ooit nog (her)verbinden.
+        peer.on('disconnected', () => {
+          if (!peer.destroyed) peer.reconnect()
+        })
+
         resolve({
           roomCode,
           send: (peerId, event) => connections.get(peerId)?.send(wrap(event)),
@@ -65,6 +71,7 @@ export function createHostTransport(callbacks: HostCallbacks): Promise<HostTrans
             const envelope = wrap(event)
             for (const conn of connections.values()) conn.send(envelope)
           },
+          isConnected: (peerId) => connections.get(peerId)?.open === true,
           close: () => peer.destroy(),
         })
       })

@@ -9,13 +9,14 @@ interface FakeTransport extends HostTransport {
   broadcasts: GameEvent[]
 }
 
-function fakeTransport(): FakeTransport {
+function fakeTransport(livePeers: Set<string> = new Set()): FakeTransport {
   const sent: { to: string; event: GameEvent }[] = []
   const broadcasts: GameEvent[] = []
   return {
     roomCode: 'TEST',
     send: (to, event) => sent.push({ to, event }),
     broadcast: (event) => broadcasts.push(event),
+    isConnected: (peerId) => livePeers.has(peerId),
     close: () => {},
     sent,
     broadcasts,
@@ -25,8 +26,8 @@ function fakeTransport(): FakeTransport {
 const HOST = { id: 'host-1', name: 'Ruben', emoji: '🎲' }
 const GUEST = { id: 'guest-1', name: 'Sanne', emoji: '🍺' }
 
-function setup(rng = scriptedRollSource([])) {
-  const transport = fakeTransport()
+function setup(rng = scriptedRollSource([]), livePeers?: Set<string>) {
+  const transport = fakeTransport(livePeers)
   const states: number[] = []
   const loop = createHostLoop(transport, HOST, (s) => states.push(s.version), rng)
   return { transport, loop, states }
@@ -148,7 +149,7 @@ describe('hostLoop in-game', () => {
   })
 
   it('een stoel die live bezet is, is niet vanaf een andere peer te claimen', () => {
-    const { transport, loop } = setup()
+    const { transport, loop } = setup(undefined, new Set(['peer-a']))
     loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
     loop.handleIntent('peer-b', { t: 'JOIN', profile: { ...GUEST, name: 'Kaper' } })
 
@@ -157,6 +158,21 @@ describe('hostLoop in-game', () => {
       event: { t: 'ERROR', code: 'ALREADY_JOINED' },
     })
     expect(loop.state.players).toHaveLength(2)
+  })
+
+  it('is de oude verbinding dood (page-reload), dan neemt dezelfde speler de stoel over', () => {
+    // peer-a staat niet in livePeers: de host ziet die verbinding als dood.
+    const { transport, loop } = setup(undefined, new Set())
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
+    transport.sent.length = 0
+    loop.handleIntent('peer-a2', { t: 'JOIN', profile: GUEST })
+
+    expect(loop.state.players).toHaveLength(2)
+    // De nieuwe peer krijgt een resync en stuurt voortaan namens de speler.
+    expect(transport.sent.some((m) => m.to === 'peer-a2' && m.event.t === 'STATE')).toBe(true)
+    loop.dispatchLocal({ t: 'START_GAME' })
+    loop.handleIntent('peer-a2', { t: 'ROLL' })
+    expect(transport.sent.at(-1)?.event).toEqual({ t: 'ERROR', code: 'NOT_YOUR_TURN' })
   })
 
   it('na een disconnect mag dezelfde speler wél opnieuw joinen', () => {

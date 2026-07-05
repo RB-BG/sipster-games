@@ -5,13 +5,11 @@ import { cn } from '@/lib/utils'
 interface PlayerChipProps {
   player: PlayerState
   active: boolean
-  /** Verberg de rondescore zolang de worp-animatie nog loopt. */
-  hideScore?: boolean
   /** 'ridder' of 'dubbel' toont het schildje. */
   ridder?: 'ridder' | 'dubbel' | null
 }
 
-export default function PlayerChip({ player, active, hideScore, ridder }: PlayerChipProps) {
+export default function PlayerChip({ player, active, ridder }: PlayerChipProps) {
   return (
     <div
       className={cn(
@@ -26,7 +24,7 @@ export default function PlayerChip({ player, active, hideScore, ridder }: Player
       </span>
       <span className="max-w-20 truncate font-semibold">{player.name}</span>
       <span className={active ? 'opacity-80' : 'text-muted-foreground'}>
-        {player.roundScore !== null && !hideScore ? rankLabel(player.roundScore) : '·'}
+        {player.roundScore !== null ? rankLabel(player.roundScore) : '·'}
         {' · '}
         {player.sipsTotal}🍺
       </span>

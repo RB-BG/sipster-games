@@ -27,7 +27,7 @@ export function useGameAdapter(): GameAdapter {
 
   if (net.role !== 'none') {
     return {
-      state: net.netState,
+      state: net.viewState,
       myPlayerId: net.myPlayerId,
       isHost: net.role === 'host',
       animating: net.animating,
@@ -43,7 +43,7 @@ export function useGameAdapter(): GameAdapter {
   }
 
   return {
-    state: hot.state,
+    state: hot.viewState,
     myPlayerId: null,
     isHost: true,
     animating: hot.animating,

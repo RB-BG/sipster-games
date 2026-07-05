@@ -95,12 +95,17 @@ export default function GameScreen() {
   const { turn, phase } = state
   const activePlayer = state.players.find((p) => p.id === turn?.playerId)
 
+  // Tijdens de animatie is de state al bijgewerkt (verse 1/2 staat dan al op
+  // onTable) maar de stenen vliegen nog: leid held dan af uit de worp zelf,
+  // anders schiet een net gegooide 1/2 halverwege de vlucht naar zijn zijslot.
   const held: [boolean, boolean] =
-    phase === 'playing' && turn?.dice
-      ? [turn.dice[0].onTable, turn.dice[1].onTable]
-      : phase === 'tiebreak'
-        ? [false, true] // kamp gaat met één steen; de tweede parkeert aan de zijkant
-        : [false, false]
+    animating && rollAnim
+      ? [!rollAnim.dieIds.includes(0), !rollAnim.dieIds.includes(1)]
+      : phase === 'playing' && turn?.dice
+        ? [turn.dice[0].onTable, turn.dice[1].onTable]
+        : phase === 'tiebreak'
+          ? [false, true] // kamp gaat met één steen; de tweede parkeert aan de zijkant
+          : [false, false]
 
   const disabled = (cmd: Command & { playerId: string }) =>
     animating || !canAct(cmd.playerId) || validateCommand(state, cmd) !== null
@@ -140,8 +145,12 @@ export default function GameScreen() {
     canAct(turn.playerId) &&
     scoreRank(turn.dice[0].value, turn.dice[1].value) === 65
   // Afslaan is een reactiesnelheids-race: alleen zinnig met eigen toestellen.
+  // Ook zichtbaar in roundEnd: een mex die de ronde afsloot blijft afklopbaar.
   const showAfslaan =
-    state.rules.afslaan && phase === 'playing' && myPlayerId !== null && !animating
+    state.rules.afslaan &&
+    (phase === 'playing' || phase === 'roundEnd') &&
+    myPlayerId !== null &&
+    !animating
   const toastPlayer =
     afslaanToast && state.players.find((p) => p.id === afslaanToast.byPlayerId)
 
@@ -172,7 +181,6 @@ export default function GameScreen() {
             key={player.id}
             player={player}
             active={player.id === turn?.playerId}
-            hideScore={animating && player.id === turn?.playerId}
             ridder={
               state.ridderId === player.id ? (state.ridderDubbel ? 'dubbel' : 'ridder') : null
             }
