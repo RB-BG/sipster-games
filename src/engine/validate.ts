@@ -85,6 +85,7 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
     }
 
     case 'NEXT_ROUND':
+    case 'END_GAME':
       if (state.phase !== 'roundEnd') return 'WRONG_PHASE'
       return null
 

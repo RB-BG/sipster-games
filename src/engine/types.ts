@@ -138,6 +138,8 @@ export type Command =
   /** Omgekeerde mex: 65 omdraaien naar 21. */
   | { t: 'FLIP_65'; playerId: string }
   | { t: 'AFSLAAN'; playerId: string }
+  /** Potje afsluiten na een ronde: eindstand tonen. */
+  | { t: 'END_GAME' }
 
 /** Transiente gebeurtenissen voor animatie, geluid en toasts; state is al bijgewerkt. */
 export type EngineEvent =

@@ -254,6 +254,8 @@ function commandToIntent(cmd: Command): Intent | null {
       return { t: 'TIEBREAK_ROLL' }
     case 'NEXT_ROUND':
       return { t: 'NEXT_ROUND' }
+    case 'END_GAME':
+      return { t: 'END_GAME' }
     case 'FORFEIT_TURN':
       return { t: 'FORFEIT_TURN' }
     default:

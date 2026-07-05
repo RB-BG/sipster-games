@@ -74,6 +74,10 @@ export const strings = {
   sips: 'slokken',
   nextRound: 'Volgende ronde',
   stopGame: 'Stop het potje',
+  endGame: 'Sluit het potje af',
+  finalTitle: 'Eindstand',
+  wettest: (name: string) => `${name} heeft de natste keel`,
+  roundsPlayed: (n: number) => (n === 1 ? 'na 1 ronde' : `na ${n} rondes`),
 
   // Lobby & netwerk
   lobbyTitle: 'Tafel',
