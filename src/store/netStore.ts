@@ -29,12 +29,19 @@ let animCounter = 0
 let pendingRoll = false
 let pendingRollTimer: number | null = null
 let lastAfslaanAt = 0
+// Rejoin na een page-reload: de host kan de oude verbinding nog open hebben.
+let joinProfile: PlayerProfile | null = null
+let joinRetries = 0
+const FLIP_SETTLE_MS = 450
+let flipTimer: number | null = null
 
 interface NetStore {
   role: 'none' | 'host' | 'guest'
   status: GuestStatus | 'idle'
   roomCode: string | null
   netState: GameState | null
+  /** Wat de game-UI rendert: loopt één animatie achter zodat niets verklapt wordt. */
+  viewState: GameState | null
   /** Verbindingsfouten, al vertaald. */
   netError: string | null
   /** Afgewezen game-acties (engine ErrorCode). */
@@ -57,7 +64,11 @@ export const useNetStore = create<NetStore>((set, get) => {
   function handleGameEvent(event: GameEvent) {
     switch (event.t) {
       case 'STATE':
-        set({ netState: event.state })
+        set({
+          netState: event.state,
+          // Tijdens een animatie blijft de weergave op de oude stand hangen.
+          viewState: get().animating ? (get().viewState ?? event.state) : event.state,
+        })
         break
       case 'ROLL_EVENT':
         clearPendingRoll()
@@ -79,7 +90,13 @@ export const useNetStore = create<NetStore>((set, get) => {
         })
         break
       case 'FLIP_EVENT':
-        set({ flipAnim: { id: ++animCounter, values: [event.values[0], event.values[1]] } })
+        // De flip is een korte animatie zonder settle-callback: timer rondt af.
+        set({
+          flipAnim: { id: ++animCounter, values: [event.values[0], event.values[1]] },
+          animating: true,
+        })
+        if (flipTimer !== null) window.clearTimeout(flipTimer)
+        flipTimer = window.setTimeout(() => get().onRollSettled(), FLIP_SETTLE_MS)
         break
       case 'AFSLAAN_EVENT':
         set({
@@ -93,6 +110,16 @@ export const useNetStore = create<NetStore>((set, get) => {
           set({ lastError: event.code, animating: false })
         } else {
           set({ lastError: event.code })
+        }
+        // Rejoin-race na een reload: de host ziet onze oude verbinding nog open.
+        // Even wachten en opnieuw joinen; na een paar seconden is die stale close verwerkt.
+        if (event.code === 'ALREADY_JOINED' && get().netState === null && joinRetries < 3) {
+          joinRetries++
+          window.setTimeout(() => {
+            if (get().role === 'guest' && get().netState === null && joinProfile) {
+              guestTransport?.sendIntent({ t: 'JOIN', profile: joinProfile })
+            }
+          }, 4000)
         }
         break
     }
@@ -111,6 +138,7 @@ export const useNetStore = create<NetStore>((set, get) => {
     status: 'idle',
     roomCode: null,
     netState: null,
+    viewState: null,
     netError: null,
     lastError: null,
     myPlayerId: null,
@@ -129,7 +157,11 @@ export const useNetStore = create<NetStore>((set, get) => {
         hostLoop = createHostLoop(
           transport,
           profile,
-          (state) => set({ netState: state }),
+          (state) =>
+            set({
+              netState: state,
+              viewState: get().animating ? (get().viewState ?? state) : state,
+            }),
           undefined,
           handleGameEvent,
         )
@@ -143,6 +175,8 @@ export const useNetStore = create<NetStore>((set, get) => {
       set({ status: 'connecting', netError: null })
       try {
         const code = roomCode.trim().toUpperCase()
+        joinProfile = profile
+        joinRetries = 0
         guestTransport = await createGuestTransport(code, {
           onOpen: () => guestTransport?.sendIntent({ t: 'JOIN', profile }),
           onEvent: handleGameEvent,
@@ -158,6 +192,9 @@ export const useNetStore = create<NetStore>((set, get) => {
           }
         }
         document.addEventListener('visibilitychange', visibilityHandler)
+        // De uitnodigings-parameter is verbruikt; anders bounce je bij terug/verlaten
+        // steeds opnieuw het join-formulier in.
+        stripRoomParam()
         set({ role: 'guest', roomCode: code, myPlayerId: profile.id })
       } catch {
         set({ status: 'idle', netError: strings.net.joinFailed })
@@ -176,7 +213,9 @@ export const useNetStore = create<NetStore>((set, get) => {
       if (cmd.t === 'ROLL' || cmd.t === 'TIEBREAK_ROLL') {
         if (get().animating || pendingRoll) return
         // Optimistisch blokkeren tot het ROLL_EVENT (of een ERROR) terugkomt;
-        // de timeout is het vangnet als de host nooit antwoordt.
+        // de timeout is het vangnet als de host nooit antwoordt. Ruim genoeg
+        // dat een trage host niet tot een dubbele worp verleidt, en met een
+        // resync zodat de knop pas na verse state weer vrijkomt.
         pendingRoll = true
         set({ animating: true, lastError: null })
         pendingRollTimer = window.setTimeout(() => {
@@ -184,7 +223,8 @@ export const useNetStore = create<NetStore>((set, get) => {
           pendingRoll = false
           pendingRollTimer = null
           set({ animating: false })
-        }, 4000)
+          get().sendIntent({ t: 'REQUEST_SYNC' })
+        }, 8000)
         get().sendIntent(intent)
         return
       }
@@ -203,10 +243,15 @@ export const useNetStore = create<NetStore>((set, get) => {
 
     setRules: (rules) => get().sendIntent({ t: 'SET_RULES', rules }),
 
-    onRollSettled: () => set({ animating: false }),
+    onRollSettled: () => set({ animating: false, viewState: get().netState }),
 
     leave: () => {
       clearPendingRoll()
+      if (flipTimer !== null) {
+        window.clearTimeout(flipTimer)
+        flipTimer = null
+      }
+      joinProfile = null
       if (get().role === 'guest') guestTransport?.sendIntent({ t: 'LEAVE' })
       if (visibilityHandler) {
         document.removeEventListener('visibilitychange', visibilityHandler)
@@ -221,6 +266,7 @@ export const useNetStore = create<NetStore>((set, get) => {
         status: 'idle',
         roomCode: null,
         netState: null,
+        viewState: null,
         netError: null,
         lastError: null,
         myPlayerId: null,
@@ -232,6 +278,14 @@ export const useNetStore = create<NetStore>((set, get) => {
     },
   }
 })
+
+/** Haal ?room= uit de URL zonder navigatie; de invite is verbruikt. */
+function stripRoomParam(): void {
+  const url = new URL(window.location.href)
+  if (!url.searchParams.has('room')) return
+  url.searchParams.delete('room')
+  window.history.replaceState(null, '', url)
+}
 
 /** UI spreekt in Commands; op het netwerk gaan Intents (host bepaalt de speler-id). */
 function commandToIntent(cmd: Command): Intent | null {

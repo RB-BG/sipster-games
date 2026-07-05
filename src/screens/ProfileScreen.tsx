@@ -46,7 +46,19 @@ export default function ProfileScreen({ mode, initialCode }: ProfileScreenProps)
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4">
       <header className="flex items-center gap-3">
-        <button type="button" onClick={() => setScreen('home')} aria-label="terug">
+        <button
+          type="button"
+          onClick={() => {
+            // De ?room-invite verbruiken, anders matcht de router dit scherm opnieuw.
+            const url = new URL(window.location.href)
+            if (url.searchParams.has('room')) {
+              url.searchParams.delete('room')
+              window.history.replaceState(null, '', url)
+            }
+            setScreen('home')
+          }}
+          aria-label="terug"
+        >
           <ArrowLeft className="size-5 text-muted-foreground" />
         </button>
         <h1 className="text-xl font-bold text-ivory">

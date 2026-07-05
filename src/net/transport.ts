@@ -15,6 +15,8 @@ export interface HostTransport {
   roomCode: string
   send(peerId: string, event: GameEvent): void
   broadcast(event: GameEvent): void
+  /** Leeft er op dit moment een open verbinding met deze peer? */
+  isConnected(peerId: string): boolean
   close(): void
 }
 

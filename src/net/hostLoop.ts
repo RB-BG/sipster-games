@@ -55,12 +55,17 @@ export function createHostLoop(
       if (peerId === null) return
       // De host-stoel is nooit via het netwerk te claimen, en een stoel die
       // nog live op een andere peer zit evenmin (anders kaapt een guest
-      // andermans identiteit, inclusief host-only rechten).
+      // andermans identiteit, inclusief host-only rechten). Is de oude
+      // verbinding dood (page-reload), dan mag dezelfde speler overnemen.
       const claimedPeer = playerToPeer.get(intent.profile.id)
-      if (intent.profile.id === state.hostId || (claimedPeer && claimedPeer !== peerId)) {
+      if (
+        intent.profile.id === state.hostId ||
+        (claimedPeer && claimedPeer !== peerId && transport.isConnected(claimedPeer))
+      ) {
         transport.send(peerId, { t: 'ERROR', code: 'ALREADY_JOINED' })
         return
       }
+      if (claimedPeer && claimedPeer !== peerId) peerToPlayer.delete(claimedPeer)
       peerToPlayer.set(peerId, intent.profile.id)
       playerToPeer.set(intent.profile.id, peerId)
       if (state.players.some((p) => p.id === intent.profile.id)) {

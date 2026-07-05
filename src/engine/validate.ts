@@ -117,8 +117,11 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
     }
 
     case 'AFSLAAN':
-      // Ook een onterechte afklop is een geldige actie: de reducer velt het oordeel.
-      if (!state.rules.afslaan || state.phase !== 'playing') return 'WRONG_PHASE'
+      // Ook een onterechte afklop is een geldige actie: de reducer velt het
+      // oordeel. Ook in roundEnd, want een mex die de ronde afsloot moet
+      // afklopbaar blijven (4/8 slokken straf).
+      if (!state.rules.afslaan || (state.phase !== 'playing' && state.phase !== 'roundEnd'))
+        return 'WRONG_PHASE'
       if (!state.players.some((p) => p.id === cmd.playerId)) return 'UNKNOWN_PLAYER'
       return null
   }
