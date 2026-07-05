@@ -107,3 +107,27 @@ describe('forfeit-randgevallen', () => {
     )
   })
 })
+
+describe('potje afsluiten', () => {
+  function naRonde(): GameState {
+    let state = roll(setup(2), 'p1', [6, 5])
+    state = ok(state, { t: 'END_TURN', playerId: 'p1' })
+    state = roll(state, 'p2', [3, 2])
+    return ok(state, { t: 'END_TURN', playerId: 'p2' })
+  }
+
+  it('kan alleen na een ronde-einde', () => {
+    expect(reduce(setup(2), { t: 'END_GAME' }, noRng).error).toBe('WRONG_PHASE')
+    const state = ok(naRonde(), { t: 'END_GAME' })
+    expect(state.phase).toBe('ended')
+    expect(state.turn).toBeNull()
+    // De eindstand (slokken) blijft staan.
+    expect(state.players[1].sipsTotal).toBe(2)
+  })
+
+  it('na afsluiten is geen enkele spelactie meer geldig', () => {
+    const state = ok(naRonde(), { t: 'END_GAME' })
+    expect(reduce(state, { t: 'NEXT_ROUND' }, noRng).error).toBe('WRONG_PHASE')
+    expect(reduce(state, { t: 'ROLL', playerId: 'p1' }, noRng).error).toBe('WRONG_PHASE')
+  })
+})

@@ -351,18 +351,59 @@ export default function GameScreen() {
                 </details>
               )}
               {isHost ? (
-                <button
-                  type="button"
-                  onClick={() => dispatch({ t: 'NEXT_ROUND' })}
-                  className="rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground active:scale-95"
-                >
-                  {strings.nextRound}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => dispatch({ t: 'NEXT_ROUND' })}
+                    className="rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground active:scale-95"
+                  >
+                    {strings.nextRound}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => dispatch({ t: 'END_GAME' })}
+                    className="text-sm text-muted-foreground"
+                  >
+                    {strings.endGame}
+                  </button>
+                </>
               ) : (
                 <p className="text-sm text-muted-foreground">{strings.waitForHost}</p>
               )}
-              <button type="button" onClick={leave} className="text-sm text-muted-foreground">
-                {strings.stopGame}
+            </Coaster>
+          </Overlay>
+        )}
+
+        {phase === 'ended' && (
+          <Overlay>
+            <Coaster className="flex w-72 flex-col gap-3 text-center">
+              <h2 className="text-lg font-bold text-amber-soft">{strings.finalTitle}</h2>
+              <p className="text-sm text-muted-foreground">
+                {strings.roundsPlayed(state.round.number)}
+              </p>
+              <ol className="flex flex-col gap-1">
+                {[...state.players]
+                  .sort((a, b) => b.sipsTotal - a.sipsTotal)
+                  .map((p, i) => (
+                    <li key={p.id} className={i === 0 ? 'text-xl text-amber-soft' : 'text-ivory'}>
+                      {i === 0 ? '🍺' : `${i + 1}.`} {p.emoji} {p.name}: {p.sipsTotal}{' '}
+                      {strings.sips}
+                    </li>
+                  ))}
+              </ol>
+              {state.players.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {strings.wettest(
+                    [...state.players].sort((a, b) => b.sipsTotal - a.sipsTotal)[0].name,
+                  )}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={leave}
+                className="rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground active:scale-95"
+              >
+                {strings.backHome}
               </button>
             </Coaster>
           </Overlay>

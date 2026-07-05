@@ -127,6 +127,12 @@ export function reduce(state: GameState, cmd: Command, rng: RollSource): ReduceR
       startNextRound(draft)
       break
 
+    case 'END_GAME':
+      draft.phase = 'ended'
+      draft.turn = null
+      draft.tiebreak = null
+      break
+
     case 'SET_CONNECTED':
       playerById(draft, cmd.playerId).connected = cmd.connected
       break

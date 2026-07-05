@@ -28,6 +28,7 @@ export type Intent =
   | { t: 'FORFEIT_TURN' }
   | { t: 'TIEBREAK_ROLL' }
   | { t: 'NEXT_ROUND' }
+  | { t: 'END_GAME' }
   | { t: 'REQUEST_SYNC' }
 
 /**

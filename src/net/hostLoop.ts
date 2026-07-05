@@ -99,6 +99,7 @@ export function createHostLoop(
       intent.t === 'SET_RULES' ||
       intent.t === 'START_GAME' ||
       intent.t === 'NEXT_ROUND' ||
+      intent.t === 'END_GAME' ||
       intent.t === 'FORFEIT_TURN'
     if (hostOnly && playerId !== state.hostId) {
       if (peerId) transport.send(peerId, { t: 'ERROR', code: 'NOT_YOUR_TURN' })
@@ -170,6 +171,8 @@ function intentToCommand(intent: Intent, playerId: string): Command | null {
       return { t: 'TIEBREAK_ROLL', playerId }
     case 'NEXT_ROUND':
       return { t: 'NEXT_ROUND' }
+    case 'END_GAME':
+      return { t: 'END_GAME' }
     case 'FLIP_65':
       return { t: 'FLIP_65', playerId }
     case 'AFSLAAN':
