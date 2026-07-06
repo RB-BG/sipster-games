@@ -6,7 +6,7 @@ De spelregels staan in [docs/mexxen-regels.md](docs/mexxen-regels.md), het bouwp
 
 ## Features
 
-- **3D-dobbelstenen** met physics (react-three-fiber + rapier). De uitkomst komt van de host-RNG; de animatie wordt erop gestuurd via een headless pre-simulatie en face-remap, dus elke telefoon ziet dezelfde eerlijke worp.
+- **2.5D-dobbelstenen** (CSS-3D-kubussen, geen WebGL). De uitkomst komt van de host-RNG; de tuimel-animatie is puur cosmetisch en landt altijd op de juiste waarde, identiek op elk toestel via een gedeelde seed.
 - **P2P multiplayer**: tafel maken, QR-code of link delen, klaar. Host-authoritative: gasten sturen intenties, de host valideert en broadcast de volledige spelstand. Reconnect met resync als een telefoon even wegvalt.
 - **Pass-the-phone-modus** voor als er maar één telefoon is.
 - **Complete Utrechtse regelset** als lobby-toggles: verse 1/2, 31-slokken, mex-multiplier, tiebreak met verdubbeling, eerste bepaalt het tempo, omgekeerde mex (65 → 21 met draai-animatie), ridder + dubbele ridder, en afslaan met de volledige strafmatrix (2/4/8 slokken).
@@ -20,7 +20,7 @@ src/
   protocol/   Intent- en GameEvent-types (discriminated unions)
   net/        Transport-interface, PeerJS-implementatie, host-loop (validate -> reduce -> broadcast)
   store/      zustand: gameStore (hotseat) + netStore (P2P)
-  game3d/     R3F-scene, dice-steering (pre-sim + face-remap + slerp-vangnet)
+  dice/       2.5D CSS-3D-dobbelstenen + juice (tuimel, screenshake, mex-burst)
   screens/    Home, setup, lobby, game; /?debug en /?dice zijn dev-speeltuinen
 ```
 
@@ -36,4 +36,4 @@ npm run lint     # ESLint
 npm run build    # typecheck + productie-build
 ```
 
-Deployment: Vercel (SPA, zie `vercel.json`). Stack: React 19, TypeScript, Vite, Tailwind 4, zustand, three/R3F/rapier, PeerJS.
+Deployment: Vercel (SPA, zie `vercel.json`). Stack: React 19, TypeScript, Vite, Tailwind 4, zustand, framer-motion, PeerJS.

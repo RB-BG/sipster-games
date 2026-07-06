@@ -10,7 +10,7 @@ import type {
   PlayerProfile,
 } from '@/engine/types'
 
-/** Worp-animatie voor de DiceScene; zelfde vorm als RollRequest daar. */
+/** Worp-animatie voor de Dice-component; zelfde vorm als RollRequest daar. */
 export interface RollAnim {
   id: number
   dieIds: DieId[]

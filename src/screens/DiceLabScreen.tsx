@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import DiceScene, { type RollRequest } from '@/game3d/DiceScene'
+import Dice, { type RollRequest } from '@/dice/Dice'
 import type { Die, DieId } from '@/engine/types'
 
 /**
- * Dev-only speeltuin (/?dice) om de dice-steering te bewijzen:
- * stel de gewenste uitkomst in en die komt gegarandeerd boven.
+ * Dev-only speeltuin (/?dice): stel de gewenste uitkomst in en
+ * die komt gegarandeerd boven te liggen.
  */
 export default function DiceLabScreen() {
   const [target, setTarget] = useState<[Die, Die]>([6, 6])
@@ -33,7 +33,7 @@ export default function DiceLabScreen() {
   return (
     <main className="flex min-h-dvh flex-col">
       <div className="h-[55dvh]">
-        <DiceScene
+        <Dice
           roll={roll}
           held={held}
           onDieClick={(id) => {

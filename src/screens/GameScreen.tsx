@@ -5,7 +5,7 @@ import PlayerChip from '@/components/PlayerChip'
 import { rankLabel, scoreLabel, scoreRank } from '@/engine/score'
 import type { Command, DieId } from '@/engine/types'
 import { validateCommand } from '@/engine/validate'
-import DiceScene from '@/game3d/DiceScene'
+import Dice from '@/dice/Dice'
 import { useGameAdapter } from '@/hooks/useGameAdapter'
 import { useShakeToRoll } from '@/hooks/useShakeToRoll'
 import { useWakeLock } from '@/hooks/useWakeLock'
@@ -189,7 +189,7 @@ export default function GameScreen() {
       </div>
 
       <div className="relative min-h-0 flex-1">
-        <DiceScene
+        <Dice
           roll={rollAnim}
           flip={flipAnim}
           held={held}
