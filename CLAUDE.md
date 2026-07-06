@@ -33,13 +33,13 @@ Het volledige goedgekeurde plan staat in `docs/plan.md`. De spelregels staan in 
 ## Architectuur (niet onderhandelbaar)
 
 - `src/engine/` en `src/protocol/` zijn puur: geen React-, DOM- of transport-imports. Alle spellogica leeft hier en is vitest-gedekt.
-- `src/net/` importeert engine + protocol. React-lagen (`store/`, `screens/`, `game3d/`, `components/`) worden nooit door engine/net geïmporteerd.
+- `src/net/` importeert engine + protocol. React-lagen (`store/`, `screens/`, `dice/`, `components/`) worden nooit door engine/net geïmporteerd.
 - Host is authoritative: intents in, validate -> reduce -> broadcast volledige GameState. Uitkomsten komen van crypto.getRandomValues op de host; mulberry32 is alleen voor animatie-seeds.
 - Transport zit achter het `Transport`-interface zodat PeerJS later verwisselbaar is.
 
 ## Code & stijl
 
-- Stack: React 19, TypeScript, Vite 8, Tailwind 4, shadcn (base-nova), zustand, R3F + rapier, PeerJS.
+- Stack: React 19, TypeScript, Vite 8, Tailwind 4, shadcn (base-nova), zustand, framer-motion, PeerJS. Dobbelstenen zijn 2.5D CSS-3D-kubussen in `src/dice/` (geen WebGL); de uitkomst blijft host-authoritative, de tuimel-animatie is puur cosmetisch en landt altijd op de juiste waarde.
 - Leesbaarheid boven slimmigheid; comments alleen voor niet-voor-de-hand-liggende WHY.
 - Alle UI-teksten in `src/i18n/strings.ts`, Nederlands.
 - Geen em dashes in gegenereerde teksten; gebruik komma, dubbele punt of haakjes.
