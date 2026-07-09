@@ -8,6 +8,7 @@ import type {
   ErrorCode,
   GameState,
   PlayerProfile,
+  RuleConfig,
 } from '@/engine/types'
 
 /** Worp-animatie voor de Dice-component; zelfde vorm als RollRequest daar. */
@@ -40,7 +41,7 @@ interface GameStore {
   flipAnim: FlipAnim | null
   lastError: ErrorCode | null
   setScreen: (screen: Screen) => void
-  startHotseat: (profiles: PlayerProfile[]) => void
+  startHotseat: (profiles: PlayerProfile[], rules: RuleConfig) => void
   dispatch: (cmd: Command) => void
   onRollSettled: () => void
   reset: () => void
@@ -64,8 +65,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   setScreen: (screen) => set({ screen }),
 
-  startHotseat: (profiles) => {
-    let state = createGame(profiles[0])
+  startHotseat: (profiles, rules) => {
+    let state = createGame(profiles[0], rules)
     for (const profile of profiles.slice(1)) {
       state = reduce(state, { t: 'ADD_PLAYER', profile }, rng).state
     }

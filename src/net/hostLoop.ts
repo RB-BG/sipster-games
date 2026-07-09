@@ -1,6 +1,6 @@
 import { createGame, reduce } from '@/engine/reducer'
 import { cryptoRollSource, type RollSource } from '@/engine/rng'
-import type { Command, EngineEvent, GameState, PlayerProfile } from '@/engine/types'
+import type { Command, EngineEvent, GameState, PlayerProfile, RuleConfig } from '@/engine/types'
 import type { GameEvent, Intent } from '@/protocol/messages'
 import type { HostTransport } from './transport'
 
@@ -25,8 +25,10 @@ export function createHostLoop(
   rng: RollSource = cryptoRollSource(),
   /** Ook de host-UI wil ROLL_EVENTs en eigen ERRORs zien; broadcast bereikt hemzelf niet. */
   onEvent?: (event: GameEvent) => void,
+  /** Startregels, bv. de onthouden huisregels van de host. */
+  initialRules?: RuleConfig,
 ): HostLoop {
-  let state = createGame(hostProfile)
+  let state = createGame(hostProfile, initialRules)
   const peerToPlayer = new Map<string, string>()
   const playerToPeer = new Map<string, string>()
   onState(state)

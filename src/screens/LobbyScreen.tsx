@@ -1,6 +1,7 @@
 import { LogOut, WifiOff } from 'lucide-react'
 import Coaster from '@/components/Coaster'
 import QrShare from '@/components/QrShare'
+import RulesEditor from '@/components/RulesEditor'
 import type { RuleConfig } from '@/engine/types'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { strings } from '@/i18n/strings'
@@ -75,68 +76,7 @@ export default function LobbyScreen() {
         )}
       </Coaster>
 
-      {rules && (
-        <Coaster className="flex flex-col gap-3">
-          <h2 className="text-sm text-muted-foreground">{strings.rulesTitle}</h2>
-
-          <div className="flex items-center justify-between text-ivory">
-            <span>{strings.ruleLabels.standaardSlokken}</span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={!isHost || rules.standaardSlokken <= 1}
-                onClick={() => patchRules({ standaardSlokken: rules.standaardSlokken - 1 })}
-                className="size-8 rounded-lg bg-secondary text-secondary-foreground disabled:opacity-40"
-              >
-                −
-              </button>
-              <span className="w-6 text-center font-semibold">{rules.standaardSlokken}</span>
-              <button
-                type="button"
-                disabled={!isHost || rules.standaardSlokken >= 6}
-                onClick={() => patchRules({ standaardSlokken: rules.standaardSlokken + 1 })}
-                className="size-8 rounded-lg bg-secondary text-secondary-foreground disabled:opacity-40"
-              >
-                +
-              </button>
-            </div>
-          </div>
-
-          {(
-            [
-              'tempo',
-              'omgekeerdeMex',
-              'ridder',
-              'dubbeleRidder',
-              'afslaan',
-              'tiebreakHoogsteVerliest',
-            ] as const
-          ).map((key) => (
-            <label key={key} className="flex items-center justify-between text-ivory">
-              <span>{strings.ruleLabels[key]}</span>
-              <input
-                type="checkbox"
-                checked={rules[key]}
-                disabled={!isHost}
-                onChange={(e) => patchRules({ [key]: e.target.checked })}
-                className="size-5 accent-amber-warm"
-              />
-            </label>
-          ))}
-
-          <details className="text-sm text-muted-foreground">
-            <summary className="cursor-pointer">{strings.rulesExplainTitle}</summary>
-            <dl className="mt-2 flex flex-col gap-2">
-              {strings.rulesExplain.map(([title, text]) => (
-                <div key={title}>
-                  <dt className="font-semibold text-ivory">{title}</dt>
-                  <dd>{text}</dd>
-                </div>
-              ))}
-            </dl>
-          </details>
-        </Coaster>
-      )}
+      {rules && <RulesEditor rules={rules} disabled={!isHost} onChange={patchRules} />}
 
       {isHost ? (
         <>
