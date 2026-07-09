@@ -1,6 +1,8 @@
-import type { PlayerProfile } from '@/engine/types'
+import type { PlayerProfile, RuleConfig } from '@/engine/types'
+import { DEFAULT_RULES } from '@/engine/types'
 
 const PROFILE_KEY = 'mexxen.profile'
+const RULES_KEY = 'mexxen.rules'
 
 export function loadProfile(): PlayerProfile | null {
   try {
@@ -24,4 +26,23 @@ export function saveProfile(profile: PlayerProfile): void {
 
 export function newPlayerId(): string {
   return crypto.randomUUID()
+}
+
+/** Huisregels van het vorige potje; nieuwe velden vallen terug op de defaults. */
+export function loadRules(): RuleConfig {
+  try {
+    const raw = localStorage.getItem(RULES_KEY)
+    if (!raw) return DEFAULT_RULES
+    return { ...DEFAULT_RULES, ...(JSON.parse(raw) as Partial<RuleConfig>) }
+  } catch {
+    return DEFAULT_RULES
+  }
+}
+
+export function saveRules(rules: RuleConfig): void {
+  try {
+    localStorage.setItem(RULES_KEY, JSON.stringify(rules))
+  } catch {
+    // Opslag geweigerd; huisregels onthouden is niet kritiek.
+  }
 }

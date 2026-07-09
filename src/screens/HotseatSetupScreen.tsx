@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { ArrowLeft, Dices } from 'lucide-react'
 import Coaster from '@/components/Coaster'
-import type { PlayerProfile } from '@/engine/types'
+import RulesEditor from '@/components/RulesEditor'
+import type { PlayerProfile, RuleConfig } from '@/engine/types'
 import { strings } from '@/i18n/strings'
-import { loadProfile, newPlayerId, saveProfile } from '@/lib/storage'
+import { loadProfile, loadRules, newPlayerId, saveProfile, saveRules } from '@/lib/storage'
 import { useGameStore } from '@/store/gameStore'
 
 const EMOJI = ['🎲', '🍺', '😎', '🦊', '🐙', '🍀', '🌶️', '🫠']
@@ -23,6 +24,9 @@ export default function HotseatSetupScreen() {
       { name: '', emojiIndex: 1 },
     ]
   })
+  // Huisregels van het vorige potje als startpunt; afslaan heeft op één
+  // telefoon geen zin (reactie-race), dus die staat hier altijd uit.
+  const [rules, setRules] = useState<RuleConfig>(() => ({ ...loadRules(), afslaan: false }))
 
   function updateDraft(index: number, patch: Partial<Draft>) {
     setDrafts((prev) => prev.map((d, i) => (i === index ? { ...d, ...patch } : d)))
@@ -34,10 +38,11 @@ export default function HotseatSetupScreen() {
       name: draft.name.trim() || `Speler ${i + 1}`,
       emoji: EMOJI[Math.max(0, draft.emojiIndex) % EMOJI.length],
     }))
-    // Eerste speler is dit toestel: naam onthouden voor de volgende keer.
+    // Eerste speler is dit toestel: naam en huisregels onthouden voor de volgende keer.
     const stored = loadProfile()
     saveProfile({ id: stored?.id ?? newPlayerId(), name: profiles[0].name, emoji: profiles[0].emoji })
-    startHotseat(profiles)
+    saveRules(rules)
+    startHotseat(profiles, rules)
   }
 
   return (
@@ -88,6 +93,13 @@ export default function HotseatSetupScreen() {
           {strings.addPlayer}
         </button>
       </Coaster>
+
+      <RulesEditor
+        rules={rules}
+        onChange={(patch) => setRules((prev) => ({ ...prev, ...patch }))}
+        hideKeys={['afslaan']}
+        note={strings.afslaanNeedsPhones}
+      />
 
       <button
         type="button"

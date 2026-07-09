@@ -8,6 +8,7 @@ import type {
   RuleConfig,
 } from '@/engine/types'
 import { strings } from '@/i18n/strings'
+import { loadRules, saveRules } from '@/lib/storage'
 import { createHostLoop, type HostLoop } from '@/net/hostLoop'
 import { createGuestTransport, createHostTransport } from '@/net/peerTransport'
 import type { GuestStatus, GuestTransport } from '@/net/transport'
@@ -164,6 +165,8 @@ export const useNetStore = create<NetStore>((set, get) => {
             }),
           undefined,
           handleGameEvent,
+          // De huisregels van het vorige potje als startpunt van de lobby.
+          loadRules(),
         )
         set({ role: 'host', status: 'open', roomCode: transport.roomCode, myPlayerId: profile.id })
       } catch {
@@ -241,7 +244,10 @@ export const useNetStore = create<NetStore>((set, get) => {
       get().sendIntent(intent)
     },
 
-    setRules: (rules) => get().sendIntent({ t: 'SET_RULES', rules }),
+    setRules: (rules) => {
+      saveRules(rules)
+      get().sendIntent({ t: 'SET_RULES', rules })
+    },
 
     onRollSettled: () => set({ animating: false, viewState: get().netState }),
 

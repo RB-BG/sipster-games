@@ -50,6 +50,7 @@ export const strings = {
         return `${name} slaat af`
     }
   },
+  afslaanNeedsPhones: 'Afslaan werkt alleen met meerdere telefoons (het is een reactie-race).',
   rulesExplainTitle: 'Hoe werken de regels?',
   rulesExplain: [
     ['Basis', 'Gooi 21 (mex) in max 3 worpen. Hoogste steen is het tiental, dubbel is een honderdtal. Een 1 of 2 blijft verplicht liggen. Laagste score drinkt: standaard slokken × aantal mexxen.'],
