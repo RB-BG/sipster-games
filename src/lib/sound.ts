@@ -83,6 +83,23 @@ export function playMex(): void {
   })
 }
 
+/** Kort blupje als een drink-shot inslaat op een speler. */
+export function playDrink(): void {
+  const ac = audio()
+  if (!ac) return
+  const now = ac.currentTime
+  const osc = ac.createOscillator()
+  osc.type = 'square'
+  osc.frequency.setValueAtTime(340, now)
+  osc.frequency.exponentialRampToValueAtTime(170, now + 0.12)
+  const gain = ac.createGain()
+  gain.gain.setValueAtTime(0.22, now)
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14)
+  osc.connect(gain).connect(ac.destination)
+  osc.start(now)
+  osc.stop(now + 0.15)
+}
+
 /** Doffe klap bij afslaan. */
 export function playSlap(): void {
   const ac = audio()

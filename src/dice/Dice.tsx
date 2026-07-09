@@ -37,6 +37,11 @@ interface DiceProps {
   held: [boolean, boolean]
   onDieClick?: (id: DieId) => void
   onSettled?: (rollId: number, values: DieValue[]) => void
+  /**
+   * Meldt bij het landen wat er ligt ('mex', '32', '64', …). Bijzondere
+   * scores flitsen dan niet lokaal: de parent toont een fullscreen pop.
+   */
+  onScore?: (label: string) => void
 }
 
 const DIE_SIZE = 84
@@ -56,7 +61,7 @@ interface Flash {
  * De rotatie wordt imperatief gedreven met animation-controls, zodat de
  * opgebouwde hoek in een ref kan blijven (nooit terugdraaien) zonder re-render.
  */
-export default function Dice({ roll, flip, held, onDieClick, onSettled }: DiceProps) {
+export default function Dice({ roll, flip, held, onDieClick, onSettled, onScore }: DiceProps) {
   const reduced = useReducedMotion() ?? false
   const shake = useAnimationControls()
   const cube0 = useAnimationControls()
@@ -74,12 +79,13 @@ export default function Dice({ roll, flip, held, onDieClick, onSettled }: DicePr
   const [flash, setFlash] = useState<Flash | null>(null)
   const [burstId, setBurstId] = useState(0)
 
-  function land(text: string, mex: boolean) {
+  function land(text: string, mex: boolean, showFlash = true) {
     if (!reduced) {
       void shake.start({ x: [0, -8, 8, -5, 5, 0], transition: { duration: 0.34 } })
     }
-    setFlash({ id: Date.now(), text, mex })
     if (mex && !reduced) setBurstId((n) => n + 1)
+    if (!showFlash) return
+    setFlash({ id: Date.now(), text, mex })
     if (flashTimer.current !== null) window.clearTimeout(flashTimer.current)
     flashTimer.current = window.setTimeout(() => setFlash(null), 1200)
   }
@@ -106,7 +112,11 @@ export default function Dice({ roll, flip, held, onDieClick, onSettled }: DicePr
           roll.dieIds.length === 1
             ? String(dieValues.current[roll.dieIds[0]])
             : scoreLabel(dieValues.current[0], dieValues.current[1])
-        land(text, text === 'mex')
+        // Bijzondere scores krijgen een fullscreen pop van de parent;
+        // de lokale flits blijft voor de gewone worpen.
+        const special = onScore && (text === 'mex' || text === '32' || text === '31')
+        land(text, text === 'mex', !special)
+        if (special) onScore(text)
         onSettled?.(roll.id, roll.values)
       },
       reduced ? 0 : ROLL_MS,
@@ -129,7 +139,10 @@ export default function Dice({ roll, flip, held, onDieClick, onSettled }: DicePr
         transition: reduced ? { duration: 0 } : { duration: FLIP_MS / 1000, ease: 'easeInOut' },
       })
     })
-    const t = window.setTimeout(() => land('mex', true), reduced ? 0 : FLIP_MS)
+    const t = window.setTimeout(() => {
+      land('mex', true, !onScore)
+      onScore?.('mex')
+    }, reduced ? 0 : FLIP_MS)
     return () => window.clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flip?.id])

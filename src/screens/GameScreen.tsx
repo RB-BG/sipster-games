@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Hand, Volume2, VolumeX, X } from 'lucide-react'
 import Coaster from '@/components/Coaster'
 import PlayerChip from '@/components/PlayerChip'
+import ScorePop, { type Pop, type PopKind } from '@/components/effects/ScorePop'
+import { DrinkShotLayer, SHOT_MS, type Hit, type Shot } from '@/components/effects/DrinkShots'
 import { rankLabel, scoreLabel, scoreRank } from '@/engine/score'
 import type { Command, DieId } from '@/engine/types'
 import { validateCommand } from '@/engine/validate'
@@ -10,7 +13,7 @@ import { useGameAdapter } from '@/hooks/useGameAdapter'
 import { useShakeToRoll } from '@/hooks/useShakeToRoll'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { strings } from '@/i18n/strings'
-import { isMuted, playMex, playRoll, playSlap, setMuted } from '@/lib/sound'
+import { isMuted, playDrink, playMex, playRoll, playSlap, setMuted } from '@/lib/sound'
 
 export default function GameScreen() {
   const {
@@ -45,6 +48,82 @@ export default function GameScreen() {
   useEffect(() => {
     stateRef.current = state
   })
+  const reduced = useReducedMotion() ?? false
+
+  // Fullscreen score-pops (mex, 32, 31) getriggerd door de landende worp.
+  const [pop, setPop] = useState<Pop | null>(null)
+  const popTimer = useRef<number | null>(null)
+  function handleScore(label: string) {
+    if (label !== 'mex' && label !== '32' && label !== '31') return
+    setPop({ id: Date.now(), kind: label as PopKind })
+    if (label === '32') navigator.vibrate?.(60)
+    if (popTimer.current !== null) window.clearTimeout(popTimer.current)
+    popTimer.current = window.setTimeout(() => setPop(null), label === 'mex' ? 1400 : 1100)
+  }
+
+  // Drink-shots: elke nieuwe sipsLog-entry schiet een 🍺 in een boog naar de
+  // chip van de drinker. viewState loopt achter op de animatie, dus dit vuurt
+  // precies op het moment dat de speler de uitslag ziet.
+  const mainRef = useRef<HTMLElement | null>(null)
+  const stageRef = useRef<HTMLDivElement | null>(null)
+  const chipEls = useRef(new Map<string, HTMLDivElement>())
+  const [shots, setShots] = useState<Shot[]>([])
+  const [hits, setHits] = useState<Hit[]>([])
+  const seenSips = useRef<number | null>(null)
+  const sipsLogLength = state?.sipsLog.length ?? -1
+  useEffect(() => {
+    const log = stateRef.current?.sipsLog
+    if (!log) {
+      seenSips.current = null
+      return
+    }
+    // Eerste keer (of nieuw potje): historie niet naschieten.
+    if (seenSips.current === null || seenSips.current > log.length) {
+      seenSips.current = log.length
+      return
+    }
+    const fresh = log.slice(seenSips.current)
+    seenSips.current = log.length
+    if (fresh.length === 0) return
+
+    const mainRect = mainRef.current?.getBoundingClientRect()
+    const stageRect = stageRef.current?.getBoundingClientRect()
+    if (!mainRect || !stageRect) return
+
+    const arrive = (shot: Shot) => {
+      playDrink()
+      navigator.vibrate?.(40)
+      setHits((prev) => [...prev, { key: shot.key, playerId: shot.playerId, amount: shot.amount, x: shot.x1, y: shot.y1 }])
+      window.setTimeout(() => setHits((prev) => prev.filter((h) => h.key !== shot.key)), 900)
+    }
+
+    fresh.forEach((entry, i) => {
+      const chip = chipEls.current.get(entry.playerId)
+      if (!chip) return
+      const c = chip.getBoundingClientRect()
+      const shot: Shot = {
+        key: `${entry.round}-${log.indexOf(entry)}-${entry.playerId}-${i}`,
+        playerId: entry.playerId,
+        amount: entry.amount,
+        x0: stageRect.left + stageRect.width / 2 - mainRect.left - 16,
+        y0: stageRect.top + stageRect.height / 2 - mainRect.top - 16,
+        x1: c.left + c.width / 2 - mainRect.left - 16,
+        y1: c.top + c.height / 2 - mainRect.top - 16,
+      }
+      window.setTimeout(() => {
+        if (reduced) {
+          arrive(shot)
+          return
+        }
+        setShots((prev) => [...prev, shot])
+        window.setTimeout(() => {
+          setShots((prev) => prev.filter((s) => s.key !== shot.key))
+          arrive(shot)
+        }, SHOT_MS)
+      }, i * 280)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sipsLogLength])
 
   const [muted, setMutedState] = useState(isMuted)
   function toggleMuted() {
@@ -155,7 +234,7 @@ export default function GameScreen() {
     afslaanToast && state.players.find((p) => p.id === afslaanToast.byPlayerId)
 
   return (
-    <main className="flex h-dvh flex-col">
+    <main ref={mainRef} className="relative flex h-dvh flex-col">
       <header className="flex items-center justify-between px-4 py-2 text-sm text-muted-foreground">
         <span>
           {strings.round(state.round.number)}
@@ -176,25 +255,38 @@ export default function GameScreen() {
       </header>
 
       <div className="flex gap-2 overflow-x-auto px-4 pb-2">
-        {state.players.map((player) => (
-          <PlayerChip
-            key={player.id}
-            player={player}
-            active={player.id === turn?.playerId}
-            ridder={
-              state.ridderId === player.id ? (state.ridderDubbel ? 'dubbel' : 'ridder') : null
-            }
-          />
-        ))}
+        {state.players.map((player) => {
+          const hitKey = hits.find((h) => h.playerId === player.id)?.key
+          return (
+            <motion.div
+              key={player.id}
+              ref={(el) => {
+                if (el) chipEls.current.set(player.id, el)
+                else chipEls.current.delete(player.id)
+              }}
+              animate={hitKey ? { scale: [1, 1.25, 1] } : { scale: 1 }}
+              transition={{ duration: 0.4 }}
+            >
+              <PlayerChip
+                player={player}
+                active={player.id === turn?.playerId}
+                ridder={
+                  state.ridderId === player.id ? (state.ridderDubbel ? 'dubbel' : 'ridder') : null
+                }
+              />
+            </motion.div>
+          )
+        })}
       </div>
 
-      <div className="relative min-h-0 flex-1">
+      <div ref={stageRef} className="relative min-h-0 flex-1">
         <Dice
           roll={rollAnim}
           flip={flipAnim}
           held={held}
           onDieClick={onDieClick}
           onSettled={onRollSettled}
+          onScore={handleScore}
         />
 
         {connection === 'reconnecting' && (
@@ -500,6 +592,9 @@ export default function GameScreen() {
           )}
         </section>
       )}
+
+      <DrinkShotLayer shots={shots} hits={hits} />
+      <ScorePop pop={pop} />
     </main>
   )
 }
