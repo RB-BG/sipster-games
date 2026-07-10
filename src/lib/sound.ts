@@ -83,6 +83,30 @@ export function playMex(): void {
   })
 }
 
+/** Korte hoorn-fanfare voor de ridderslag. */
+export function playRidder(): void {
+  const ac = audio()
+  if (!ac) return
+  const now = ac.currentTime
+  const notes = [196, 261.63]
+  notes.forEach((freq, i) => {
+    const osc = ac.createOscillator()
+    osc.type = 'sawtooth'
+    osc.frequency.value = freq
+    const filter = ac.createBiquadFilter()
+    filter.type = 'lowpass'
+    filter.frequency.value = 900
+    const gain = ac.createGain()
+    const t = now + i * 0.18
+    gain.gain.setValueAtTime(0.001, t)
+    gain.gain.exponentialRampToValueAtTime(0.28, t + 0.03)
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.34)
+    osc.connect(filter).connect(gain).connect(ac.destination)
+    osc.start(t)
+    osc.stop(t + 0.36)
+  })
+}
+
 /** Kort blupje als een drink-shot inslaat op een speler. */
 export function playDrink(): void {
   const ac = audio()
