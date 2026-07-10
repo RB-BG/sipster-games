@@ -65,6 +65,51 @@ describe('eerste bepaalt het tempo', () => {
   })
 })
 
+describe('32 beëindigt de beurt', () => {
+  it('na een 32 is de beurt direct voorbij, ook met worpen over', () => {
+    const state = roll(setup(2), 'p1', [3, 2])
+    expect(state.players[0].roundScore).toBe(32)
+    expect(state.turn?.playerId).toBe('p2')
+  })
+
+  it('met de afslaan-regel blijft de 32 juist open om af te slaan', () => {
+    const state = roll(setup(2, { afslaan: true }), 'p1', [3, 2])
+    expect(state.turn?.playerId).toBe('p1')
+    expect(state.turn?.locked).toBe(false)
+    expect(state.turn?.afslaanWindow).toBe(true)
+  })
+})
+
+describe('gedwongen einde van de eerste speler zet het tempo, ook zonder toggle', () => {
+  it('mex in één worp: de rest krijgt ook maar één worp', () => {
+    const state = roll(setup(3), 'p1', [2, 1])
+    expect(state.round.tempoLimit).toBe(1)
+    expect(state.turn?.maxThrows).toBe(1)
+  })
+
+  it('32 in twee worpen: de rest krijgt er ook twee', () => {
+    let state = roll(setup(3), 'p1', [6, 4])
+    state = roll(state, 'p1', [3, 2])
+    expect(state.round.tempoLimit).toBe(2)
+    expect(state.turn?.maxThrows).toBe(2)
+  })
+
+  it('vrijwillig vroeg stoppen zet zonder tempo-regel géén limiet', () => {
+    let state = roll(setup(3), 'p1', [6, 5])
+    state = ok(state, { t: 'END_TURN', playerId: 'p1' })
+    expect(state.round.tempoLimit).toBeNull()
+    expect(state.turn?.maxThrows).toBe(3)
+  })
+
+  it('een gedwongen einde van een látere speler zet geen limiet', () => {
+    let state = roll(setup(3), 'p1', [6, 5])
+    state = ok(state, { t: 'END_TURN', playerId: 'p1' })
+    state = roll(state, 'p2', [2, 1])
+    expect(state.round.tempoLimit).toBeNull()
+    expect(state.turn?.maxThrows).toBe(3)
+  })
+})
+
 describe('omgekeerde mex', () => {
   it('65 mag omgedraaid worden naar mex, maar telt niet voor de multiplier', () => {
     let state = roll(setup(2, { omgekeerdeMex: true }), 'p1', [6, 5])

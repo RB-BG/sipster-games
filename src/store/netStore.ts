@@ -86,7 +86,13 @@ export const useNetStore = create<NetStore>((set, get) => {
       case 'TIEBREAK_ROLL_EVENT':
         clearPendingRoll()
         set({
-          rollAnim: { id: ++animCounter, dieIds: [0], values: [event.value], animSeed: event.animSeed },
+          rollAnim: {
+            id: ++animCounter,
+            dieIds: [0],
+            values: [event.value],
+            animSeed: event.animSeed,
+            single: true,
+          },
           animating: true,
         })
         break

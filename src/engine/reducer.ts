@@ -175,11 +175,9 @@ function newPlayer(profile: PlayerProfile): PlayerState {
 }
 
 function newTurn(draft: GameState, playerId: string): TurnState {
-  // Eerste bepaalt het tempo: latere spelers max evenveel worpen als speler 1.
-  const maxThrows =
-    draft.rules.tempo && draft.round.tempoLimit !== null
-      ? Math.min(3, draft.round.tempoLimit)
-      : 3
+  // De tempoLimit wordt alleen gezet als hij moet gelden (tempo-regel, of een
+  // gedwongen vroeg einde van de eerste speler), dus hier onvoorwaardelijk toepassen.
+  const maxThrows = draft.round.tempoLimit !== null ? Math.min(3, draft.round.tempoLimit) : 3
   return {
     playerId,
     dice: null,
@@ -253,9 +251,17 @@ function applyRoll(draft: GameState, events: EngineEvent[], rng: RollSource): vo
     return
   }
 
+  const rolled32 = is32(a, b)
+
+  // Een 32 beëindigt de beurt direct. Behalve met de afslaan-regelset:
+  // dan blijft hij open, zodat de gooier kan oppakken vóór iemand afslaat.
+  if (rolled32 && !draft.rules.afslaan) {
+    finalizeTurn(draft, events)
+    return
+  }
+
   // Een 32 met worpen over ligt open om af te slaan.
-  turn.afslaanWindow =
-    draft.rules.afslaan && is32(a, b) && turn.throwsUsed < turn.maxThrows
+  turn.afslaanWindow = draft.rules.afslaan && rolled32 && turn.throwsUsed < turn.maxThrows
 
   if (turn.throwsUsed >= turn.maxThrows) {
     // 65 op de laatste worp blijft open als omgekeerde mex aanstaat:
@@ -358,8 +364,14 @@ function finalizeTurn(draft: GameState, events: EngineEvent[]): void {
   events.push({ t: 'TURN_ENDED', playerId: player.id })
 
   // De eerste beurt van de ronde zet het tempo (forfeit zonder worp telt als 1).
-  if (draft.rules.tempo && draft.round.tempoLimit === null) {
-    draft.round.tempoLimit = Math.max(1, turn.throwsUsed)
+  // Met de tempo-regel telt elk vroeg einde; een gedwongen einde (mex of 32)
+  // van de eerste speler zet het maximum altijd, ook zonder die regel.
+  const isFirstOfRound = draft.players.filter((p) => p.hasPlayedThisRound).length === 1
+  if (isFirstOfRound && draft.round.tempoLimit === null) {
+    const forcedEnd = player.roundScore === 1000 || player.roundScore === 32
+    if (draft.rules.tempo || forcedEnd) {
+      draft.round.tempoLimit = Math.max(1, turn.throwsUsed)
+    }
   }
 
   const next = nextUnplayedPlayer(draft, turn.playerId)

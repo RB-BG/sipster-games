@@ -22,6 +22,8 @@ export interface RollRequest {
   /** Authoritative uitkomsten, zelfde volgorde als dieIds. */
   values: DieValue[]
   animSeed: number
+  /** Kamp-worp: er telt maar één steen, dus toon geen gecombineerde score. */
+  single?: boolean
 }
 
 export interface FlipRequest {
@@ -108,10 +110,11 @@ export default function Dice({ roll, flip, held, onDieClick, onSettled, onScore 
     if (settleTimer.current !== null) window.clearTimeout(settleTimer.current)
     settleTimer.current = window.setTimeout(
       () => {
-        const text =
-          roll.dieIds.length === 1
-            ? String(dieValues.current[roll.dieIds[0]])
-            : scoreLabel(dieValues.current[0], dieValues.current[1])
+        // Alleen de kamp-worp toont één losse steen; een gewone worp met een
+        // vastliggende 1/2 telt gewoon beide stenen bij elkaar (bv. 5 + verse 1 = 51).
+        const text = roll.single
+          ? String(dieValues.current[roll.dieIds[0]])
+          : scoreLabel(dieValues.current[0], dieValues.current[1])
         // Bijzondere scores krijgen een fullscreen pop van de parent;
         // de lokale flits blijft voor de gewone worpen.
         const special = onScore && (text === 'mex' || text === '32' || text === '31')

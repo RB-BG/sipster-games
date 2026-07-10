@@ -285,8 +285,9 @@ describe('ronde-einde', () => {
   it('de unieke laagste verliest en drinkt het standaard aantal', () => {
     let state = roll(setup(2), 'p1', [6, 5])
     state = ok(state, { t: 'END_TURN', playerId: 'p1' })
-    state = roll(state, 'p2', [3, 2])
-    const result = reduce(state, { t: 'END_TURN', playerId: 'p2' }, noRng)
+    // 32 legt de beurt direct vast, dus de worp zelf sluit de ronde af.
+    const result = reduce(state, { t: 'ROLL', playerId: 'p2' }, scriptedRollSource([3, 2]))
+    expect(result.error).toBeUndefined()
     state = result.state
 
     expect(state.phase).toBe('roundEnd')
@@ -299,7 +300,6 @@ describe('ronde-einde', () => {
     let state = roll(setup(3), 'p1', [2, 1])
     state = roll(state, 'p2', [1, 2])
     state = roll(state, 'p3', [3, 2])
-    state = ok(state, { t: 'END_TURN', playerId: 'p3' })
 
     expect(state.phase).toBe('roundEnd')
     expect(state.players[2].sipsTotal).toBe(4)
@@ -309,7 +309,6 @@ describe('ronde-einde', () => {
     let state = roll(setup(2), 'p1', [6, 5])
     state = ok(state, { t: 'END_TURN', playerId: 'p1' })
     state = roll(state, 'p2', [3, 2])
-    state = ok(state, { t: 'END_TURN', playerId: 'p2' })
     state = ok(state, { t: 'NEXT_ROUND' })
 
     expect(state.phase).toBe('playing')

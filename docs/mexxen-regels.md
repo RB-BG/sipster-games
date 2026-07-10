@@ -10,7 +10,8 @@ Samenvatting van de "mexxen bijbel". Dit is de bron van waarheid voor de game-en
 - **Verse 1 of 2**: wie een 1 of 2 gooit, moet die laten liggen. Die is maximaal één worp "vers"; daarna moet hij weer opgepakt en meegegooid worden.
 - **21 (mex)**: hoogste worp, beurt eindigt direct.
 - **31**: speler deelt slokken uit aan een andere speler en gooit opnieuw. Telt niet als worp en veroudert de verse 1/2 niet.
-- **32**: laagste worp.
+- **32**: laagste worp. Wie 32 gooit is direct klaar met zijn beurt (uitzondering: met de afslaan-regelset blijft de 32 open, zodat de gooier kan oppakken vóór iemand afslaat).
+- Eindigt de beurt van de **eerste speler** van de ronde gedwongen (mex of 32) in minder dan drie worpen, dan is dat aantal meteen het maximum voor de rest van de ronde. (De tempo-regelset breidt dit uit naar élk vroeg einde, ook vrijwillig blijven staan.)
 - Ronde eindigt als iedereen gespeeld heeft. Laagste score verliest en drinkt: standaard aantal slokken (advies: 2) × aantal gegooide mexxen die ronde.
 - **Gelijkspel om laagste**: gebonden spelers gooien elk één dobbelsteen tegen elkaar. Vooraf afspreken of hoogste of laagste verliest. Bij opnieuw gelijk: allebei opnieuw en het aantal slokken verdubbelt.
 - De verliezer begint de volgende ronde.
