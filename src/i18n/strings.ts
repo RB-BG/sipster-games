@@ -59,7 +59,7 @@ export const strings = {
   ridderDubbelPopSub: 'drinkt voortaan dubbel bij elk honderdtal',
   rulesExplainTitle: 'Hoe werken de regels?',
   rulesExplain: [
-    ['Basis', 'Gooi 21 (mex) in max 3 worpen. Hoogste steen is het tiental, dubbel is een honderdtal. Een 1 of 2 blijft verplicht liggen. Laagste score drinkt: standaard slokken × aantal mexxen.'],
+    ['Basis', 'Gooi 21 (mex) in max 3 worpen. Hoogste steen is het tiental, dubbel is een honderdtal. Een 1 of 2 blijft verplicht liggen. Gooi je 32, dan is je beurt direct voorbij; eindigt de eerste speler gedwongen vroeg (mex of 32), dan krijgt de rest ook maar zoveel worpen. Laagste score drinkt: standaard slokken × aantal mexxen.'],
     ['31', 'Gooi je 31, dan deel je slokken uit en gooi je gratis opnieuw.'],
     ['Eerste bepaalt het tempo', 'De rest krijgt max evenveel worpen als de eerste speler van de ronde.'],
     ['Omgekeerde mex', 'Gooi je 65, dan mag je de stenen omdraaien naar 21. Telt niet mee voor de slokken-multiplier.'],

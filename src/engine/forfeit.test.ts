@@ -51,8 +51,8 @@ describe('FORFEIT_TURN', () => {
     expect(state.turn?.playerId).toBe('p2')
 
     // p2 gooit lager dan p3; p2 verliest, de geforfeite p1 niet.
+    // (32 legt de beurt direct vast.)
     state = roll(state, 'p2', [3, 2])
-    state = ok(state, { t: 'END_TURN', playerId: 'p2' })
     state = roll(state, 'p3', [6, 5])
     state = ok(state, { t: 'END_TURN', playerId: 'p3' })
 
@@ -63,9 +63,9 @@ describe('FORFEIT_TURN', () => {
 
   it('na een worp telt de liggende score gewoon mee', () => {
     let state = setup(2)
-    state = roll(state, 'p1', [3, 2])
+    state = roll(state, 'p1', [5, 4])
     state = ok(state, { t: 'FORFEIT_TURN', playerId: 'p1' })
-    expect(state.players[0].roundScore).toBe(32)
+    expect(state.players[0].roundScore).toBe(54)
   })
 
   it('alleen voor de actieve speler', () => {

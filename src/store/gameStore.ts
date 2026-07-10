@@ -17,6 +17,8 @@ export interface RollAnim {
   dieIds: DieId[]
   values: Die[]
   animSeed: number
+  /** Kamp-worp: er telt maar één steen, dus toon geen gecombineerde score. */
+  single?: boolean
 }
 
 /** Omdraai-animatie (omgekeerde mex): per die-id de nieuwe waarde. */
@@ -102,6 +104,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           dieIds: [0],
           values: [event.value],
           animSeed: event.animSeed,
+          single: true,
         }
         startsAnim = true
       } else if (event.t === 'FLIPPED_65') {

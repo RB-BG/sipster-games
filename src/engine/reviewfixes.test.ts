@@ -133,8 +133,8 @@ describe('potje afsluiten', () => {
   function naRonde(): GameState {
     let state = roll(setup(2), 'p1', [6, 5])
     state = ok(state, { t: 'END_TURN', playerId: 'p1' })
-    state = roll(state, 'p2', [3, 2])
-    return ok(state, { t: 'END_TURN', playerId: 'p2' })
+    // 32 legt de beurt direct vast en sluit daarmee de ronde af.
+    return roll(state, 'p2', [3, 2])
   }
 
   it('kan alleen na een ronde-einde', () => {
