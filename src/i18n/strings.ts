@@ -53,6 +53,10 @@ export const strings = {
   afslaanNeedsPhones: 'Afslaan werkt alleen met meerdere telefoons (het is een reactie-race).',
   pop32Sub: 'au, de laagste…',
   pop31Sub: 'deel slokken uit!',
+  ridderPop: (name: string) => `${name} is geslagen tot ridder!`,
+  ridderDubbelPop: (name: string) => `${name} is nu dubbele ridder!`,
+  ridderPopSub: 'drinkt bij elk honderdtal het aantal ogen',
+  ridderDubbelPopSub: 'drinkt voortaan dubbel bij elk honderdtal',
   rulesExplainTitle: 'Hoe werken de regels?',
   rulesExplain: [
     ['Basis', 'Gooi 21 (mex) in max 3 worpen. Hoogste steen is het tiental, dubbel is een honderdtal. Een 1 of 2 blijft verplicht liggen. Laagste score drinkt: standaard slokken × aantal mexxen.'],

@@ -13,7 +13,7 @@ import { useGameAdapter } from '@/hooks/useGameAdapter'
 import { useShakeToRoll } from '@/hooks/useShakeToRoll'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { strings } from '@/i18n/strings'
-import { isMuted, playDrink, playMex, playRoll, playSlap, setMuted } from '@/lib/sound'
+import { isMuted, playDrink, playMex, playRidder, playRoll, playSlap, setMuted } from '@/lib/sound'
 
 export default function GameScreen() {
   const {
@@ -60,6 +60,37 @@ export default function GameScreen() {
     if (popTimer.current !== null) window.clearTimeout(popTimer.current)
     popTimer.current = window.setTimeout(() => setPop(null), label === 'mex' ? 1400 : 1100)
   }
+
+  // Ridderslag: pop zodra het ridderschap (of de dubbele promotie) wisselt.
+  // Via de state-wissel, dus werkt in hotseat én multiplayer; viewState loopt
+  // achter op de animatie, dus de pop komt pas als de 1-1 zichtbaar ligt.
+  const seenRidder = useRef<string | null>(null)
+  const ridderKey = state ? `${state.ridderId ?? ''}:${state.ridderDubbel ? '2' : '1'}` : null
+  useEffect(() => {
+    if (ridderKey === null) {
+      seenRidder.current = null
+      return
+    }
+    // Eerste keer (mount of rejoin): bestaande ridder niet naschieten.
+    if (seenRidder.current === null) {
+      seenRidder.current = ridderKey
+      return
+    }
+    if (seenRidder.current === ridderKey) return
+    seenRidder.current = ridderKey
+
+    const s = stateRef.current
+    const knight = s?.players.find((p) => p.id === s.ridderId)
+    if (!knight) return
+    const dubbel = s?.ridderDubbel ?? false
+    window.setTimeout(() => {
+      setPop({ id: Date.now(), kind: dubbel ? 'ridderDubbel' : 'ridder', name: knight.name })
+      playRidder()
+      navigator.vibrate?.([40, 40, 80])
+      if (popTimer.current !== null) window.clearTimeout(popTimer.current)
+      popTimer.current = window.setTimeout(() => setPop(null), 1700)
+    }, 0)
+  }, [ridderKey])
 
   // Drink-shots: elke nieuwe sipsLog-entry schiet een 🍺 in een boog naar de
   // chip van de drinker. viewState loopt achter op de animatie, dus dit vuurt
