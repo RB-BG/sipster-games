@@ -13,6 +13,7 @@ import { useGameAdapter } from '@/hooks/useGameAdapter'
 import { useShakeToRoll } from '@/hooks/useShakeToRoll'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { strings } from '@/i18n/strings'
+import { hapticDrink, hapticMex, hapticRidder, hapticRoll, hapticSlap } from '@/lib/haptics'
 import { isMuted, playDrink, playMex, playRidder, playRoll, playSlap, setMuted } from '@/lib/sound'
 
 export default function GameScreen() {
@@ -86,7 +87,7 @@ export default function GameScreen() {
     window.setTimeout(() => {
       setPop({ id: Date.now(), kind: dubbel ? 'ridderDubbel' : 'ridder', name: knight.name })
       playRidder()
-      navigator.vibrate?.([40, 40, 80])
+      hapticRidder()
       if (popTimer.current !== null) window.clearTimeout(popTimer.current)
       popTimer.current = window.setTimeout(() => setPop(null), 1700)
     }, 0)
@@ -123,7 +124,7 @@ export default function GameScreen() {
 
     const arrive = (shot: Shot) => {
       playDrink()
-      navigator.vibrate?.(40)
+      hapticDrink()
       setHits((prev) => [...prev, { key: shot.key, playerId: shot.playerId, amount: shot.amount, x: shot.x1, y: shot.y1 }])
       window.setTimeout(() => setHits((prev) => prev.filter((h) => h.key !== shot.key)), 900)
     }
@@ -167,12 +168,12 @@ export default function GameScreen() {
   useEffect(() => {
     if (rollAnimId === 0) return
     playRoll()
-    navigator.vibrate?.(30)
+    hapticRoll()
   }, [rollAnimId])
   useEffect(() => {
     if (toastId === 0) return
     playSlap()
-    navigator.vibrate?.(80)
+    hapticSlap()
   }, [toastId])
   // Mex-fanfare pas als de worp is uitgerold, anders verklapt het geluid de uitslag.
   const mexPlayedFor = useRef<string | null>(null)
@@ -184,7 +185,7 @@ export default function GameScreen() {
     if (mexPlayedFor.current === key) return
     mexPlayedFor.current = key
     playMex()
-    navigator.vibrate?.([50, 60, 50])
+    hapticMex()
   }, [animating])
 
   /** In hotseat (myPlayerId null) mag alles; online alleen je eigen acties. */
