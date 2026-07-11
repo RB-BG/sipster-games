@@ -1,5 +1,12 @@
 # Plan: Mexxen, webbased dobbelspel
 
+> **Status: afgerond.** Alle 8 chunks zijn uitgevoerd en gemerged. Daarna is het
+> project doorontwikkeld voorbij dit plan: de three/rapier-dice zijn vervangen
+> door 2.5D CSS-kubussen, er kwamen game-feel-effecten, een einde-potje-flow,
+> regel-toggles in pass-the-phone en huisregel-aanpassingen uit de veldtest.
+> Dit document is historie; de actuele stand staat in de README, CLAUDE.md en
+> `docs/mexxen-regels.md` (bron van waarheid voor de regels).
+
 ## Context
 
 Ruben wil het borrelspel mexen (Utrechtse variant, regels uit de "mexxen bijbel" PDF) als webgame bouwen: 3D-dobbelstenen met physics-animatie, een lobby met uitnodigingslink, en P2P-verbindingen tussen spelers. Primaire use-case: spelers zitten fysiek aan dezelfde tafel, ieder op eigen telefoon; de app vervangt de dobbelstenen en doet de score- en slokkenadministratie. Remote spelen is een toekomstwens, dus de netwerklaag krijgt een abstractie zodat die later uit te bouwen is.

@@ -9,18 +9,20 @@ De spelregels staan in [docs/mexxen-regels.md](docs/mexxen-regels.md), het bouwp
 - **2.5D-dobbelstenen** (CSS-3D-kubussen, geen WebGL). De uitkomst komt van de host-RNG; de tuimel-animatie is puur cosmetisch en landt altijd op de juiste waarde, identiek op elk toestel via een gedeelde seed.
 - **P2P multiplayer**: tafel maken, QR-code of link delen, klaar. Host-authoritative: gasten sturen intenties, de host valideert en broadcast de volledige spelstand. Reconnect met resync als een telefoon even wegvalt.
 - **Pass-the-phone-modus** voor als er maar één telefoon is.
-- **Complete Utrechtse regelset** als lobby-toggles: verse 1/2, 31-slokken, mex-multiplier, tiebreak met verdubbeling, eerste bepaalt het tempo, omgekeerde mex (65 → 21 met draai-animatie), ridder + dubbele ridder, en afslaan met de volledige strafmatrix (2/4/8 slokken).
-- **Borrel-details**: schud je telefoon om te gooien, dobbelgeratel en mex-fanfare (gesynthetiseerd, geen assets), trilfeedback, slokken-log, wake lock zodat schermen aan blijven, en een PWA-manifest voor "Zet op beginscherm".
+- **Complete regelset** als toggles (in de lobby én in pass-the-phone, huisregels worden onthouden): verse 1/2, 31-slokken, mex-multiplier, tiebreak met verdubbeling, eerste bepaalt het tempo, omgekeerde mex (65 → 21 met draai-animatie), ridder + dubbele ridder, en afslaan met de volledige strafmatrix (2/4/8 slokken). Huisregels: een 32 beëindigt de beurt direct, en een gedwongen vroeg einde van de eerste speler (mex of 32) zet meteen het worpen-maximum voor de ronde; zie [docs/mexxen-regels.md](docs/mexxen-regels.md).
+- **Game-feel**: fullscreen knallen voor mex, 32, 31 en de ridderslag, en bij elke slok vliegt een 🍺 in een boog naar de chip van de drinker (met +N-inslag, chip-pulse en haptics).
+- **Borrel-details**: schud je telefoon om te gooien, dobbelgeratel en mex-fanfare (gesynthetiseerd, geen assets), trilfeedback, slokken-log, eindstand met "natste keel", wake lock zodat schermen aan blijven, en een PWA-manifest voor "Zet op beginscherm".
 
 ## Architectuur
 
 ```
 src/
-  engine/     pure spellogica: reducer-state-machine, 106 vitest-tests, geen React/DOM/netwerk
+  engine/     pure spellogica: reducer-state-machine, 120+ vitest-tests, geen React/DOM/netwerk
   protocol/   Intent- en GameEvent-types (discriminated unions)
   net/        Transport-interface, PeerJS-implementatie, host-loop (validate -> reduce -> broadcast)
-  store/      zustand: gameStore (hotseat) + netStore (P2P)
+  store/      zustand: gameStore (hotseat) + netStore (P2P); viewState loopt één animatie achter
   dice/       2.5D CSS-3D-dobbelstenen + juice (tuimel, screenshake, mex-burst)
+  components/ UI-bouwstenen + effects/ (score-pops, drink-shots)
   screens/    Home, setup, lobby, game; /?debug en /?dice zijn dev-speeltuinen
 ```
 

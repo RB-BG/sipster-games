@@ -31,6 +31,7 @@ Alle andere spelers hebben maximaal evenveel worpen als de eerste speler van de 
 Uitbreiding op ridder: gooit de ridder opnieuw 1 en 1, dan wordt hij dubbele ridder en drinkt dubbel bij elk honderdtal.
 
 ### Afslaan
+- Deze regelset heft het directe beurt-einde van een 32 op: de 32 blijft open, zodat de gooier kan proberen door te spelen tot iemand afslaat.
 - Zodra iemand 32 gooit, mag elke speler afslaan (digitaal: knop). Wie het eerst afslaat legt de 32 vast; de gooier mag die ronde niet meer doorspelen.
 - De gooier voorkomt afslaan door minstens één dobbelsteen op te pakken vóór de afslag. Let op: een verse 2 moet blijven liggen, dan mag alleen de 3 opnieuw.
 - Bij twijfel wie sneller was beslissen de andere spelers (digitaal: verwerkingsvolgorde bij de host).
