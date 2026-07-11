@@ -1,9 +1,11 @@
 # Plan: Mexxen als native app via Capacitor
 
-> **Status: voorstel.** Nog niet uitgevoerd. Doel: de bestaande web-app als
-> echte iOS- en Android-app in de stores krijgen zonder herschrijven, met
-> behoud van de Vercel-webversie. Bron van waarheid voor de regels blijft
-> `docs/mexxen-regels.md`; dit plan raakt alleen de verpakking, niet de engine.
+> **Status: fase 1 + 2 uitgevoerd.** Capacitor draait rond de bestaande build,
+> Android-platform gescaffold, native haptics en keep-awake ingebouwd (web
+> ongemoeid). Nog te doen op de juiste hardware: iOS-platform (macOS/Xcode),
+> `@capacitor/motion` op een echt toestel, deep links (fase 3) en store-werk
+> (fase 4-5, vereist Apple/Google-accounts). Bron van waarheid voor de regels
+> blijft `docs/mexxen-regels.md`; dit plan raakt alleen de verpakking.
 
 ## Uitgangspunt
 
@@ -57,8 +59,8 @@ codebase, twee doelen.
 
 | # | Fase | Grootte | Acceptatie |
 |---|------|---------|------------|
-| 1 | **Capacitor erin, web ongemoeid** | S | `@capacitor/core` + `@capacitor/cli` + `ios`/`android` platforms toegevoegd; `capacitor.config.ts` wijst `webDir` naar de Vite-output; `npm run build` + `npx cap sync` draaien; app opent in simulator met de bestaande UI. Vercel-deploy onveranderd. |
-| 2 | **Native-guards + plugins** | M | `Capacitor.isNativePlatform()`-guards rond haptics, keep-awake en motion; web-fallbacks intact. Hotseat volledig offline speelbaar in vliegtuigmodus op een echt toestel. |
+| 1 | **Capacitor erin, web ongemoeid** ✅ | S | `@capacitor/core` + `@capacitor/cli` + `android` toegevoegd; `capacitor.config.ts` wijst `webDir` naar `dist`; `npm run build` + `npx cap sync` draaien schoon; `cap doctor` groen. iOS-platform volgt op macOS (`npx cap add ios`). Vercel-deploy onveranderd. |
+| 2 | **Native-guards + plugins** ✅ (haptics + keep-awake) | M | `lib/haptics.ts` en `useWakeLock` achter `Capacitor.isNativePlatform()`, web-fallbacks intact, lint/build/test groen. Resterend: `@capacitor/motion` in `useShakeToRoll` op een echt toestel, en offline hotseat-test in vliegtuigmodus. |
 | 3 | **Deep links (join-flow)** | M | Universal Link / App Link opent de app op een `?room=`-code en joint de tafel; QR blijft werken op web én native. |
 | 4 | **Store-gereed maken** | M | App-icoon + splash gegenereerd; iOS 17+ leeftijdsrating (alcohol), permissie-teksten (motion), privacybeleid (geen data, geen account); Android-signing; testbuilds op TestFlight en interne Play-track. |
 | 5 | **Indienen** | M | Screenshots, listing (NL), review-notities die de native-features benoemen (haptics, schudden, offline hotseat) tegen guideline 4.2; ingediend bij beide stores. |
