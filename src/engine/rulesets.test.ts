@@ -151,7 +151,7 @@ describe('ridder', () => {
 
   it('de ridder drinkt het aantal ogen bij elk honderdtal, ook van zichzelf', () => {
     let state = roll(setup(2, { ridder: true }), 'p1', [1, 1])
-    // p1 is ridder; beide 1-en liggen vast, dus blijven staan met 100.
+    // p1 is ridder en blijft staan met 100 (dubbel 1).
     state = ok(state, { t: 'END_TURN', playerId: 'p1' })
     // p2 gooit 300: de ridder drinkt 3.
     state = roll(state, 'p2', [3, 3])

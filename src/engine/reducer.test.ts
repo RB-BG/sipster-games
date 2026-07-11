@@ -174,14 +174,29 @@ describe('verse 1 en 2', () => {
     expect(state.players[0].roundScore).toBe(61)
   })
 
-  it('met twee vastliggende stenen valt er niets te gooien', () => {
+  it('bij dubbel 1 of dubbel 2 blijft er altijd een steen gooibaar', () => {
     const state = roll(setup(2), 'p1', [2, 2])
-    expect(state.turn?.dice?.every((d) => d.onTable)).toBe(true)
-    expect(reduce(state, { t: 'ROLL', playerId: 'p1' }, noRng).error).toBe('NO_ROLLABLE_DICE')
+    // Niet allebei vast: precies één steen ligt vers, de ander blijft gooibaar.
+    expect(state.turn?.dice?.filter((d) => d.onTable).length).toBe(1)
 
-    // Blijven staan met 200 kan wel.
+    // Doorgooien mag dus: de vrije steen krijgt een nieuwe waarde.
+    const verder = roll(state, 'p1', [5])
+    expect(verder.turn?.dice?.some((d) => d.value === 5)).toBe(true)
+
+    // Blijven staan met 200 kan ook nog steeds.
     const einde = ok(state, { t: 'END_TURN', playerId: 'p1' })
     expect(einde.players[0].roundScore).toBe(200)
+  })
+
+  it('de ridder mag na dubbel 1 een van de twee stenen doorgooien', () => {
+    const state = roll(setup(2, { ridder: true }), 'p1', [1, 1])
+    // Speler wordt ridder, maar houdt maar één steen vast.
+    expect(state.ridderId).toBe('p1')
+    expect(state.turn?.dice?.filter((d) => d.onTable).length).toBe(1)
+
+    // De vrije steen mag gegooid worden.
+    const verder = roll(state, 'p1', [4])
+    expect(verder.turn?.dice?.some((d) => d.value === 4)).toBe(true)
   })
 })
 

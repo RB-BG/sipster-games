@@ -7,7 +7,7 @@ Samenvatting van de "mexxen bijbel". Dit is de bron van waarheid voor de game-en
 - Twee dobbelstenen, doel: 21 ("mex") gooien. Maximaal 3 worpen per beurt.
 - Hoogste dobbelsteen = tiental, laagste = eental (6 en 4 = 64). Dubbel = honderdtal (3 en 3 = 300).
 - Score-rangorde van hoog naar laag: 21 (mex), 100-tallen (600 > 500 > ... > 100), dan gewone scores (65 > 64 > ... > 41), en 31 en 32 zijn bijzonder (zie hieronder). 32 is het laagst.
-- **Verse 1 of 2**: wie een 1 of 2 gooit, moet die laten liggen. Die is maximaal één worp "vers"; daarna moet hij weer opgepakt en meegegooid worden.
+- **Verse 1 of 2**: wie een 1 of 2 gooit, moet die laten liggen. Die is maximaal één worp "vers"; daarna moet hij weer opgepakt en meegegooid worden. Je legt nooit beide stenen tegelijk vast: bij dubbel 1 of dubbel 2 houd je er één en blijft de ander gooibaar (ook als je er ridder mee wordt), want een 1 of 2 blijft maar één worp liggen.
 - **21 (mex)**: hoogste worp, beurt eindigt direct.
 - **31**: speler deelt slokken uit aan een andere speler en gooit opnieuw. Telt niet als worp en veroudert de verse 1/2 niet.
 - **32**: laagste worp. Wie 32 gooit is direct klaar met zijn beurt (uitzondering: met de afslaan-regelset blijft de 32 open, zodat de gooier kan oppakken vóór iemand afslaat).
