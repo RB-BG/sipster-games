@@ -1,13 +1,26 @@
 import { useEffect } from 'react'
+import { Capacitor } from '@capacitor/core'
+import { KeepAwake } from '@capacitor-community/keep-awake'
 
 /**
  * Houdt het scherm aan zolang de component gemount is; zonder wake lock
  * vergrendelt de telefoon en sterft de WebRTC-verbinding.
- * iOS laat de lock los bij tab-wissel, dus opnieuw pakken bij visibilitychange.
+ * Native (Capacitor) gebruikt de keep-awake-plugin, want WKWebView kent de
+ * Screen Wake Lock API niet betrouwbaar. Op web de browser-API, die iOS bij
+ * tab-wissel loslaat, dus opnieuw pakken bij visibilitychange.
  */
 export function useWakeLock(active = true): void {
   useEffect(() => {
-    if (!active || !('wakeLock' in navigator)) return
+    if (!active) return
+
+    if (Capacitor.isNativePlatform()) {
+      KeepAwake.keepAwake().catch(() => {})
+      return () => {
+        KeepAwake.allowSleep().catch(() => {})
+      }
+    }
+
+    if (!('wakeLock' in navigator)) return
     let lock: WakeLockSentinel | null = null
 
     const acquire = async () => {
