@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Mexxen</string>
+    <string name="title_activity_main">Mexxen</string>
+    <string name="package_name">nl.mexxen.app</string>
+    <string name="custom_url_scheme">nl.mexxen.app</string>
+</resources>
