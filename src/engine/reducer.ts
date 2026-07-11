@@ -246,6 +246,15 @@ function applyRoll(draft: GameState, events: EngineEvent[], rng: RollSource): vo
     }
   }
 
+  // Je legt nooit beide stenen tegelijk vast: een verse 1/2 blijft maar één
+  // worp liggen. Bij dubbel 1 of dubbel 2 (beide vers deze worp) houd je er
+  // daarom één en blijft de ander gooibaar, ook als je er ridder mee wordt.
+  if (turn.dice[0].vers === 'fresh' && turn.dice[1].vers === 'fresh') {
+    const free = turn.dice[1]
+    free.onTable = false
+    free.vers = null
+  }
+
   if (rolled31) {
     turn.pending31 = true
     return
