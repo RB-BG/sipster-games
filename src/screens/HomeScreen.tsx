@@ -1,4 +1,4 @@
-import { Dices, Smartphone, Users } from 'lucide-react'
+import { BookOpen, Dices, Smartphone, Users } from 'lucide-react'
 import { strings } from '@/i18n/strings'
 import { useGameStore } from '@/store/gameStore'
 
@@ -38,6 +38,14 @@ export default function HomeScreen() {
         >
           <Smartphone className="size-5" />
           {strings.hotseat}
+        </button>
+        <button
+          type="button"
+          onClick={() => setScreen('rules')}
+          className="mt-1 flex items-center justify-center gap-2 text-sm text-muted-foreground transition-colors active:text-ivory"
+        >
+          <BookOpen className="size-4" />
+          {strings.rulesExplainTitle}
         </button>
       </div>
     </main>

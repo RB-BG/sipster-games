@@ -4,6 +4,7 @@ import DebugScreen from '@/screens/DebugScreen'
 import HotseatSetupScreen from '@/screens/HotseatSetupScreen'
 import LobbyScreen from '@/screens/LobbyScreen'
 import ProfileScreen from '@/screens/ProfileScreen'
+import RulesScreen from '@/screens/RulesScreen'
 import { strings } from '@/i18n/strings'
 import { useGameStore } from '@/store/gameStore'
 import { useNetStore } from '@/store/netStore'
@@ -46,6 +47,7 @@ export default function App() {
     return <ProfileScreen mode="join" initialCode={roomParam} />
   }
 
+  if (screen === 'rules') return <RulesScreen />
   if (screen === 'setup') return <HotseatSetupScreen />
   if (screen === 'host') return <ProfileScreen mode="host" />
   if (screen === 'join') return <ProfileScreen mode="join" />
