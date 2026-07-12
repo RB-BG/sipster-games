@@ -1,4 +1,5 @@
 import { BookOpen, Dices, Smartphone, Users } from 'lucide-react'
+import LocaleSwitch from '@/components/LocaleSwitch'
 import { useStrings } from '@/store/localeStore'
 import { useGameStore } from '@/store/gameStore'
 
@@ -7,7 +8,10 @@ export default function HomeScreen() {
   const setScreen = useGameStore((s) => s.setScreen)
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-8 px-6 text-center">
+    <main className="relative flex min-h-dvh flex-col items-center justify-center gap-8 px-6 text-center">
+      <div className="absolute right-4 top-4">
+        <LocaleSwitch />
+      </div>
       <div className="flex flex-col items-center gap-3">
         <Dices className="size-14 text-amber-warm" aria-hidden />
         <h1 className="font-heading text-6xl font-bold tracking-tight text-ivory">
