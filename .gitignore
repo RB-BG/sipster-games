@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Android build-artefacten (APK's e.d. buiten de android/-map)
+*.apk
+*.aab
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
