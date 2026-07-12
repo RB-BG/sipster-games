@@ -7,13 +7,13 @@ describe('loserSips', () => {
     expect(loserSips(DEFAULT_RULES, 0)).toBe(2)
   })
 
-  it('vermenigvuldigt met het aantal mexxen', () => {
-    expect(loserSips(DEFAULT_RULES, 1)).toBe(2)
-    expect(loserSips(DEFAULT_RULES, 3)).toBe(6)
+  it('verdubbelt de inzet per mex', () => {
+    expect(loserSips(DEFAULT_RULES, 1)).toBe(4)
+    expect(loserSips(DEFAULT_RULES, 3)).toBe(16)
   })
 
   it('tiebreak-verdubbeling stapelt op de mex-multiplier', () => {
-    expect(loserSips(DEFAULT_RULES, 2, 2)).toBe(8)
+    expect(loserSips(DEFAULT_RULES, 2, 2)).toBe(16)
     expect(loserSips(DEFAULT_RULES, 0, 4)).toBe(8)
   })
 

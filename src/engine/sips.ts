@@ -1,11 +1,12 @@
 import type { AfslaanVerdict, RuleConfig } from './types'
 
 /**
- * Slokken voor de verliezer van een ronde:
- * standaard aantal × aantal mexxen (minimaal 1) × tiebreak-verdubbeling.
+ * Slokken voor de verliezer van een ronde: elke mex die ronde verdubbelt de inzet.
+ * standaard aantal × 2^aantal-mexxen × tiebreak-verdubbeling.
+ * (2 → 4 bij één mex → 8 bij twee mexxen, enz.)
  */
 export function loserSips(rules: RuleConfig, mexCount: number, multiplier = 1): number {
-  return rules.standaardSlokken * Math.max(1, mexCount) * multiplier
+  return rules.standaardSlokken * 2 ** mexCount * multiplier
 }
 
 /** Bij 31 deelt de gooier het standaard aantal slokken uit. */

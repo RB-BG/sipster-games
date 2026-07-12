@@ -317,7 +317,8 @@ describe('ronde-einde', () => {
     state = roll(state, 'p3', [3, 2])
 
     expect(state.phase).toBe('roundEnd')
-    expect(state.players[2].sipsTotal).toBe(4)
+    // Twee mexxen: 2 → 4 → 8.
+    expect(state.players[2].sipsTotal).toBe(8)
   })
 
   it('de verliezer begint de volgende ronde en alles staat weer klaar', () => {
