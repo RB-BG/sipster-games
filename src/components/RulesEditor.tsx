@@ -1,4 +1,5 @@
 import Coaster from '@/components/Coaster'
+import RulesExplainer from '@/components/RulesExplainer'
 import type { RuleConfig } from '@/engine/types'
 import { strings } from '@/i18n/strings'
 
@@ -68,14 +69,9 @@ export default function RulesEditor({ rules, disabled, onChange, hideKeys, note 
 
       <details className="text-sm text-muted-foreground">
         <summary className="cursor-pointer">{strings.rulesExplainTitle}</summary>
-        <dl className="mt-2 flex flex-col gap-2">
-          {strings.rulesExplain.map(([title, text]) => (
-            <div key={title}>
-              <dt className="font-semibold text-ivory">{title}</dt>
-              <dd>{text}</dd>
-            </div>
-          ))}
-        </dl>
+        <div className="mt-2">
+          <RulesExplainer />
+        </div>
       </details>
     </Coaster>
   )

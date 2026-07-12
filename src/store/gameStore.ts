@@ -27,7 +27,7 @@ export interface FlipAnim {
   values: (Die | null)[]
 }
 
-export type Screen = 'home' | 'setup' | 'host' | 'join'
+export type Screen = 'home' | 'setup' | 'host' | 'join' | 'rules'
 
 interface GameStore {
   state: GameState | null
