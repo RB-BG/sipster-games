@@ -12,11 +12,12 @@ import Dice from '@/dice/Dice'
 import { useGameAdapter } from '@/hooks/useGameAdapter'
 import { useShakeToRoll } from '@/hooks/useShakeToRoll'
 import { useWakeLock } from '@/hooks/useWakeLock'
-import { strings } from '@/i18n/strings'
+import { useStrings } from '@/store/localeStore'
 import { hapticDrink, hapticMex, hapticRidder, hapticRoll, hapticSlap } from '@/lib/haptics'
 import { isMuted, playDrink, playMex, playRidder, playRoll, playSlap, setMuted } from '@/lib/sound'
 
 export default function GameScreen() {
+  const strings = useStrings()
   const {
     state,
     myPlayerId,

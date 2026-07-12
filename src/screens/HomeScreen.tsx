@@ -1,8 +1,9 @@
 import { BookOpen, Dices, Smartphone, Users } from 'lucide-react'
-import { strings } from '@/i18n/strings'
+import { useStrings } from '@/store/localeStore'
 import { useGameStore } from '@/store/gameStore'
 
 export default function HomeScreen() {
+  const strings = useStrings()
   const setScreen = useGameStore((s) => s.setScreen)
 
   return (

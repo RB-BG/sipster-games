@@ -177,9 +177,3 @@ export const locales: Record<Locale, Strings> = {
   nl,
   en: nl,
 }
-
-/**
- * Statische toegang tot het Nederlands. Blijft bestaan zolang niet elke
- * call-site via `useStrings()` leest; wordt in fase 2 uitgefaseerd.
- */
-export const strings = nl

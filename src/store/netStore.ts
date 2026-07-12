@@ -7,7 +7,7 @@ import type {
   PlayerProfile,
   RuleConfig,
 } from '@/engine/types'
-import { strings } from '@/i18n/strings'
+import { useLocaleStore } from './localeStore'
 import { loadRules, saveRules } from '@/lib/storage'
 import { createHostLoop, type HostLoop } from '@/net/hostLoop'
 import { createGuestTransport, createHostTransport } from '@/net/peerTransport'
@@ -176,7 +176,7 @@ export const useNetStore = create<NetStore>((set, get) => {
         )
         set({ role: 'host', status: 'open', roomCode: transport.roomCode, myPlayerId: profile.id })
       } catch {
-        set({ status: 'idle', netError: strings.net.hostFailed })
+        set({ status: 'idle', netError: useLocaleStore.getState().strings.net.hostFailed })
       }
     },
 
@@ -191,7 +191,7 @@ export const useNetStore = create<NetStore>((set, get) => {
           onEvent: handleGameEvent,
           onStatus: (status) => {
             set({ status })
-            if (status === 'closed') set({ netError: strings.net.tableClosed })
+            if (status === 'closed') set({ netError: useLocaleStore.getState().strings.net.tableClosed })
           },
         })
         // Terug uit de achtergrond (scherm uit, tab-wissel): altijd even resyncen.
@@ -206,7 +206,7 @@ export const useNetStore = create<NetStore>((set, get) => {
         stripRoomParam()
         set({ role: 'guest', roomCode: code, myPlayerId: profile.id })
       } catch {
-        set({ status: 'idle', netError: strings.net.joinFailed })
+        set({ status: 'idle', netError: useLocaleStore.getState().strings.net.joinFailed })
       }
     },
 

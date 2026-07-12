@@ -4,11 +4,12 @@ import QrShare from '@/components/QrShare'
 import RulesEditor from '@/components/RulesEditor'
 import type { RuleConfig } from '@/engine/types'
 import { useWakeLock } from '@/hooks/useWakeLock'
-import { strings } from '@/i18n/strings'
+import { useStrings } from '@/store/localeStore'
 import { useNetStore } from '@/store/netStore'
 
 /** Wachtruimte: QR + code delen, spelers zien binnenkomen, regels instellen. */
 export default function LobbyScreen() {
+  const strings = useStrings()
   const role = useNetStore((s) => s.role)
   const status = useNetStore((s) => s.status)
   const roomCode = useNetStore((s) => s.roomCode)

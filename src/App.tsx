@@ -5,7 +5,7 @@ import HotseatSetupScreen from '@/screens/HotseatSetupScreen'
 import LobbyScreen from '@/screens/LobbyScreen'
 import ProfileScreen from '@/screens/ProfileScreen'
 import RulesScreen from '@/screens/RulesScreen'
-import { strings } from '@/i18n/strings'
+import { useStrings } from '@/store/localeStore'
 import { useGameStore } from '@/store/gameStore'
 import { useNetStore } from '@/store/netStore'
 
@@ -13,9 +13,9 @@ import { useNetStore } from '@/store/netStore'
 const DiceLabScreen = lazy(() => import('@/screens/DiceLabScreen'))
 const GameScreen = lazy(() => import('@/screens/GameScreen'))
 
-const loader = <p className="p-8 text-muted-foreground">{strings.rolling}</p>
-
 export default function App() {
+  const strings = useStrings()
+  const loader = <p className="p-8 text-muted-foreground">{strings.rolling}</p>
   const hasGame = useGameStore((s) => s.state !== null)
   const screen = useGameStore((s) => s.screen)
   const role = useNetStore((s) => s.role)
