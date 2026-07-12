@@ -1,7 +1,7 @@
 import Coaster from '@/components/Coaster'
 import RulesExplainer from '@/components/RulesExplainer'
 import type { RuleConfig } from '@/engine/types'
-import { strings } from '@/i18n/strings'
+import { useStrings } from '@/store/localeStore'
 
 const TOGGLE_KEYS = [
   'tempo',
@@ -25,6 +25,7 @@ interface RulesEditorProps {
 
 /** De regelset-instellingen, gedeeld door de P2P-lobby en de hotseat-setup. */
 export default function RulesEditor({ rules, disabled, onChange, hideKeys, note }: RulesEditorProps) {
+  const strings = useStrings()
   return (
     <Coaster className="flex flex-col gap-3">
       <h2 className="text-sm text-muted-foreground">{strings.rulesTitle}</h2>

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { strings } from '@/i18n/strings'
+import { useStrings } from '@/store/localeStore'
 
 export type PopKind = 'mex' | '32' | '31' | 'ridder' | 'ridderDubbel'
 
@@ -20,6 +20,7 @@ const VIGNET: Record<PopKind, string> = {
 
 /** Fullscreen knal voor bijzondere momenten: mex, 32, 31 en de ridderslag. */
 export default function ScorePop({ pop }: { pop: Pop | null }) {
+  const strings = useStrings()
   const isRidder = pop?.kind === 'ridder' || pop?.kind === 'ridderDubbel'
 
   return (

@@ -1,11 +1,12 @@
 import { ArrowLeft } from 'lucide-react'
 import Coaster from '@/components/Coaster'
 import RulesExplainer from '@/components/RulesExplainer'
-import { strings } from '@/i18n/strings'
+import { useStrings } from '@/store/localeStore'
 import { useGameStore } from '@/store/gameStore'
 
 /** Alleen-lezen regeluitleg, bereikbaar vanaf de startpagina. */
 export default function RulesScreen() {
+  const strings = useStrings()
   const setScreen = useGameStore((s) => s.setScreen)
 
   return (

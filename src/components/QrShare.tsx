@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Check, Copy, Share2 } from 'lucide-react'
-import { strings } from '@/i18n/strings'
+import { useStrings } from '@/store/localeStore'
 
 export default function QrShare({ roomCode }: { roomCode: string }) {
+  const strings = useStrings()
   const [copied, setCopied] = useState(false)
   const link = `${window.location.origin}/?room=${roomCode}`
 

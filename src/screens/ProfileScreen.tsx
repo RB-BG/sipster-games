@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import Coaster from '@/components/Coaster'
-import { strings } from '@/i18n/strings'
+import { useStrings } from '@/store/localeStore'
 import { loadProfile, newPlayerId, saveProfile } from '@/lib/storage'
 import { useGameStore } from '@/store/gameStore'
 import { useNetStore } from '@/store/netStore'
@@ -15,6 +15,7 @@ interface ProfileScreenProps {
 
 /** Naam + emoji invullen en dan een tafel maken of joinen. */
 export default function ProfileScreen({ mode, initialCode }: ProfileScreenProps) {
+  const strings = useStrings()
   const setScreen = useGameStore((s) => s.setScreen)
   const hostLobby = useNetStore((s) => s.hostLobby)
   const joinLobby = useNetStore((s) => s.joinLobby)

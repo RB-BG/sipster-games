@@ -3,7 +3,7 @@ import { ArrowLeft, Dices } from 'lucide-react'
 import Coaster from '@/components/Coaster'
 import RulesEditor from '@/components/RulesEditor'
 import type { PlayerProfile, RuleConfig } from '@/engine/types'
-import { strings } from '@/i18n/strings'
+import { useStrings } from '@/store/localeStore'
 import { loadProfile, loadRules, newPlayerId, saveProfile, saveRules } from '@/lib/storage'
 import { useGameStore } from '@/store/gameStore'
 
@@ -15,6 +15,7 @@ interface Draft {
 }
 
 export default function HotseatSetupScreen() {
+  const strings = useStrings()
   const startHotseat = useGameStore((s) => s.startHotseat)
   const setScreen = useGameStore((s) => s.setScreen)
   const [drafts, setDrafts] = useState<Draft[]>(() => {
