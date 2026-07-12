@@ -1,3 +1,5 @@
+// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+
 import type { PlayerProfile, RuleConfig } from '@/engine/types'
 import { DEFAULT_RULES } from '@/engine/types'
 

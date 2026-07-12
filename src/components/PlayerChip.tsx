@@ -1,3 +1,5 @@
+// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+
 import { rankLabel } from '@/engine/score'
 import type { PlayerState } from '@/engine/types'
 import { cn } from '@/lib/utils'

@@ -1,3 +1,5 @@
+// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+
 /**
  * Alle UI-teksten centraal. Geen i18n-lib: `nl` is de bron, `type Strings` is
  * afgeleid uit `nl` en dwingt elke andere taal af tot dezelfde keys en

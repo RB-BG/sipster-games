@@ -1,3 +1,5 @@
+// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+
 import { useState } from 'react'
 import Dice, { type RollRequest } from '@/dice/Dice'
 import type { Die, DieId } from '@/engine/types'

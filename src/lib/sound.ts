@@ -1,3 +1,5 @@
+// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+
 /**
  * Gesynthetiseerde geluidjes via WebAudio: geen assets, geen laadtijd.
  * Alles faalt stil; geluid is nooit kritiek.

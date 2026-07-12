@@ -1,3 +1,5 @@
+// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+
 import { is31, is32, isMex, scoreRank } from './score'
 import { afslaanPenalty, loserSips, sips31 } from './sips'
 import type { RollSource } from './rng'

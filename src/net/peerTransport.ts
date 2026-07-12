@@ -1,3 +1,5 @@
+// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+
 import Peer, { type DataConnection } from 'peerjs'
 import { PROTOCOL_VERSION, type GameEvent, type Intent } from '@/protocol/messages'
 import type {

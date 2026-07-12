@@ -39,3 +39,7 @@ npm run build    # typecheck + productie-build
 ```
 
 Deployment: Vercel (SPA, zie `vercel.json`). Stack: React 19, TypeScript, Vite, Tailwind 4, zustand, framer-motion, PeerJS.
+
+## License
+
+Dit project valt onder de [PolyForm Noncommercial License 1.0.0](LICENSE). Niet-commercieel gebruik, aanpassen en delen is toegestaan; commercieel gebruik of (her)verkoop is niet toegestaan zonder voorafgaande schriftelijke toestemming van de houder. De volledige voorwaarden staan in het [LICENSE](LICENSE)-bestand.

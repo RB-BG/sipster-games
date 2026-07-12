@@ -1,3 +1,5 @@
+// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+
 /**
  * mulberry32: klein deterministisch PRNG.
  * Alleen voor animatie-seeds (identieke worp-animatie op elk toestel).

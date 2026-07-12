@@ -1,3 +1,5 @@
+// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+
 import { describe, expect, it } from 'vitest'
 import { flipTarget, restingRotation, rollTarget } from './rollAnim'
 import type { Die } from '@/engine/types'

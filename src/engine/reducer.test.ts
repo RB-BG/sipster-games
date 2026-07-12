@@ -1,3 +1,5 @@
+// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+
 import { describe, expect, it } from 'vitest'
 import { createGame, reduce } from './reducer'
 import { scriptedRollSource, type RollSource } from './rng'

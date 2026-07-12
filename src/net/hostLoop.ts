@@ -1,3 +1,5 @@
+// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+
 import { createGame, reduce } from '@/engine/reducer'
 import { cryptoRollSource, type RollSource } from '@/engine/rng'
 import type { Command, EngineEvent, GameState, PlayerProfile, RuleConfig } from '@/engine/types'
