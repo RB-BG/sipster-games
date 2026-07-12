@@ -1,3 +1,5 @@
+// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+
 import { useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Check, Copy, Share2 } from 'lucide-react'

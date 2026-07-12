@@ -1,3 +1,5 @@
+// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+
 import { scoreRank } from './score'
 import type { Command, ErrorCode, GameState, TurnState } from './types'
 

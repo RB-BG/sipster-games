@@ -1,3 +1,5 @@
+// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+
 import { useState } from 'react'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import Coaster from '@/components/Coaster'

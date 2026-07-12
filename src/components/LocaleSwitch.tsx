@@ -1,3 +1,5 @@
+// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+
 import { locales, type Locale } from '@/i18n/strings'
 import { useLocaleStore } from '@/store/localeStore'
 

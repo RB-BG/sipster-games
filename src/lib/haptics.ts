@@ -1,3 +1,5 @@
+// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+
 /**
  * Haptische feedback op de spelmomenten. Op native (Capacitor) via de
  * Haptics-plugin, want iOS kent geen navigator.vibrate; op web valt het terug

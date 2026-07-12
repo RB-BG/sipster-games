@@ -1,3 +1,5 @@
+// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+
 import { lazy, Suspense } from 'react'
 import HomeScreen from '@/screens/HomeScreen'
 import DebugScreen from '@/screens/DebugScreen'

@@ -1,3 +1,5 @@
+// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+
 import { BookOpen, Dices, Smartphone, Users } from 'lucide-react'
 import LocaleSwitch from '@/components/LocaleSwitch'
 import { useStrings } from '@/store/localeStore'

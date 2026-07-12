@@ -1,3 +1,5 @@
+// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+
 import { useRef, useState } from 'react'
 import { createGame, reduce } from '@/engine/reducer'
 import { cryptoRollSource } from '@/engine/rng'
