@@ -1,5 +1,10 @@
-/** Alle UI-teksten centraal, Nederlands. Geen i18n-lib nodig. */
-export const strings = {
+/**
+ * Alle UI-teksten centraal. Geen i18n-lib: `nl` is de bron, `type Strings` is
+ * afgeleid uit `nl` en dwingt elke andere taal af tot dezelfde keys en
+ * functie-signaturen. Bewust géén `as const`, anders zouden de teksten
+ * letterlijke types worden en kon geen enkele vertaling het type halen.
+ */
+export const nl = {
   appName: 'Mexxen',
   tagline: 'Het dobbel-borrelspel, op je telefoon',
   createTable: 'Maak een tafel',
@@ -156,4 +161,25 @@ export const strings = {
     ALREADY_ROLLED: 'Je hebt al gegooid',
     INVALID_RULES: 'Ongeldige instellingen',
   } as Record<string, string>,
-} as const
+}
+
+/** Het contract dat elke taal moet implementeren; afgeleid uit het Nederlands. */
+export type Strings = typeof nl
+
+/** Ondersteunde talen. Uitbreiden = hier een code toevoegen en `locales` aanvullen. */
+export type Locale = 'nl' | 'en'
+
+/**
+ * Alle talen, per code. `en` is voorlopig een alias van `nl` (fase 4 vult de
+ * echte vertaling in); het type dwingt af dat elke taal volledig is.
+ */
+export const locales: Record<Locale, Strings> = {
+  nl,
+  en: nl,
+}
+
+/**
+ * Statische toegang tot het Nederlands. Blijft bestaan zolang niet elke
+ * call-site via `useStrings()` leest; wordt in fase 2 uitgefaseerd.
+ */
+export const strings = nl
