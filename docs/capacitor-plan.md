@@ -65,6 +65,26 @@ codebase, twee doelen.
 | 4 | **Store-gereed maken** | M | App-icoon + splash gegenereerd; iOS 17+ leeftijdsrating (alcohol), permissie-teksten (motion), privacybeleid (geen data, geen account); Android-signing; testbuilds op TestFlight en interne Play-track. |
 | 5 | **Indienen** | M | Screenshots, listing (NL), review-notities die de native-features benoemen (haptics, schudden, offline hotseat) tegen guideline 4.2; ingediend bij beide stores. |
 
+## Lokaal een debug-APK bouwen
+
+Om zelf te testen (geen store, geen signing nodig):
+
+1. Vereist: een JDK 17+ (Gradle 8.14 draait op 17/21) en een Android SDK met
+   `platform-tools`, `platforms;android-36` en `build-tools;36.0.0`. Wijs
+   `JAVA_HOME` en `ANDROID_HOME` daarnaar en zet `android/local.properties` op
+   `sdk.dir=<pad-naar-sdk>` (die file is git-ignored).
+2. Bouwen:
+   ```
+   npm run build
+   npx cap sync android
+   (cd android && ./gradlew assembleDebug)
+   ```
+3. Resultaat: `android/app/build/outputs/apk/debug/app-debug.apk` (debug-key,
+   installeerbaar via "onbekende bronnen" of `adb install -r <apk>`).
+
+APK's/AAB's zijn overal git-ignored (root-`.gitignore` + `android/.gitignore`),
+dus build-artefacten komen nooit in de repo.
+
 ## Nieuwe packages (buiten de huidige baseline)
 
 Alleen na akkoord (CLAUDE.md-regel over packages):

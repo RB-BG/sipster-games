@@ -1,6 +1,6 @@
 # Mexxen: project-configuratie
 
-Webbased versie van het borrelspel mexen (Utrechtse variant). P2P multiplayer, 2.5D-dobbelstenen, mobile-first, Nederlandse UI.
+Webbased versie van het borrelspel mexen (Utrechtse variant). P2P multiplayer, 2.5D-dobbelstenen, mobile-first, meertalige UI (NL + EN).
 
 ## Plan & voortgang
 
@@ -41,6 +41,6 @@ Het oorspronkelijke 8-chunk-plan (`docs/plan.md`) is volledig afgerond en daarna
 
 - Stack: React 19, TypeScript, Vite 8, Tailwind 4, shadcn (base-nova), zustand, framer-motion, PeerJS. Dobbelstenen zijn 2.5D CSS-3D-kubussen in `src/dice/` (geen WebGL); de uitkomst blijft host-authoritative, de tuimel-animatie is puur cosmetisch en landt altijd op de juiste waarde.
 - Leesbaarheid boven slimmigheid; comments alleen voor niet-voor-de-hand-liggende WHY.
-- Alle UI-teksten in `src/i18n/strings.ts`, Nederlands.
+- Alle UI-teksten in `src/i18n/strings.ts`. `nl` is de bron van waarheid; `type Strings = typeof nl` dwingt af dat elke taal (nu ook `en`) dezelfde keys en functie-signaturen heeft. Een nieuwe tekst voeg je in álle talen toe (anders faalt de build). Componenten lezen via `useStrings()` uit `store/localeStore`; buiten React (bv. `netStore`) via `useLocaleStore.getState().strings`. Nooit direct uit `nl`/`en` importeren in de UI, anders wisselt de taal niet live.
 - Geen em dashes in gegenereerde teksten; gebruik komma, dubbele punt of haakjes.
 - Nieuwe packages alleen als ze in het plan staan; anders eerst vragen.
