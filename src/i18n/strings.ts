@@ -75,7 +75,7 @@ export const nl = {
 
   // Tiebreak
   tiebreakTitle: 'Gelijkspel! Kamp om de laagste',
-  tiebreakExplain: (hoogsteVerliest: boolean) =>
+  tiebreakExplain: (hoogsteVerliest: boolean): string =>
     hoogsteVerliest ? 'hoogste worp verliest' : 'laagste worp verliest',
   tiebreakRollFor: (name: string) => `${name} gooit`,
   tiebreakMultiplier: (m: number) => `inzet ×${m}`,
@@ -163,17 +163,179 @@ export const nl = {
   } as Record<string, string>,
 }
 
+/**
+ * Engelse vertaling. Het jargon (mex, knight, knock, sips) is een eerste opzet
+ * die door iemand die het spel kent nagelezen moet worden; de structuur en de
+ * functie-signaturen kloppen (het type dwingt dat af), de toon en de gekozen
+ * termen zijn het menselijke werk.
+ */
+const en: Strings = {
+  appName: 'Mexxen',
+  tagline: 'The dice drinking game, on your phone',
+  createTable: 'Create a table',
+  joinTable: 'Join',
+  comingSoon: 'Playable soon',
+  hotseat: 'Play on one phone',
+
+  // Setup
+  players: 'Players',
+  addPlayer: '+ player',
+  removePlayer: 'remove',
+  startGame: 'Start the game',
+  needTwoPlayers: 'At least two players needed',
+  playerNamePlaceholder: 'Name',
+
+  // Game HUD
+  turnOf: 'to play',
+  throwCount: (used, max) => `throw ${used} of ${max}`,
+  roll: 'Roll',
+  stay: 'Stay',
+  rolling: 'rolling…',
+  passPhone: (name) => `Pass the phone to ${name}`,
+  versLocked: 'locked (fresh)',
+  heldLabel: 'held',
+  round: (n) => `round ${n}`,
+  mexCount: (n) => (n === 1 ? '1 mex rolled' : `${n} mexes rolled`),
+
+  // 31
+  give31Title: '31! Hand out sips to:',
+
+  // Rulesets
+  flipToMex: 'Flip it: mex!',
+  slaAf: 'KNOCK!',
+  ridderBadge: '🛡️',
+  afslaanVerdict: (name, verdict) => {
+    switch (verdict) {
+      case 'terecht':
+        return `${name} knocks! The 32 is locked`
+      case 'onterecht':
+        return `${name} knocks wrongly: 2 sips`
+      case 'zelfAfgeklopt':
+        return `${name} knocks themselves: 4 sips`
+      case 'mexAfgeklopt':
+        return `${name} knocks a mex: 4 sips`
+      case 'eigenMexAfgeklopt':
+        return `${name} knocks their own mex: 8 sips`
+      default:
+        return `${name} knocks`
+    }
+  },
+  afslaanNeedsPhones: 'Knocking only works with multiple phones (it is a reaction race).',
+  pop32Sub: 'ouch, the lowest…',
+  pop31Sub: 'hand out sips!',
+  ridderPop: (name) => `${name} has been knighted!`,
+  ridderDubbelPop: (name) => `${name} is now a double knight!`,
+  ridderPopSub: 'drinks the pip count on every hundred',
+  ridderDubbelPopSub: 'now drinks double on every hundred',
+  rulesExplainTitle: 'How do the rules work?',
+  rulesExplain: [
+    ['Basics', 'Roll 21 (mex) in max 3 throws. The higher die is the tens, a double is a hundred. A 1 or 2 must stay down. Roll 32 and your turn ends at once; if the first player is forced to end early (mex or 32), everyone else gets only that many throws too. The lowest score drinks the base sips, and every mex that round doubles it (2, then 4, then 8).'],
+    ['31', 'Roll 31 and you hand out sips, then roll again for free.'],
+    ['First player sets the pace', 'Everyone else gets at most as many throws as the first player of the round.'],
+    ['Reverse mex', 'Roll 65 and you may flip the dice to 21. Does not count toward the sips multiplier.'],
+    ['Knight', 'Whoever rolls 1-1 becomes the knight and drinks the pip count on every hundred (300 = 3 sips).'],
+    ['Double knight', 'If the knight rolls 1-1 again, they drink double from then on.'],
+    ['Knock', 'If a 32 is on the table, knock to lock it. The roller prevents this by picking up a die. Knocking wrongly: 2 sips; knocking a mex: 4; your own mex: 8.'],
+  ],
+
+  // Tiebreak
+  tiebreakTitle: 'Tie! Play off for the lowest',
+  tiebreakExplain: (hoogsteVerliest) =>
+    hoogsteVerliest ? 'highest roll loses' : 'lowest roll loses',
+  tiebreakRollFor: (name) => `${name} rolls`,
+  tiebreakMultiplier: (m) => `stake ×${m}`,
+
+  // Ronde-einde
+  loserIs: (name) => `${name} loses the round`,
+  drinks: (n) => (n === 1 ? 'drinks 1 sip' : `drinks ${n} sips`),
+  sips: 'sips',
+  nextRound: 'Next round',
+  stopGame: 'Stop the game',
+  endGame: 'End the game',
+  finalTitle: 'Final score',
+  wettest: (name) => `${name} has the wettest whistle`,
+  roundsPlayed: (n) => (n === 1 ? 'after 1 round' : `after ${n} rounds`),
+
+  // Lobby & netwerk
+  lobbyTitle: 'Table',
+  roomCodeLabel: 'table code',
+  scanToJoin: 'Scan to join',
+  copyLink: 'Copy link',
+  copied: 'Copied!',
+  shareLink: 'Share link',
+  leaveTable: 'Leave table',
+  closeTable: 'Close table',
+  waitingForPlayers: 'Waiting for players…',
+  connected: 'connected',
+  reconnecting: 'reconnecting…',
+  offline: 'offline',
+  skipTurn: 'Skip turn',
+  waitForHost: 'The host continues…',
+  waitingFor31: (name) => `${name} is handing out sips…`,
+  waitingForTiebreak: (name) => `waiting for ${name}…`,
+  noLoser: 'No one loses this round',
+  needMorePlayers: 'Waiting for at least one other player…',
+  connectionLost: 'Connection lost; reconnecting…',
+  tableGone: 'The table has closed',
+  backHome: 'Back to start',
+  shakeHint: 'or shake your phone 📳',
+  soundOn: 'sound on',
+  soundOff: 'sound off',
+  sipsLogTitle: 'Sips log',
+  sipReasons: {
+    verliezer: 'lost the round',
+    gekregen31: 'got a 31',
+    straf: 'penalty',
+    ridder: 'knight',
+  },
+  yourName: 'Your name',
+  codePlaceholder: 'Code (e.g. ABCD)',
+  makeTable: 'Create table',
+  joinNow: 'Join',
+  connecting: 'Connecting…',
+  startWhenReady: 'Multiplayer is coming in the next update',
+  rulesTitle: 'Rules',
+  ruleLabels: {
+    standaardSlokken: 'Base sips',
+    tempo: 'First player sets the pace',
+    omgekeerdeMex: 'Reverse mex (65 → 21)',
+    ridder: 'Knight',
+    dubbeleRidder: 'Double knight',
+    afslaan: 'Knocking',
+    tiebreakHoogsteVerliest: 'Tiebreak: highest loses',
+  },
+  net: {
+    hostFailed: 'Could not create the table; check your internet and try again',
+    joinFailed: 'Could not join; is the code correct?',
+    tableClosed: 'The table is closed or unreachable',
+  },
+
+  // Fouten
+  errors: {
+    WRONG_PHASE: 'That is not possible right now',
+    NOT_YOUR_TURN: 'It is not your turn',
+    NOT_ENOUGH_PLAYERS: 'At least two players needed',
+    ALREADY_JOINED: 'That player is already in',
+    UNKNOWN_PLAYER: 'Unknown player',
+    PENDING_31: 'Hand out your 31 sips first',
+    NOT_PENDING_31: 'You have no 31 on the table',
+    NO_ROLLABLE_DICE: 'Both dice are locked',
+    HAS_NOT_THROWN: 'Roll first',
+    INVALID_DIE: 'That die must stay down',
+    INVALID_TARGET: 'Pick another player',
+    ALREADY_ROLLED: 'You have already rolled',
+    INVALID_RULES: 'Invalid settings',
+  },
+}
+
 /** Het contract dat elke taal moet implementeren; afgeleid uit het Nederlands. */
 export type Strings = typeof nl
 
 /** Ondersteunde talen. Uitbreiden = hier een code toevoegen en `locales` aanvullen. */
 export type Locale = 'nl' | 'en'
 
-/**
- * Alle talen, per code. `en` is voorlopig een alias van `nl` (fase 4 vult de
- * echte vertaling in); het type dwingt af dat elke taal volledig is.
- */
+/** Alle talen, per code. Het type dwingt af dat elke taal volledig is. */
 export const locales: Record<Locale, Strings> = {
   nl,
-  en: nl,
+  en,
 }
