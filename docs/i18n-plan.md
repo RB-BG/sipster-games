@@ -1,9 +1,14 @@
 # Plan: meertaligheid (i18n)
 
-> **Status: voorstel, klaar om uit te voeren.** Doel: Mexxen naast Nederlands
-> ook in andere talen aanbieden, zonder i18n-library (past bij de bewuste keuze
-> uit `plan.md`). Engels als eerste tweede taal en proef; het model is daarna
-> herbruikbaar voor elke volgende taal.
+> **Status: fasen 1 t/m 4 afgerond en gemerged.** Mexxen is nu in het Nederlands
+> en Engels speelbaar; de taalkiezer staat rechtsboven op de startpagina en
+> wisselt live. Geen i18n-library (past bij de bewuste keuze uit `plan.md`).
+> Fase 5 (volgende talen) is optioneel en puur vertaalwerk.
+>
+> **Openstaand: menselijke eindredactie van het Engelse jargon.** De structuur
+> en signaturen kloppen (het type dwingt volledigheid af), maar de gekozen
+> termen zijn een eerste opzet en moeten nagelezen worden door iemand die het
+> spel kent (zie "Jargon-keuzes" onderaan).
 
 ## Uitgangspunt
 
@@ -42,13 +47,13 @@ Elke taal krijgt dus dezelfde keys met dezelfde functie-signaturen.
 
 ## Fasen
 
-| # | Fase | Grootte | Acceptatie |
-|---|------|---------|------------|
-| 1 | **Structuur omzetten** | S | Huidig object wordt `nl`; `type Strings = typeof nl`; `strings.ts` exporteert `locales: Record<Locale, Strings>` en het `Locale`-type. Build groen, nog geen gedragswijziging. |
-| 2 | **Taal-store + hook** | M | `localeStore` (zustand + persist naar localStorage), detectie via `navigator.language` met NL-fallback, `useStrings()`-hook. De 10 bestanden lezen via de hook i.p.v. de statische import. `netStore.ts` (buiten React) leest via `localeStore.getState()`. Gedrag identiek zolang NL actief is. |
-| 3 | **Taalkiezer** | S | Kiezer in het profiel (of home); wisselen verandert de UI live. Statische teksten mee: `<html lang>`, meta-description en manifest waar mogelijk. |
-| 4 | **Engelse vertaling** | M | Volledige `en: Strings`, inclusief eigen meervouds- en switch-logica. Menselijke controle op het jargon. Beide talen speelbaar end-to-end. |
-| 5 | **Volgende talen** (optioneel) | per taal | Puur vertaalwerk: nieuwe `Locale` toevoegen, `locales`-record aanvullen, type dwingt volledigheid af. |
+| # | Fase | Grootte | Status | Acceptatie |
+|---|------|---------|--------|------------|
+| 1 | **Structuur omzetten** | S | ✅ | Huidig object werd `nl`; `type Strings = typeof nl`; `strings.ts` exporteert `locales: Record<Locale, Strings>` en het `Locale`-type. `as const` verwijderd zodat vertalingen het type halen. Build groen, geen gedragswijziging. |
+| 2 | **Taal-store + hook** | M | ✅ | `localeStore` (zustand + persist naar localStorage), detectie (opgeslagen voorkeur > `navigator.language` > NL), `useStrings()`-hook. De React-lagen lezen via de hook; `netStore.ts` via `useLocaleStore.getState()`. Gedrag identiek zolang NL actief is. |
+| 3 | **Taalkiezer** | S | ✅ | `LocaleSwitch` (NL/EN) rechtsboven op de HomeScreen; wisselen live. `<html lang>` volgt de taal. Meta-description en manifest: buiten scope gelaten (statisch NL). |
+| 4 | **Engelse vertaling** | M | ✅ | Volledige `en: Strings` met eigen meervouds- en switch-logica. End-to-end geverifieerd (Playwright): live wissel, `<html lang>`, persist, detectie en fallback. Jargon-eindredactie staat nog open. |
+| 5 | **Volgende talen** (optioneel) | per taal | ⬜ | Puur vertaalwerk: nieuwe `Locale` toevoegen, `locales`-record aanvullen, type dwingt volledigheid af. |
 
 ## Raakvlakken in de code
 
@@ -85,6 +90,20 @@ Elke taal krijgt dus dezelfde keys met dezelfde functie-signaturen.
    wisselen tijdens een potje, herstart onthoudt de keuze.
 4. `navigator.language` op Engels gezet toont bij eerste bezoek Engels; onbekende
    taal valt terug op Nederlands.
+
+## Jargon-keuzes (Engels, controle gevraagd)
+
+Eerste opzet in `en: Strings`; graag nalezen door iemand die het spel kent:
+
+- **mex** blijft "mex" (naam van het spel en de worp van 21).
+- **ridder** → "knight", **dubbele ridder** → "double knight".
+- **afslaan** → "knock" (SLA AF! → "KNOCK!"). Twijfelgeval: dekt "knock" de
+  reactie-race genoeg, of past "call it" beter?
+- **slokken** → "sips", **standaard slokken** → "base sips".
+- **potje** → "game", **tafel** → "table", **kamp/tiebreak** → "tiebreak /
+  play off", **vers** → "fresh", **omgekeerde mex** → "reverse mex".
+- **turnOf**: "to play" (rendert als "{naam} to play").
+- **wettest**: "has the wettest whistle" (vrije, speelse vertaling).
 
 ## Buiten scope
 
