@@ -269,7 +269,7 @@ export default function GameScreen() {
     afslaanToast && state.players.find((p) => p.id === afslaanToast.byPlayerId)
 
   return (
-    <main ref={mainRef} className="relative flex h-dvh flex-col">
+    <main ref={mainRef} className="relative flex h-dvh flex-col px-safe pt-safe pb-safe">
       <header className="flex items-center justify-between px-4 py-2 text-sm text-muted-foreground">
         <span>
           {strings.round(state.round.number)}

@@ -32,7 +32,7 @@ export default function LobbyScreen() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-safe">
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-ivory">{strings.lobbyTitle}</h1>
         <button

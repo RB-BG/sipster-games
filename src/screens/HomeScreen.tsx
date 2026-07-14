@@ -10,8 +10,8 @@ export default function HomeScreen() {
   const setScreen = useGameStore((s) => s.setScreen)
 
   return (
-    <main className="relative flex min-h-dvh flex-col items-center justify-center gap-8 px-6 text-center">
-      <div className="absolute right-4 top-4">
+    <main className="relative flex min-h-dvh flex-col items-center justify-center gap-8 px-6 pt-safe pb-safe text-center">
+      <div className="absolute right-[calc(1rem+env(safe-area-inset-right))] top-[calc(1rem+env(safe-area-inset-top))]">
         <LocaleSwitch />
       </div>
       <div className="flex flex-col items-center gap-3">
