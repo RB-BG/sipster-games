@@ -6,7 +6,7 @@ Webbased versie van het borrelspel mexen (Utrechtse variant). P2P multiplayer, 2
 
 Het oorspronkelijke 8-chunk-plan (`docs/plan.md`) is volledig afgerond en daarna doorontwikkeld: 2.5D CSS-dice i.p.v. WebGL, game-feel-effecten, einde-potje-flow, regels in hotseat en huisregel-aanpassingen uit de veldtest. Werk per feature op een eigen branch en rond volledig af (lint/build/test groen + commit + merge naar main) voor je aan het volgende begint.
 
-**De spelregels in `docs/mexxen-regels.md` zijn de bron van waarheid voor de engine**, inclusief Rubens huisregels die afwijken van de oorspronkelijke bijbel-PDF (32 beëindigt de beurt direct behalve met afslaan aan; een gedwongen vroeg einde van de eerste speler zet het worpen-maximum, ook zonder tempo-toggle). Niet "terugfixen" naar de PDF.
+**De spelregels in `docs/mexxen-regels.md` zijn de bron van waarheid voor de engine**, inclusief Rubens huisregels die afwijken van de oorspronkelijke bijbel-PDF (32 beëindigt de beurt direct behalve met afslaan aan; het worpen-maximum van de rest wordt alleen aan de eerste speler gekoppeld als de tempo-regelset aanstaat, anders houdt iedereen z'n eigen drie worpen). Niet "terugfixen" naar de PDF.
 
 ## Git-regels
 

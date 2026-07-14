@@ -82,31 +82,23 @@ describe('32 beëindigt de beurt', () => {
   })
 })
 
-describe('gedwongen einde van de eerste speler zet het tempo, ook zonder toggle', () => {
-  it('mex in één worp: de rest krijgt ook maar één worp', () => {
+describe('zonder de tempo-regel cap een vroeg einde van de eerste speler niets', () => {
+  it('een mex in één worp laat de rest gewoon drie worpen', () => {
     const state = roll(setup(3), 'p1', [2, 1])
-    expect(state.round.tempoLimit).toBe(1)
-    expect(state.turn?.maxThrows).toBe(1)
-  })
-
-  it('32 in twee worpen: de rest krijgt er ook twee', () => {
-    let state = roll(setup(3), 'p1', [6, 4])
-    state = roll(state, 'p1', [3, 2])
-    expect(state.round.tempoLimit).toBe(2)
-    expect(state.turn?.maxThrows).toBe(2)
-  })
-
-  it('vrijwillig vroeg stoppen zet zonder tempo-regel géén limiet', () => {
-    let state = roll(setup(3), 'p1', [6, 5])
-    state = ok(state, { t: 'END_TURN', playerId: 'p1' })
     expect(state.round.tempoLimit).toBeNull()
     expect(state.turn?.maxThrows).toBe(3)
   })
 
-  it('een gedwongen einde van een látere speler zet geen limiet', () => {
+  it('een 32 in twee worpen laat de rest gewoon drie worpen', () => {
+    let state = roll(setup(3), 'p1', [6, 4])
+    state = roll(state, 'p1', [3, 2])
+    expect(state.round.tempoLimit).toBeNull()
+    expect(state.turn?.maxThrows).toBe(3)
+  })
+
+  it('vrijwillig vroeg stoppen zet ook geen limiet', () => {
     let state = roll(setup(3), 'p1', [6, 5])
     state = ok(state, { t: 'END_TURN', playerId: 'p1' })
-    state = roll(state, 'p2', [2, 1])
     expect(state.round.tempoLimit).toBeNull()
     expect(state.turn?.maxThrows).toBe(3)
   })

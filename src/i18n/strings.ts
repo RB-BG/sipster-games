@@ -66,7 +66,7 @@ export const nl = {
   ridderDubbelPopSub: 'drinkt voortaan dubbel bij elk honderdtal',
   rulesExplainTitle: 'Hoe werken de regels?',
   rulesExplain: [
-    ['Basis', 'Gooi 21 (mex) in max 3 worpen. Hoogste steen is het tiental, dubbel is een honderdtal. Een 1 of 2 blijft verplicht liggen. Gooi je 32, dan is je beurt direct voorbij; eindigt de eerste speler gedwongen vroeg (mex of 32), dan krijgt de rest ook maar zoveel worpen. Laagste score drinkt de standaard slokken, en elke mex die ronde verdubbelt dat (2, dan 4, dan 8).'],
+    ['Basis', 'Gooi 21 (mex) in max 3 worpen. Hoogste steen is het tiental, dubbel is een honderdtal. Een 1 of 2 blijft verplicht liggen. Gooi je 32, dan is je beurt direct voorbij. Laagste score drinkt de standaard slokken, en elke mex die ronde verdubbelt dat (2, dan 4, dan 8).'],
     ['31', 'Gooi je 31, dan deel je slokken uit en gooi je gratis opnieuw.'],
     ['Eerste bepaalt het tempo', 'De rest krijgt max evenveel worpen als de eerste speler van de ronde.'],
     ['Omgekeerde mex', 'Gooi je 65, dan mag je de stenen omdraaien naar 21. Telt niet mee voor de slokken-multiplier.'],
@@ -231,7 +231,7 @@ const en: Strings = {
   ridderDubbelPopSub: 'now drinks double on every hundred',
   rulesExplainTitle: 'How do the rules work?',
   rulesExplain: [
-    ['Basics', 'Roll 21 (mex) in max 3 throws. The higher die is the tens, a double is a hundred. A 1 or 2 must stay down. Roll 32 and your turn ends at once; if the first player is forced to end early (mex or 32), everyone else gets only that many throws too. The lowest score drinks the base sips, and every mex that round doubles it (2, then 4, then 8).'],
+    ['Basics', 'Roll 21 (mex) in max 3 throws. The higher die is the tens, a double is a hundred. A 1 or 2 must stay down. Roll 32 and your turn ends at once. The lowest score drinks the base sips, and every mex that round doubles it (2, then 4, then 8).'],
     ['31', 'Roll 31 and you hand out sips, then roll again for free.'],
     ['First player sets the pace', 'Everyone else gets at most as many throws as the first player of the round.'],
     ['Reverse mex', 'Roll 65 and you may flip the dice to 21. Does not count toward the sips multiplier.'],
