@@ -1,12 +1,12 @@
 {
-  "name": "Mexxen",
-  "short_name": "Mexxen",
-  "description": "Het dobbel-borrelspel, op je telefoon",
+  "name": "Bussen",
+  "short_name": "Bussen",
+  "description": "Het kaart-borrelspel, op je telefoon",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#241509",
-  "theme_color": "#241509",
+  "background_color": "#0e1030",
+  "theme_color": "#0e1030",
   "icons": [
     {
       "src": "/favicon.svg",
