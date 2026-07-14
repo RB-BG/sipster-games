@@ -12,7 +12,7 @@ export default function RulesScreen() {
   const setScreen = useGameStore((s) => s.setScreen)
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-safe">
       <header className="flex items-center gap-3">
         <button type="button" onClick={() => setScreen('home')} aria-label="terug">
           <ArrowLeft className="size-5 text-muted-foreground" />

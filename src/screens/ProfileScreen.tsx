@@ -47,7 +47,7 @@ export default function ProfileScreen({ mode, initialCode }: ProfileScreenProps)
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-safe">
       <header className="flex items-center gap-3">
         <button
           type="button"
