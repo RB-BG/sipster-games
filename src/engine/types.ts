@@ -1,4 +1,4 @@
-// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+// Copyright © 2026 Bussen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
 export type Die = 1 | 2 | 3 | 4 | 5 | 6
 export type DieId = 0 | 1

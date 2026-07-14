@@ -1,4 +1,4 @@
-// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+// Copyright © 2026 Bussen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
 import type { Command, ErrorCode, GameState } from '@/engine/types'
 import type { GuestStatus } from '@/net/transport'

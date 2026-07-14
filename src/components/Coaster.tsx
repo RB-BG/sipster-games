@@ -1,4 +1,4 @@
-// Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
+// Copyright © 2026 Bussen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
 import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
