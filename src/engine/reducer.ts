@@ -374,15 +374,11 @@ function finalizeTurn(draft: GameState, events: EngineEvent[]): void {
   draft.lastTurnSummary = { playerId: player.id, wasMex: player.roundScore === 1000 }
   events.push({ t: 'TURN_ENDED', playerId: player.id })
 
-  // De eerste beurt van de ronde zet het tempo (forfeit zonder worp telt als 1).
-  // Met de tempo-regel telt elk vroeg einde; een gedwongen einde (mex of 32)
-  // van de eerste speler zet het maximum altijd, ook zonder die regel.
+  // Alleen met de tempo-regel zet de eerste beurt van de ronde het worpen-maximum
+  // voor de rest; elk vroeg einde telt dan (forfeit zonder worp telt als 1).
   const isFirstOfRound = draft.players.filter((p) => p.hasPlayedThisRound).length === 1
-  if (isFirstOfRound && draft.round.tempoLimit === null) {
-    const forcedEnd = player.roundScore === 1000 || player.roundScore === 32
-    if (draft.rules.tempo || forcedEnd) {
-      draft.round.tempoLimit = Math.max(1, turn.throwsUsed)
-    }
+  if (isFirstOfRound && draft.round.tempoLimit === null && draft.rules.tempo) {
+    draft.round.tempoLimit = Math.max(1, turn.throwsUsed)
   }
 
   const next = nextUnplayedPlayer(draft, turn.playerId)
