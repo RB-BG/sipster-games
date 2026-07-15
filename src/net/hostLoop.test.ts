@@ -36,14 +36,25 @@ function setup(rng: DeckSource = scriptedDeck(orderedDeck()), livePeers?: Set<st
   return { transport, loop, states }
 }
 
-/** Speel het vragenrondje uit (alles fout, dus geen give-stappen) tot de piramide. */
+/**
+ * Speel het vragenrondje (rondje per vraag) uit tot de piramide. Antwoorden
+ * kunnen soms goed zijn; een openstaande give wordt dan meteen afgehandeld.
+ */
 function driveToPyramid(loop: HostLoop): void {
   const wrong: AnswerChoice[] = ['zwart', 'lager', 'binnen', 'niet']
+  const act = (playerId: string, intent: Parameters<HostLoop['dispatchLocal']>[0]) => {
+    if (playerId === HOST.id) loop.dispatchLocal(intent)
+    else loop.handleIntent('peer-a', intent)
+  }
   while (loop.state.phase === 'questions') {
+    const give = loop.state.pendingGive
+    if (give) {
+      const target = loop.state.players.find((p) => p.id !== give.playerId)!.id
+      act(give.playerId, { t: 'GIVE_SIPS', targetPlayerId: target })
+      continue
+    }
     const turn = loop.state.turn!
-    const choice = wrong[turn.questionIndex]
-    if (turn.playerId === HOST.id) loop.dispatchLocal({ t: 'ANSWER', choice })
-    else loop.handleIntent('peer-a', { t: 'ANSWER', choice })
+    act(turn.playerId, { t: 'ANSWER', choice: wrong[turn.questionIndex] })
   }
 }
 

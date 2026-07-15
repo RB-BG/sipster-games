@@ -324,15 +324,16 @@ function QuestionsStage({ state }: { state: State }) {
   const turn = state.turn
   if (!turn) return null
   const player = state.players.find((p) => p.id === turn.playerId)
+  const hand = player?.hand ?? []
   return (
     <div className="flex flex-col items-center gap-2 text-center">
       <p className="text-lg font-semibold text-cyan-soft">
         {player?.emoji} {player?.name} {strings.turnOf}
       </p>
-      {turn.revealed.length > 0 && (
-        <div className="flex gap-1">
-          {turn.revealed.map((c, i) => (
-            <StaticCard key={i} card={c} size={40} />
+      {hand.length > 0 && (
+        <div className="flex gap-1.5">
+          {hand.map((c, i) => (
+            <StaticCard key={i} card={c} size={52} />
           ))}
         </div>
       )}
@@ -437,7 +438,7 @@ function PyramidStage({ state }: { state: State }) {
                 key={i}
                 card={c}
                 faceDown={!isFlipped}
-                size={isCurrent ? 44 : 36}
+                size={isCurrent ? 54 : 44}
                 dim={isFlipped && !isCurrent}
               />
             )
@@ -568,7 +569,7 @@ function BusStage({ state }: { state: State }) {
             key={i}
             card={c}
             faceDown={i > bus.position}
-            size={i === bus.position ? 48 : 34}
+            size={i === bus.position ? 58 : 44}
             dim={i < bus.position}
           />
         ))}

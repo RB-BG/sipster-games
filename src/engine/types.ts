@@ -55,13 +55,16 @@ export interface PlayerState extends PlayerProfile {
   hand: Card[]
 }
 
-/** Beurt in het vragenrondje: één speler, vier vragen op volgorde. */
+/**
+ * Beurt in het vragenrondje. Het rondje gaat per vraag de tafel rond: eerst
+ * beantwoordt iedereen vraag 0, dan iedereen vraag 1, enz. `playerId` is de
+ * speler die nu aan zet is; `questionIndex` de vraag die de hele tafel nu doet.
+ * De eigen tot nu toe opengelegde kaarten staan in `PlayerState.hand`.
+ */
 export interface TurnState {
   playerId: string
   /** De vraag die nu beantwoord moet worden. */
   questionIndex: QuestionIndex
-  /** De tot nu toe opengelegde kaarten deze beurt (== de hand-in-opbouw). */
-  revealed: Card[]
 }
 
 /** Een openstaande claim in de piramide (het afslaan-analoog). */
