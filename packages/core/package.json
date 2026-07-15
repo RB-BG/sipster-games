@@ -8,8 +8,10 @@
     "./seededRng": "./src/lib/seededRng.ts",
     "./sound": "./src/lib/sound.ts",
     "./haptics": "./src/lib/haptics.ts",
+    "./storage": "./src/lib/storage.ts",
     "./useWakeLock": "./src/hooks/useWakeLock.ts",
     "./Coaster": "./src/components/Coaster.tsx",
+    "./effects/DrinkShots": "./src/components/effects/DrinkShots.tsx",
     "./localeStore": "./src/store/localeStore.ts"
   },
   "dependencies": {
@@ -17,6 +19,7 @@
     "@capacitor/core": "^8.4.1",
     "@capacitor/haptics": "^8.0.2",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.40.0",
     "tailwind-merge": "^3.5.0",
     "zustand": "^5.0.14"
   },

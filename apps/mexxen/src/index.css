@@ -3,6 +3,9 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 
+/* Gedeelde @sipster/core-componenten scannen op Tailwind-classes (buiten node_modules-default). */
+@source "../../../packages/core/src";
+
 @custom-variant dark (&:is(.dark *));
 
 /*
@@ -54,6 +57,8 @@
   --color-wood-700: var(--wood-700);
   --color-amber-warm: var(--amber-warm);
   --color-amber-soft: var(--amber-soft);
+  /* Semantisch brand-token voor gedeelde @sipster/core-componenten. */
+  --color-brand-soft: var(--amber-soft);
   --color-ivory: var(--ivory);
   --color-pip: var(--pip);
   --color-coaster: var(--coaster);
