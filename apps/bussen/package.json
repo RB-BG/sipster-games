@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@sipster/core": "*",
     "@base-ui/react": "^1.4.1",
     "@capacitor-community/keep-awake": "^8.0.1",
     "@capacitor/android": "^8.4.1",
