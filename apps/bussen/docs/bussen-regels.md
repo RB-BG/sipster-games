@@ -25,10 +25,12 @@ Uit de rest van het deck wordt een piramide gelegd, standaard vijf rijen groot: 
 
 De host draait één kaart tegelijk om (host-only actie), van onder naar boven. Iedere speler die een kaart met **dezelfde rank** in de hand heeft, mag die claimen: hij legt de kaart neer en deelt het aantal slokken van die rij uit aan een zelfgekozen medespeler.
 
-**Liegen (bluffen), standaard aan als lobby-toggle:** een speler mag een kaart claimen zónder de rank echt te hebben. Zolang het claim-venster open is, mag een andere speler "call bluff" roepen (afslaan). De afhandeling werkt exact als het afslaan-mechanisme uit Mexxen:
+**Elke claim kost een kaart.** Bij het claimen leg je één kaart af (bij een eerlijke claim de kaart van die rank). Die kaart is daarna uit je hand, dus je kunt hooguit zoveel keer uitdelen als je kaarten hebt (na het vragenrondje maximaal vier). Met een lege hand kun je niet meer claimen.
 
-- Betrapte leugenaar (de claim was gelogen): drinkt dubbel (2× de rij-slokken).
-- Valse beschuldiging (de claim was echt): de beschuldiger drinkt dubbel.
+**Liegen (bluffen), standaard aan als lobby-toggle:** een speler mag een kaart claimen zónder de rank echt te hebben. Ook dan leg je een kaart af (dicht), dus liegen kan hooguit vier keer. Zolang het claim-venster open is, mag een andere speler "call bluff" roepen (afslaan). De afhandeling werkt exact als het afslaan-mechanisme uit Mexxen:
+
+- Betrapte leugenaar (de claim was gelogen): drinkt dubbel (2× de rij-slokken). De afgelegde kaart is en blijft weg.
+- Valse beschuldiging (de claim was echt): de beschuldiger drinkt dubbel; de eerlijke claim staat en de slokken worden alsnog uitgedeeld.
 
 Na de laatste omgedraaide kaart wordt de speler (of spelers) met de **meeste kaarten nog in de hand** de buschauffeur. Bij gelijkspel rijden standaard alle gelijk-eindigende spelers de bus.
 

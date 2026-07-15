@@ -161,7 +161,7 @@ describe('piramide claims', () => {
     expect(s.players[1].sipsTotal).toBe(0)
     expect(s.pendingGive).toBeNull()
     expect(s.pyramid?.openClaim).toBeNull()
-    expect(s.players[0].hand.length).toBe(1) // kaart blijft: had 'm niet
+    expect(s.players[0].hand.length).toBe(0) // bluffen legt (dicht) ook een kaart af
   })
 
   it('valse beschuldiging: aanklager drinkt dubbel, eerlijke claim staat', () => {
@@ -173,6 +173,23 @@ describe('piramide claims', () => {
     expect(s.pendingGive).toEqual({ playerId: 'a', amount: 3 }) // give staat nog
     s = step(s, { t: 'GIVE_SIPS', playerId: 'a', targetPlayerId: 'b' }, rng)
     expect(s.players[1].sipsTotal).toBe(9)
+  })
+
+  it('bluffen kost ook een kaart, dus uitdelen is niet oneindig', () => {
+    // A heeft twee kaarten maar geen 10: elke bluf-claim legt er (dicht) eentje af.
+    let s = pyramidGame([card(2, 'clubs'), card(3, 'clubs')], [], 10, 3)
+    s = step(s, { t: 'PLAY_CARD', playerId: 'a', card: card(10, 'hearts') }, rng)
+    expect(s.pyramid?.openClaim?.truthful).toBe(false)
+    expect(s.players[0].hand.length).toBe(1)
+    s = step(s, { t: 'GIVE_SIPS', playerId: 'a', targetPlayerId: 'b' }, rng)
+    s = step(s, { t: 'PLAY_CARD', playerId: 'a', card: card(10, 'hearts') }, rng)
+    expect(s.players[0].hand.length).toBe(0)
+    s = step(s, { t: 'GIVE_SIPS', playerId: 'a', targetPlayerId: 'b' }, rng)
+    // Hand leeg: geen claim meer mogelijk.
+    expect(reduce(s, { t: 'PLAY_CARD', playerId: 'a', card: card(10, 'hearts') }, rng).error).toBe(
+      'INVALID_CARD',
+    )
+    expect(s.players[1].sipsTotal).toBe(6) // twee keer 3 uitgedeeld, daarna stopt het
   })
 
   it('zonder bluf-regel moet de claim waar zijn', () => {

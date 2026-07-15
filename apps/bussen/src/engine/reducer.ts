@@ -263,8 +263,7 @@ function applyGiveSips(
   }
 
   if (draft.phase === 'pyramid' && draft.pyramid?.openClaim) {
-    // Een eerlijke claim wordt afgelegd: de kaart gaat uit de hand.
-    resolveTruthfulClaim(draft)
+    // De claim is afgehandeld; de afgelegde kaart is al bij PLAY_CARD uit de hand gehaald.
     draft.pyramid.openClaim = null
   }
 }
@@ -300,24 +299,20 @@ function flipNextCard(draft: GameState, events: EngineEvent[], rng: DeckSource):
 function applyPlayCard(draft: GameState, playerId: string, card: Card): void {
   const pyramid = draft.pyramid!
   const player = playerById(draft, playerId)
-  const truthful = player.hand.some((c) => c.rank === pyramid.currentRank)
+  const rankIdx = player.hand.findIndex((c) => c.rank === pyramid.currentRank)
+  const truthful = rankIdx >= 0
   pyramid.openClaim = {
     claimantId: playerId,
     card,
     rowValue: pyramid.currentRowValue,
     truthful,
   }
+  // Elke claim kost een kaart: je legt er eentje af (open bij een eerlijke claim, dicht
+  // bij een bluf). Zo kun je maximaal zoveel keer uitdelen als je kaarten hebt, ook
+  // liegen dus hooguit vier keer. Betrapt of niet: de afgelegde kaart is sowieso weg.
+  player.hand.splice(rankIdx >= 0 ? rankIdx : 0, 1)
   // De claimant deelt de rij-slokken uit; hij kiest een doelwit (GIVE_SIPS).
   draft.pendingGive = { playerId, amount: pyramidSips(draft.rules, pyramid.currentRowValue) }
-}
-
-/** Neemt bij een eerlijke claim één kaart van de juiste rank uit de hand. */
-function resolveTruthfulClaim(draft: GameState): void {
-  const claim = draft.pyramid!.openClaim!
-  if (!claim.truthful) return
-  const player = playerById(draft, claim.claimantId)
-  const idx = player.hand.findIndex((c) => c.rank === claim.card.rank)
-  if (idx >= 0) player.hand.splice(idx, 1)
 }
 
 function applyCallBluff(
@@ -338,10 +333,10 @@ function applyCallBluff(
     draft.pendingGive = null
   } else {
     // Valse beschuldiging: de aanklager drinkt dubbel, de eerlijke claim staat.
+    // De geclaimde kaart is al bij PLAY_CARD afgelegd; pendingGive blijft staan
+    // zodat de claimant zijn verdiende slokken nog uitdeelt.
     verdict = 'onterecht'
     drink(draft, byPlayerId, bluffPenalty(rowSips), 'bluf')
-    resolveTruthfulClaim(draft)
-    // pendingGive blijft staan: de claimant deelt zijn verdiende slokken nog uit.
   }
 
   pyramid.openClaim = null

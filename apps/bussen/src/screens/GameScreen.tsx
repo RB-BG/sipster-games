@@ -9,7 +9,7 @@ import ScorePop, { type Pop, type PopKind } from '@/components/effects/ScorePop'
 import { DrinkShotLayer, SHOT_MS, type Hit, type Shot } from '@/components/effects/DrinkShots'
 import Card, { StaticCard } from '@/cards/Card'
 import { flatFlipOrder } from '@/engine/pyramid'
-import type { AnswerChoice, Card as CardValue, Rank, Suit } from '@/engine/types'
+import type { AnswerChoice, Card as CardValue, PlayerState, Rank, Suit } from '@/engine/types'
 import { useGameAdapter } from '@/hooks/useGameAdapter'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { useStrings } from '@/store/localeStore'
@@ -495,7 +495,10 @@ function PyramidActions({
 
   const rank = pyramid.currentRank
   const canFlip = pyramid.flipIndex < total
-  const claimers = rank !== null ? state.players.filter((p) => canAct(p.id)) : []
+  const claimers =
+    rank !== null
+      ? state.players.filter((p) => canAct(p.id) && canClaim(p, rank, state.rules.bluffen))
+      : []
 
   return (
     <>
@@ -540,6 +543,16 @@ function PyramidActions({
       )}
     </>
   )
+}
+
+/**
+ * Mag deze speler nu claimen? Elke claim legt een kaart af, dus met een lege hand
+ * kan het niet meer. Zonder de bluf-regel moet de rank ook echt in de hand zitten.
+ */
+function canClaim(player: PlayerState, rank: Rank, bluffen: boolean): boolean {
+  if (player.hand.length === 0) return false
+  if (bluffen) return true
+  return player.hand.some((c) => c.rank === rank)
 }
 
 /** Kies een kaart van de gevraagde rank uit de hand; bluf pakt een willekeurige suit. */
