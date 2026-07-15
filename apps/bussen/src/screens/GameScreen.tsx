@@ -42,6 +42,9 @@ export default function GameScreen() {
 
   useWakeLock()
 
+  // Tik op een spelerchip om (open) zijn kaarten te bekijken en claims te controleren.
+  const [inspectId, setInspectId] = useState<string | null>(null)
+
   const stateRef = useRef(state)
   useEffect(() => {
     stateRef.current = state
@@ -212,11 +215,18 @@ export default function GameScreen() {
             animate={hits.some((h) => h.playerId === player.id) ? { scale: [1, 1.2, 1] } : { scale: 1 }}
             transition={{ duration: 0.4 }}
           >
-            <PlayerChip
-              player={player}
-              active={player.id === state.turn?.playerId}
-              driver={state.bus?.driverIds.includes(player.id) ?? false}
-            />
+            <button
+              type="button"
+              onClick={() => setInspectId(player.id)}
+              aria-label={strings.handTitle(player.name)}
+              className="block active:scale-95"
+            >
+              <PlayerChip
+                player={player}
+                active={player.id === state.turn?.playerId}
+                driver={state.bus?.driverIds.includes(player.id) ?? false}
+              />
+            </button>
           </motion.div>
         ))}
       </div>
@@ -286,6 +296,11 @@ export default function GameScreen() {
         </section>
       )}
 
+      <HandInspector
+        player={state.players.find((p) => p.id === inspectId) ?? null}
+        onClose={() => setInspectId(null)}
+      />
+
       <DrinkShotLayer shots={shots} hits={hits} />
       <ScorePop pop={pop} />
     </main>
@@ -313,6 +328,43 @@ function Overlay({ children }: { children: React.ReactNode }) {
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center bg-night-950/70 p-4">
       {children}
+    </div>
+  )
+}
+
+/** Toont de kaarten van één speler in een modaltje; tik buiten of op Sluit om te sluiten. */
+function HandInspector({ player, onClose }: { player: PlayerState | null; onClose: () => void }) {
+  const strings = useStrings()
+  if (!player) return null
+  return (
+    <div
+      className="absolute inset-0 z-30 flex items-center justify-center bg-night-950/80 p-4"
+      onClick={onClose}
+    >
+      <div onClick={(e) => e.stopPropagation()}>
+        <Coaster className="flex w-64 flex-col items-center gap-3 text-center">
+          <p className="text-lg font-semibold text-cyan-soft">
+            {player.emoji} {strings.handTitle(player.name)}
+          </p>
+          {player.hand.length > 0 ? (
+            <div className="flex flex-wrap justify-center gap-1.5">
+              {player.hand.map((c, i) => (
+                <StaticCard key={i} card={c} size={56} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">{strings.handEmpty}</p>
+          )}
+          <p className="text-xs text-muted-foreground">{player.sipsTotal} 🍺</p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground active:scale-95"
+          >
+            {strings.close}
+          </button>
+        </Coaster>
+      </div>
     </div>
   )
 }
