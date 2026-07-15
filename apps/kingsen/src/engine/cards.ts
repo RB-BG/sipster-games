@@ -7,34 +7,6 @@ export function color(card: Card): 'red' | 'black' {
   return card.suit === 'hearts' || card.suit === 'diamonds' ? 'red' : 'black'
 }
 
-/** Positief als a hoger is dan b, negatief als lager, 0 bij gelijke rank. */
-export function compareRank(a: Card, b: Card): number {
-  return a.rank - b.rank
-}
-
-export function isHigher(card: Card, than: Card): boolean {
-  return card.rank > than.rank
-}
-
-export function isLower(card: Card, than: Card): boolean {
-  return card.rank < than.rank
-}
-
-/**
- * Ligt de rank van `card` strikt tussen a en b in? De grenzen tellen niet mee
- * (rand = buiten), en de volgorde van a en b maakt niet uit.
- */
-export function isInside(card: Card, a: Card, b: Card): boolean {
-  const low = Math.min(a.rank, b.rank)
-  const high = Math.max(a.rank, b.rank)
-  return card.rank > low && card.rank < high
-}
-
-/** Komt de suit van `card` voor tussen de opgegeven kaarten? */
-export function sameSuit(card: Card, among: Card[]): boolean {
-  return among.some((c) => c.suit === card.suit)
-}
-
 const RANK_LABELS: Record<Rank, string> = {
   2: '2',
   3: '3',

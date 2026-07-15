@@ -5,17 +5,11 @@ import RulesExplainer from '@/components/RulesExplainer'
 import type { RuleConfig } from '@/engine/types'
 import { useStrings } from '@/store/localeStore'
 
-const TOGGLE_KEYS = ['bluffen'] as const
-
 interface RulesEditorProps {
   rules: RuleConfig
   /** Alleen-lezen weergave (guests in de lobby). */
   disabled?: boolean
   onChange: (patch: Partial<RuleConfig>) => void
-  /** Toggles die in deze modus geen zin hebben. */
-  hideKeys?: readonly (typeof TOGGLE_KEYS)[number][]
-  /** Kleine voetnoot onder de toggles. */
-  note?: string
 }
 
 /** Stepper voor een numerieke regel. */
@@ -61,7 +55,7 @@ function Stepper({
 }
 
 /** De regelset-instellingen, gedeeld door de P2P-lobby en de hotseat-setup. */
-export default function RulesEditor({ rules, disabled, onChange, hideKeys, note }: RulesEditorProps) {
+export default function RulesEditor({ rules, disabled, onChange }: RulesEditorProps) {
   const strings = useStrings()
   return (
     <Coaster className="flex flex-col gap-3">
@@ -75,29 +69,6 @@ export default function RulesEditor({ rules, disabled, onChange, hideKeys, note 
         disabled={disabled}
         onChange={(v) => onChange({ standaardSlokken: v })}
       />
-      <Stepper
-        label={strings.ruleLabels.busLengte}
-        value={rules.busLengte}
-        min={2}
-        max={8}
-        disabled={disabled}
-        onChange={(v) => onChange({ busLengte: v })}
-      />
-
-      {TOGGLE_KEYS.filter((key) => !hideKeys?.includes(key)).map((key) => (
-        <label key={key} className="flex items-center justify-between text-ivory">
-          <span>{strings.ruleLabels[key]}</span>
-          <input
-            type="checkbox"
-            checked={rules[key]}
-            disabled={disabled}
-            onChange={(e) => onChange({ [key]: e.target.checked })}
-            className="size-5 accent-cyan"
-          />
-        </label>
-      ))}
-
-      {note && <p className="text-xs text-muted-foreground">{note}</p>}
 
       <details className="text-sm text-muted-foreground">
         <summary className="cursor-pointer">{strings.rulesExplainTitle}</summary>

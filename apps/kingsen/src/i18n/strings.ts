@@ -1,5 +1,55 @@
 // Copyright © 2026 Kingsen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
+import type { Rank } from '@/engine/types'
+
+/**
+ * De kaartacties per rang. De namen en instructies volgen `docs/kingsen-regels.md`.
+ * Los van het `nl`/`en`-object gehouden zodat de functies er netjes uit kunnen putten.
+ */
+interface CardText {
+  name: string
+  instruction: string
+}
+
+const CARD_NL: Record<Rank, CardText> = {
+  2: { name: 'Jij', instruction: 'Wijs iemand aan; die drinkt.' },
+  3: { name: 'Ik', instruction: 'Je drinkt zelf.' },
+  4: { name: 'Vrouwen', instruction: 'Alle vrouwen drinken.' },
+  5: { name: 'Maatje', instruction: 'Kies een drinkmaatje; die drinkt met je mee tot de volgende 5.' },
+  6: { name: 'Mannen', instruction: 'Alle mannen drinken.' },
+  7: { name: 'Hemel', instruction: 'Iedereen steekt zijn hand omhoog; de laatste drinkt.' },
+  8: { name: 'Categorie', instruction: 'Noem een categorie. Om de beurt een voorbeeld; wie faalt of herhaalt, drinkt.' },
+  9: { name: 'Rijmen', instruction: 'Zeg een woord. Om de beurt rijmen; wie faalt, drinkt.' },
+  10: { name: 'Nieuwe regel', instruction: 'Verzin een regel die de rest van het potje geldt.' },
+  11: { name: 'Duimmeester', instruction: 'Leg ongemerkt je duim op tafel; de laatste die volgt, drinkt. Geldt de rest van het potje.' },
+  12: { name: 'Vraagmeester', instruction: 'Stel spelers vragen; wie antwoordt, drinkt. Geldt de rest van het potje.' },
+  13: { name: "King's Cup", instruction: 'Schenk slokken in het glas. De 4e koning drinkt het glas leeg: einde potje.' },
+  14: { name: 'Waterval', instruction: 'Iedereen drinkt tegelijk; stoppen mag pas als de speler vóór je stopt.' },
+}
+
+const CARD_EN: Record<Rank, CardText> = {
+  2: { name: 'You', instruction: 'Point at someone; they drink.' },
+  3: { name: 'Me', instruction: 'You drink.' },
+  4: { name: 'Women', instruction: 'All women drink.' },
+  5: { name: 'Mate', instruction: 'Pick a drinking mate who drinks along until the next 5.' },
+  6: { name: 'Men', instruction: 'All men drink.' },
+  7: { name: 'Heaven', instruction: 'Everyone raises a hand; the last one drinks.' },
+  8: { name: 'Category', instruction: 'Name a category. Take turns naming one; whoever fails or repeats, drinks.' },
+  9: { name: 'Rhyme', instruction: 'Say a word. Take turns rhyming; whoever fails, drinks.' },
+  10: { name: 'New rule', instruction: 'Make up a rule for the rest of the game.' },
+  11: { name: 'Thumb master', instruction: 'Sneak your thumb onto the table; the last to follow drinks. Lasts the whole game.' },
+  12: { name: 'Question master', instruction: 'Ask players questions; whoever answers, drinks. Lasts the whole game.' },
+  13: { name: "King's Cup", instruction: 'Pour sips into the glass. The 4th king drinks it dry: game over.' },
+  14: { name: 'Waterfall', instruction: 'Everyone drinks at once; you may stop only after the player before you does.' },
+}
+
+/** Roltekentje bij de spelerchip (taal-neutraal). */
+function roleBadgeFor(rank: Rank): string {
+  if (rank === 11) return '👍'
+  if (rank === 12) return '❓'
+  return ''
+}
+
 /**
  * Alle UI-teksten centraal. Geen i18n-lib: `nl` is de bron, `type Strings` is
  * afgeleid uit `nl` en dwingt elke andere taal af tot dezelfde keys en
@@ -7,7 +57,7 @@
  * letterlijke types worden en kon geen enkele vertaling het type halen.
  */
 export const nl = {
-  appName: 'Bussen',
+  appName: 'Kingsen',
   tagline: 'Het kaart-borrelspel, op je telefoon',
   createTable: 'Maak een tafel',
   joinTable: 'Doe mee',
@@ -24,91 +74,32 @@ export const nl = {
   turnOf: 'is aan de beurt',
   passPhone: (name: string) => `Geef de telefoon aan ${name}`,
   dealing: 'kaart wordt gedraaid…',
-  cardsLeft: (n: number) => (n === 1 ? '1 kaart' : `${n} kaarten`),
-
-  // Vragenrondje
-  questionsPhase: 'Vragenrondje',
-  questionTitle: (i: number): string =>
-    ['Rood of zwart?', 'Hoger of lager?', 'Binnen of buiten?', 'Heb je deze kleur al?'][i] ?? '',
-  questionSub: (i: number): string =>
-    [
-      'raad de kleur van de kaart',
-      'hoger of lager dan de vorige kaart (gelijk = fout)',
-      'valt de kaart tussen je vorige twee in?',
-      'heb je deze kleursoort al in je hand?',
-    ][i] ?? '',
-  answerLabel: (choice: string): string =>
-    (
-      ({
-        rood: 'Rood',
-        zwart: 'Zwart',
-        hoger: 'Hoger',
-        lager: 'Lager',
-        binnen: 'Binnen',
-        buiten: 'Buiten',
-        heb: 'Heb ik',
-        niet: 'Heb ik niet',
-      }) as Record<string, string>
-    )[choice] ?? choice,
-
-  // Slokken uitdelen
-  giveTitle: (n: number) => `Deel ${n} ${n === 1 ? 'slok' : 'slokken'} uit aan:`,
-  waitingForGive: (name: string) => `${name} deelt slokken uit…`,
-
-  // Piramide
-  pyramidPhase: 'De piramide',
   flipCard: 'Draai de volgende kaart',
-  pyramidHint: 'Heb je deze rank? Claim en deel slokken uit, of bluf erop los.',
-  claimRank: (rank: string) => `Claim een ${rank}`,
-  claim: 'Claim',
-  callBluff: 'Call bluff!',
-  startBus: 'Start de bus',
-  driverIs: (names: string) => `${names} rijdt de bus`,
-  waitingForFlip: 'De host draait de kaarten om…',
+  waitingForFlip: (name: string) => `${name} draait de kaart…`,
 
-  // Bus
-  busPhase: 'De bus',
-  busDriver: (name: string) => `${name} rijdt de bus`,
-  higher: 'Hoger',
-  lower: 'Lager',
-  busPosition: (pos: number, total: number) => `kaart ${pos} van ${total}`,
-  busResetMsg: 'Fout! De bus begint opnieuw',
-  waitingForBus: (name: string) => `${name} rijdt de bus…`,
+  // Kaartacties
+  cardName: (rank: Rank) => CARD_NL[rank].name,
+  cardInstruction: (rank: Rank) => CARD_NL[rank].instruction,
+  roleBadge: (rank: Rank) => roleBadgeFor(rank),
+  activeRulesTitle: 'Regels op tafel',
 
-  // Call bluff / knallen
-  bluffVerdict: (name: string, verdict: string): string =>
-    verdict === 'betrapt'
-      ? `${name} is betrapt: dubbel drinken`
-      : 'Valse beschuldiging: dubbel drinken',
-  popText: (kind: string, name: string): string => {
-    switch (kind) {
-      case 'correct':
-        return 'Goed! Deel slokken uit'
-      case 'fout':
-        return 'Fout, drinken!'
-      case 'bluf-betrapt':
-        return `${name} loog: dubbel drinken`
-      case 'bluf-mis':
-        return 'Valse beschuldiging: dubbel'
-      case 'bus-af':
-        return 'Bus af! Opnieuw beginnen'
-      case 'bus-uit':
-        return 'De bus is uit!'
-      default:
-        return ''
-    }
-  },
+  // King's Cup
+  cupTitle: "King's Cup",
+  cupSips: (n: number) => (n === 1 ? '1 slok in het glas' : `${n} slokken in het glas`),
+  kingsCount: (n: number) => `Koning ${n} van 4`,
+  pourPrompt: 'Schenk slokken in het glas',
+  pour: 'Schenk in',
+  drinkCup: (n: number) =>
+    n === 1 ? 'Drink het glas leeg (1 slok)' : `Drink het glas leeg (${n} slokken)`,
+
+  // Nieuwe regel
+  ruleInputPrompt: 'Verzin een nieuwe regel',
+  rulePlaceholder: 'Bv. niet vloeken',
+  saveRule: 'Vastleggen',
 
   // Einde
-  finalTitle: 'Eindstand',
-  wettest: (name: string) => `${name} heeft de natste keel`,
-  sips: 'slokken',
-  drinks: (n: number) => (n === 1 ? 'drinkt 1 slok' : `drinkt ${n} slokken`),
+  finalTitle: 'Einde potje',
   backHome: 'Terug naar start',
-
-  // Kaarten van een speler bekijken (tik op de chip)
-  handTitle: (name: string) => `Kaarten van ${name}`,
-  handEmpty: 'Geen kaarten meer',
   close: 'Sluit',
 
   // Lobby & netwerk
@@ -132,42 +123,29 @@ export const nl = {
   soundOff: 'geluid uit',
   stopGame: 'Stop het potje',
   endGame: 'Sluit het potje af',
-  sipsLogTitle: 'Slokken-log',
-  sipReasons: {
-    fout: 'fout geraden',
-    gekregen: 'gekregen',
-    bluf: 'bluf',
-    bus: 'bus',
-  } as Record<string, string>,
   yourName: 'Jouw naam',
   codePlaceholder: 'Code (bv. ABCD)',
   makeTable: 'Maak tafel',
   joinNow: 'Doe mee',
   connecting: 'Verbinden…',
   rulesTitle: 'Regels',
-  rulesExplainTitle: 'Hoe werkt bussen?',
+  rulesExplainTitle: 'Hoe werkt Kingsen?',
   rulesExplain: [
     [
-      'Vragenrondje',
-      'Elke speler beantwoordt vier vragen: rood of zwart, hoger of lager, binnen of buiten, en heb je de kleur al. Goed geraden: jij deelt slokken uit (1, 2, 3 of 4). Fout: jij drinkt. De vier kaarten blijven je hand voor de piramide.',
+      'De cirkel',
+      'Alle 52 kaarten liggen gesloten in een cirkel rond een glas. Om de beurt draai je met de klok mee een kaart om en voer je de actie uit.',
     ],
     [
-      'Piramide',
-      'De host draait de piramide kaart voor kaart om, van onder (1 slok) naar boven (5 slokken). Heb je die rank in je hand? Claim de kaart en deel de slokken van die rij uit.',
+      'De kaarten',
+      'Elke rang heeft een eigen actie: Jij, Ik, Vrouwen, Mannen, Hemel, Categorie, Rijmen, Waterval, en meer. Sommige kaarten leveren een blijvende regel of rol op (nieuwe regel, duimmeester, vraagmeester) die op tafel blijft staan.',
     ],
     [
-      'Liegen',
-      'Met de bluf-regel mag je claimen zonder de kaart. Betrapt iemand je met call bluff, dan drink je dubbel. Zit de beschuldiger ernaast, dan drinkt die dubbel.',
-    ],
-    [
-      'De bus',
-      'Wie na de piramide de meeste kaarten overhoudt, rijdt de bus: gok hoger of lager voor elke volgende kaart. Fout betekent drinken en opnieuw beginnen; alles goed en de bus is uitgereden.',
+      "King's Cup",
+      'Bij elke koning schenk je een aantal slokken in het centrale glas. De 4e koning drinkt het volle glas in één keer leeg, en dan is het potje voorbij.',
     ],
   ] as [string, string][],
   ruleLabels: {
     standaardSlokken: 'Slokken-eenheid',
-    busLengte: 'Lengte van de bus',
-    bluffen: 'Liegen (bluffen) toestaan',
   },
   net: {
     hostFailed: 'Tafel maken lukt niet; check je internet en probeer opnieuw',
@@ -182,16 +160,12 @@ export const nl = {
     NOT_ENOUGH_PLAYERS: 'Minstens twee spelers nodig',
     ALREADY_JOINED: 'Die speler doet al mee',
     UNKNOWN_PLAYER: 'Onbekende speler',
-    PENDING_GIVE: 'Eerst je slokken uitdelen',
-    NOT_PENDING_GIVE: 'Je hebt geen slokken uit te delen',
-    INVALID_CHOICE: 'Ongeldige keuze',
-    INVALID_CARD: 'Die kaart kan niet',
-    INVALID_TARGET: 'Kies een andere speler',
-    NO_OPEN_CLAIM: 'Er staat geen claim open',
-    CLAIM_IN_PROGRESS: 'Er loopt al een claim',
-    NOTHING_TO_FLIP: 'De piramide is helemaal omgedraaid',
-    NOT_A_DRIVER: 'Alleen de buschauffeur mag gokken',
+    PENDING_INPUT: 'Handel eerst de open kaart af',
+    NOT_PENDING: 'Er staat niets open',
+    NOTHING_TO_FLIP: 'Geen kaarten meer om te draaien',
     INVALID_RULES: 'Ongeldige instellingen',
+    INVALID_AMOUNT: 'Ongeldig aantal slokken',
+    INVALID_TEXT: 'Vul een regel in',
   } as Record<string, string>,
 }
 
@@ -201,7 +175,7 @@ export const nl = {
  * nalezen.
  */
 const en: Strings = {
-  appName: 'Bussen',
+  appName: 'Kingsen',
   tagline: 'The card drinking game, on your phone',
   createTable: 'Create a table',
   joinTable: 'Join',
@@ -216,84 +190,27 @@ const en: Strings = {
   turnOf: 'is up',
   passPhone: (name) => `Pass the phone to ${name}`,
   dealing: 'flipping the card…',
-  cardsLeft: (n) => (n === 1 ? '1 card' : `${n} cards`),
-
-  questionsPhase: 'Question round',
-  questionTitle: (i) =>
-    ['Red or black?', 'Higher or lower?', 'Inside or outside?', 'Got this suit already?'][i] ?? '',
-  questionSub: (i) =>
-    [
-      'guess the colour of the card',
-      'higher or lower than the last card (tie = wrong)',
-      'does the card fall between your last two?',
-      'do you already hold this suit?',
-    ][i] ?? '',
-  answerLabel: (choice) =>
-    (
-      ({
-        rood: 'Red',
-        zwart: 'Black',
-        hoger: 'Higher',
-        lager: 'Lower',
-        binnen: 'Inside',
-        buiten: 'Outside',
-        heb: 'I have it',
-        niet: 'I do not',
-      }) as Record<string, string>
-    )[choice] ?? choice,
-
-  giveTitle: (n) => `Hand out ${n} ${n === 1 ? 'sip' : 'sips'} to:`,
-  waitingForGive: (name) => `${name} is handing out sips…`,
-
-  pyramidPhase: 'The pyramid',
   flipCard: 'Flip the next card',
-  pyramidHint: 'Got this rank? Claim it and hand out sips, or bluff.',
-  claimRank: (rank) => `Claim a ${rank}`,
-  claim: 'Claim',
-  callBluff: 'Call bluff!',
-  startBus: 'Start the bus',
-  driverIs: (names) => `${names} rides the bus`,
-  waitingForFlip: 'The host is flipping the cards…',
+  waitingForFlip: (name) => `${name} is flipping the card…`,
 
-  busPhase: 'The bus',
-  busDriver: (name) => `${name} rides the bus`,
-  higher: 'Higher',
-  lower: 'Lower',
-  busPosition: (pos, total) => `card ${pos} of ${total}`,
-  busResetMsg: 'Wrong! The bus starts over',
-  waitingForBus: (name) => `${name} is riding the bus…`,
+  cardName: (rank) => CARD_EN[rank].name,
+  cardInstruction: (rank) => CARD_EN[rank].instruction,
+  roleBadge: (rank) => roleBadgeFor(rank),
+  activeRulesTitle: 'Rules on the table',
 
-  bluffVerdict: (name, verdict) =>
-    verdict === 'betrapt'
-      ? `${name} got caught: drink double`
-      : 'False accusation: drink double',
-  popText: (kind, name) => {
-    switch (kind) {
-      case 'correct':
-        return 'Correct! Hand out sips'
-      case 'fout':
-        return 'Wrong, drink!'
-      case 'bluf-betrapt':
-        return `${name} lied: drink double`
-      case 'bluf-mis':
-        return 'False accusation: double'
-      case 'bus-af':
-        return 'Bus crashed! Start over'
-      case 'bus-uit':
-        return 'The bus is home!'
-      default:
-        return ''
-    }
-  },
+  cupTitle: "King's Cup",
+  cupSips: (n) => (n === 1 ? '1 sip in the glass' : `${n} sips in the glass`),
+  kingsCount: (n) => `King ${n} of 4`,
+  pourPrompt: 'Pour sips into the glass',
+  pour: 'Pour',
+  drinkCup: (n) => (n === 1 ? 'Down the glass (1 sip)' : `Down the glass (${n} sips)`),
 
-  finalTitle: 'Final score',
-  wettest: (name) => `${name} has the wettest whistle`,
-  sips: 'sips',
-  drinks: (n) => (n === 1 ? 'drinks 1 sip' : `drinks ${n} sips`),
+  ruleInputPrompt: 'Make up a new rule',
+  rulePlaceholder: 'E.g. no swearing',
+  saveRule: 'Save',
+
+  finalTitle: 'Game over',
   backHome: 'Back to start',
-
-  handTitle: (name) => `${name}'s cards`,
-  handEmpty: 'No cards left',
   close: 'Close',
 
   lobbyTitle: 'Table',
@@ -316,42 +233,29 @@ const en: Strings = {
   soundOff: 'sound off',
   stopGame: 'Stop the game',
   endGame: 'End the game',
-  sipsLogTitle: 'Sips log',
-  sipReasons: {
-    fout: 'guessed wrong',
-    gekregen: 'received',
-    bluf: 'bluff',
-    bus: 'bus',
-  },
   yourName: 'Your name',
   codePlaceholder: 'Code (e.g. ABCD)',
   makeTable: 'Create table',
   joinNow: 'Join',
   connecting: 'Connecting…',
   rulesTitle: 'Rules',
-  rulesExplainTitle: 'How does bussen work?',
+  rulesExplainTitle: 'How does Kingsen work?',
   rulesExplain: [
     [
-      'Question round',
-      'Each player answers four questions: red or black, higher or lower, inside or outside, and do you already hold the suit. Correct: you hand out sips (1, 2, 3 or 4). Wrong: you drink. The four cards stay your hand for the pyramid.',
+      'The circle',
+      'All 52 cards lie face down in a circle around a glass. Take turns, clockwise, flipping a card and performing its action.',
     ],
     [
-      'Pyramid',
-      'The host flips the pyramid card by card, from the bottom (1 sip) to the top (5 sips). Hold that rank? Claim the card and hand out that row of sips.',
+      'The cards',
+      'Each rank has its own action: You, Me, Women, Men, Heaven, Category, Rhyme, Waterfall, and more. Some cards create a lasting rule or role (new rule, thumb master, question master) that stays on the table.',
     ],
     [
-      'Bluffing',
-      'With the bluff rule you may claim without the card. If someone calls your bluff, you drink double. If the accuser is wrong, they drink double.',
-    ],
-    [
-      'The bus',
-      'Whoever holds the most cards after the pyramid rides the bus: guess higher or lower for each next card. Wrong means drink and start over; all right and the bus is home.',
+      "King's Cup",
+      'On each king you pour sips into the central glass. The 4th king downs the full glass in one go, and the game is over.',
     ],
   ],
   ruleLabels: {
     standaardSlokken: 'Sip unit',
-    busLengte: 'Bus length',
-    bluffen: 'Allow bluffing',
   },
   net: {
     hostFailed: 'Could not create the table; check your internet and try again',
@@ -365,16 +269,12 @@ const en: Strings = {
     NOT_ENOUGH_PLAYERS: 'At least two players needed',
     ALREADY_JOINED: 'That player is already in',
     UNKNOWN_PLAYER: 'Unknown player',
-    PENDING_GIVE: 'Hand out your sips first',
-    NOT_PENDING_GIVE: 'You have no sips to hand out',
-    INVALID_CHOICE: 'Invalid choice',
-    INVALID_CARD: 'That card is not allowed',
-    INVALID_TARGET: 'Pick another player',
-    NO_OPEN_CLAIM: 'There is no open claim',
-    CLAIM_IN_PROGRESS: 'A claim is already in progress',
-    NOTHING_TO_FLIP: 'The pyramid is fully flipped',
-    NOT_A_DRIVER: 'Only the bus driver may guess',
+    PENDING_INPUT: 'Resolve the open card first',
+    NOT_PENDING: 'Nothing is open',
+    NOTHING_TO_FLIP: 'No cards left to flip',
     INVALID_RULES: 'Invalid settings',
+    INVALID_AMOUNT: 'Invalid number of sips',
+    INVALID_TEXT: 'Enter a rule',
   },
 }
 

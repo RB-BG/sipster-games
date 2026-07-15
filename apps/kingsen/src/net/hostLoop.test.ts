@@ -1,10 +1,9 @@
 // Copyright © 2026 Kingsen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
 import { describe, expect, it } from 'vitest'
-import { orderedDeck, scriptedDeck, type DeckSource } from '@/engine/deck'
-import type { AnswerChoice } from '@/engine/types'
+import { card, orderedDeck, scriptedDeck, type DeckSource } from '@/engine/deck'
 import type { GameEvent } from '@/protocol/messages'
-import { createHostLoop, type HostLoop } from './hostLoop'
+import { createHostLoop } from './hostLoop'
 import type { HostTransport } from './transport'
 
 interface FakeTransport extends HostTransport {
@@ -26,7 +25,7 @@ function fakeTransport(livePeers: Set<string> = new Set()): FakeTransport {
   }
 }
 
-const HOST = { id: 'host-1', name: 'Ruben', emoji: '🃏' }
+const HOST = { id: 'host-1', name: 'Ruben', emoji: '👑' }
 const GUEST = { id: 'guest-1', name: 'Sanne', emoji: '🍺' }
 
 function setup(rng: DeckSource = scriptedDeck(orderedDeck()), livePeers?: Set<string>) {
@@ -34,28 +33,6 @@ function setup(rng: DeckSource = scriptedDeck(orderedDeck()), livePeers?: Set<st
   const states: number[] = []
   const loop = createHostLoop(transport, HOST, (s) => states.push(s.version), rng)
   return { transport, loop, states }
-}
-
-/**
- * Speel het vragenrondje (rondje per vraag) uit tot de piramide. Antwoorden
- * kunnen soms goed zijn; een openstaande give wordt dan meteen afgehandeld.
- */
-function driveToPyramid(loop: HostLoop): void {
-  const wrong: AnswerChoice[] = ['zwart', 'lager', 'binnen', 'niet']
-  const act = (playerId: string, intent: Parameters<HostLoop['dispatchLocal']>[0]) => {
-    if (playerId === HOST.id) loop.dispatchLocal(intent)
-    else loop.handleIntent('peer-a', intent)
-  }
-  while (loop.state.phase === 'questions') {
-    const give = loop.state.pendingGive
-    if (give) {
-      const target = loop.state.players.find((p) => p.id !== give.playerId)!.id
-      act(give.playerId, { t: 'GIVE_SIPS', targetPlayerId: target })
-      continue
-    }
-    const turn = loop.state.turn!
-    act(turn.playerId, { t: 'ANSWER', choice: wrong[turn.questionIndex] })
-  }
 }
 
 describe('hostLoop lobby', () => {
@@ -95,14 +72,14 @@ describe('hostLoop lobby', () => {
 
   it('een onbekende peer krijgt een foutmelding', () => {
     const { transport, loop } = setup()
-    loop.handleIntent('peer-x', { t: 'ANSWER', choice: 'rood' })
+    loop.handleIntent('peer-x', { t: 'FLIP_CARD' })
     expect(transport.sent[0]?.event).toEqual({ t: 'ERROR', code: 'UNKNOWN_PLAYER' })
   })
 
   it('alleen de host mag regels wijzigen', () => {
     const { transport, loop } = setup()
     loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
-    const rules = { ...loop.state.rules, standaardSlokken: 4 }
+    const rules = { standaardSlokken: 4 }
 
     loop.handleIntent('peer-a', { t: 'SET_RULES', rules })
     expect(loop.state.rules.standaardSlokken).toBe(1)
@@ -114,20 +91,21 @@ describe('hostLoop lobby', () => {
 })
 
 describe('hostLoop in-game', () => {
-  it('host start het spel; de actieve speler kan antwoorden, de rest niet', () => {
+  it('host start het spel; de actieve speler kan flippen, de rest niet', () => {
     const { transport, loop } = setup()
     loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
     loop.dispatchLocal({ t: 'START_GAME' })
-    expect(loop.state.phase).toBe('questions')
+    expect(loop.state.phase).toBe('playing')
+    expect(loop.state.turn?.playerId).toBe('host-1')
 
     // Guest is niet aan de beurt (host begint).
-    loop.handleIntent('peer-a', { t: 'ANSWER', choice: 'rood' })
+    loop.handleIntent('peer-a', { t: 'FLIP_CARD' })
     expect(transport.sent.at(-1)?.event).toEqual({ t: 'ERROR', code: 'NOT_YOUR_TURN' })
 
-    // Host antwoordt: eerst een CARD_EVENT voor de animatie, daarna STATE.
+    // Host flipt: eerst een CARD_EVENT voor de animatie, daarna STATE.
     transport.broadcasts.length = 0
-    loop.dispatchLocal({ t: 'ANSWER', choice: 'rood' })
-    expect(transport.broadcasts[0]).toMatchObject({ t: 'CARD_EVENT', kind: 'deal' })
+    loop.dispatchLocal({ t: 'FLIP_CARD' })
+    expect(transport.broadcasts[0]).toMatchObject({ t: 'CARD_EVENT', kind: 'flip' })
     expect(transport.broadcasts.at(-1)?.t).toBe('STATE')
   })
 
@@ -158,35 +136,23 @@ describe('hostLoop in-game', () => {
     expect(loop.state.players[1].connected).toBe(false)
   })
 
-  it('flippen is host-only; een claim van een guest wordt verwerkt en gebroadcast', () => {
-    const { transport, loop } = setup()
+  it('een koning opent de cup-invoer; de actieve speler vult hem', () => {
+    // Deck met een koning bovenaan zodat de eerste flip de cup opent.
+    const deck = [card(13, 'spades'), card(3, 'hearts'), card(6, 'clubs')]
+    const { transport, loop } = setup(scriptedDeck(deck))
     loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
     loop.dispatchLocal({ t: 'START_GAME' })
-    driveToPyramid(loop)
-    expect(loop.state.phase).toBe('pyramid')
 
-    // Guest mag niet flippen.
-    loop.handleIntent('peer-a', { t: 'FLIP_PYRAMID' })
-    expect(transport.sent.at(-1)?.event).toEqual({ t: 'ERROR', code: 'NOT_YOUR_TURN' })
-    expect(loop.state.pyramid?.flipIndex).toBe(0)
-
-    // Host flipt: CARD_EVENT (flip) + STATE.
     transport.broadcasts.length = 0
-    loop.dispatchLocal({ t: 'FLIP_PYRAMID' })
+    loop.dispatchLocal({ t: 'FLIP_CARD' })
     expect(transport.broadcasts[0]).toMatchObject({ t: 'CARD_EVENT', kind: 'flip' })
-    const rank = loop.state.pyramid!.currentRank!
+    expect(loop.state.kingsDrawn).toBe(1)
+    expect(loop.state.pending).toEqual({ kind: 'cup', playerId: 'host-1' })
 
-    // Guest claimt de opengedraaide rank (mag met de bluf-regel, ook zonder de kaart).
-    transport.broadcasts.length = 0
-    loop.handleIntent('peer-a', { t: 'PLAY_CARD', card: { rank, suit: 'spades' } })
-    expect(loop.state.pyramid?.openClaim?.claimantId).toBe('guest-1')
-    expect(transport.broadcasts.at(-1)?.t).toBe('STATE')
-
-    // Host roept call bluff: BLUFF_EVENT + STATE, claim afgehandeld.
-    transport.broadcasts.length = 0
-    loop.dispatchLocal({ t: 'CALL_BLUFF', targetPlayerId: 'guest-1' })
-    expect(transport.broadcasts.some((e) => e.t === 'BLUFF_EVENT')).toBe(true)
-    expect(loop.state.pyramid?.openClaim).toBeNull()
+    loop.dispatchLocal({ t: 'ADD_TO_CUP', amount: 5 })
+    expect(loop.state.cup).toBe(5)
+    expect(loop.state.pending).toBeNull()
+    expect(loop.state.turn?.playerId).toBe('guest-1')
   })
 
   it('de host-stoel is niet via JOIN te kapen', () => {
@@ -221,7 +187,7 @@ describe('hostLoop in-game', () => {
     expect(loop.state.players[1].connected).toBe(true)
   })
 
-  it('FORFEIT_TURN slaat de actieve speler in het vragenrondje over', () => {
+  it('FORFEIT_TURN slaat de actieve speler over', () => {
     const { loop } = setup()
     loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
     loop.dispatchLocal({ t: 'START_GAME' })

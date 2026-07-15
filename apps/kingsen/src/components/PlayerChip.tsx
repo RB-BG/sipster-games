@@ -6,11 +6,11 @@ import { cn } from '@/lib/utils'
 interface PlayerChipProps {
   player: PlayerState
   active: boolean
-  /** Toont het bus-icoon als deze speler de bus rijdt. */
-  driver?: boolean
+  /** Optioneel roltekentje (bv. 👍 duimmeester, ❓ vraagmeester). */
+  badge?: string
 }
 
-export default function PlayerChip({ player, active, driver }: PlayerChipProps) {
+export default function PlayerChip({ player, active, badge }: PlayerChipProps) {
   return (
     <div
       className={cn(
@@ -21,12 +21,9 @@ export default function PlayerChip({ player, active, driver }: PlayerChipProps) 
     >
       <span className="text-lg leading-none">
         {player.emoji}
-        {driver && <span className="text-sm">🚌</span>}
+        {badge && <span className="text-sm">{badge}</span>}
       </span>
       <span className="max-w-20 truncate font-semibold">{player.name}</span>
-      <span className={active ? 'opacity-80' : 'text-muted-foreground'}>
-        {player.hand.length}🃏 · {player.sipsTotal}🍺
-      </span>
     </div>
   )
 }

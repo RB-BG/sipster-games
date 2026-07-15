@@ -107,8 +107,6 @@ export function createHostLoop(
     const hostOnly =
       intent.t === 'SET_RULES' ||
       intent.t === 'START_GAME' ||
-      intent.t === 'FLIP_PYRAMID' ||
-      intent.t === 'NEXT_PHASE' ||
       intent.t === 'END_GAME' ||
       intent.t === 'FORFEIT_TURN'
     if (hostOnly && playerId !== state.hostId) {
@@ -161,20 +159,12 @@ function intentToCommand(intent: Intent, playerId: string): Command | null {
       return { t: 'SET_RULES', rules: intent.rules }
     case 'START_GAME':
       return { t: 'START_GAME' }
-    case 'ANSWER':
-      return { t: 'ANSWER', playerId, choice: intent.choice }
-    case 'GIVE_SIPS':
-      return { t: 'GIVE_SIPS', playerId, targetPlayerId: intent.targetPlayerId }
-    case 'FLIP_PYRAMID':
-      return { t: 'FLIP_PYRAMID', playerId }
-    case 'PLAY_CARD':
-      return { t: 'PLAY_CARD', playerId, card: intent.card }
-    case 'CALL_BLUFF':
-      return { t: 'CALL_BLUFF', playerId, targetPlayerId: intent.targetPlayerId }
-    case 'BUS_GUESS':
-      return { t: 'BUS_GUESS', playerId, choice: intent.choice }
-    case 'NEXT_PHASE':
-      return { t: 'NEXT_PHASE' }
+    case 'FLIP_CARD':
+      return { t: 'FLIP_CARD', playerId }
+    case 'ADD_TO_CUP':
+      return { t: 'ADD_TO_CUP', playerId, amount: intent.amount }
+    case 'SET_RULE':
+      return { t: 'SET_RULE', playerId, text: intent.text }
     case 'END_GAME':
       return { t: 'END_GAME' }
     default:
@@ -184,14 +174,6 @@ function intentToCommand(intent: Intent, playerId: string): Command | null {
 
 function toGameEvent(event: EngineEvent, version: number): GameEvent | null {
   switch (event.t) {
-    case 'CARD_DEALT':
-      return {
-        t: 'CARD_EVENT',
-        animId: String(version),
-        kind: 'deal',
-        card: event.card,
-        animSeed: event.animSeed,
-      }
     case 'CARD_FLIPPED':
       return {
         t: 'CARD_EVENT',
@@ -200,23 +182,6 @@ function toGameEvent(event: EngineEvent, version: number): GameEvent | null {
         card: event.card,
         animSeed: event.animSeed,
       }
-    case 'BUS_CARD':
-      return {
-        t: 'CARD_EVENT',
-        animId: String(version),
-        kind: 'bus',
-        card: event.card,
-        animSeed: event.animSeed,
-      }
-    case 'BLUFF_CALLED':
-      return {
-        t: 'BLUFF_EVENT',
-        byPlayerId: event.byPlayerId,
-        targetPlayerId: event.targetPlayerId,
-        verdict: event.verdict,
-      }
-    case 'BUS_RESET':
-      return { t: 'BUS_RESET_EVENT', animSeed: event.animSeed }
     default:
       // Alle overige informatie zit al in de STATE-broadcast.
       return null

@@ -1,13 +1,8 @@
 // Copyright © 2026 Kingsen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
-import { color, isHigher, isInside, sameSuit } from './cards'
+import { cardEffect } from './cardActions'
 import type { DeckSource } from './deck'
-import { flatFlipOrder, PYRAMID_ROW_SIZES } from './pyramid'
-import { bluffPenalty, busSips, pyramidSips, questionSips } from './sips'
 import type {
-  AnswerChoice,
-  BluffVerdict,
-  BusChoice,
   Card,
   Command,
   EngineEvent,
@@ -15,9 +10,6 @@ import type {
   GameState,
   PlayerProfile,
   PlayerState,
-  QuestionIndex,
-  RuleConfig,
-  SipReason,
 } from './types'
 import { DEFAULT_RULES } from './types'
 import { validateCommand } from './validate'
@@ -28,7 +20,10 @@ export interface ReduceResult {
   error?: ErrorCode
 }
 
-export function createGame(host: PlayerProfile, rules: RuleConfig = DEFAULT_RULES): GameState {
+export function createGame(
+  host: PlayerProfile,
+  rules = DEFAULT_RULES,
+): GameState {
   return {
     version: 0,
     phase: 'lobby',
@@ -38,10 +33,12 @@ export function createGame(host: PlayerProfile, rules: RuleConfig = DEFAULT_RULE
     deck: [],
     drawIndex: 0,
     turn: null,
-    pyramid: null,
-    bus: null,
-    pendingGive: null,
-    sipsLog: [],
+    currentCard: null,
+    activeRules: [],
+    nextRuleId: 1,
+    kingsDrawn: 0,
+    cup: 0,
+    pending: null,
   }
 }
 
@@ -75,32 +72,16 @@ export function reduce(state: GameState, cmd: Command, rng: DeckSource): ReduceR
       startGame(draft, events, rng)
       break
 
-    case 'ANSWER':
-      applyAnswer(draft, events, rng, cmd.choice)
+    case 'FLIP_CARD':
+      flipCard(draft, events, rng)
       break
 
-    case 'GIVE_SIPS':
-      applyGiveSips(draft, events, rng, cmd.targetPlayerId)
+    case 'ADD_TO_CUP':
+      applyAddToCup(draft, events, cmd.playerId, cmd.amount)
       break
 
-    case 'FLIP_PYRAMID':
-      flipNextCard(draft, events, rng)
-      break
-
-    case 'PLAY_CARD':
-      applyPlayCard(draft, cmd.playerId, cmd.card)
-      break
-
-    case 'CALL_BLUFF':
-      applyCallBluff(draft, events, cmd.playerId, cmd.targetPlayerId)
-      break
-
-    case 'BUS_GUESS':
-      applyBusGuess(draft, events, rng, cmd.choice)
-      break
-
-    case 'NEXT_PHASE':
-      startBus(draft, events, rng)
+    case 'SET_RULE':
+      applySetRule(draft, events, cmd.playerId, cmd.text)
       break
 
     case 'SET_CONNECTED':
@@ -108,18 +89,13 @@ export function reduce(state: GameState, cmd: Command, rng: DeckSource): ReduceR
       break
 
     case 'FORFEIT_TURN':
-      // Weggevallen speler in het vragenrondje: sla zijn beurt over.
-      draft.pendingGive = null
-      advanceQuestion(draft, events, rng)
+      // Weggevallen actieve speler: laat een eventuele invoer vallen en ga door.
+      draft.pending = null
+      advanceOrEnd(draft, events)
       break
 
     case 'END_GAME':
-      draft.phase = 'ended'
-      draft.turn = null
-      draft.pyramid = null
-      draft.bus = null
-      draft.pendingGive = null
-      events.push({ t: 'PHASE_CHANGED', phase: 'ended' })
+      endGame(draft, events)
       break
   }
 
@@ -127,273 +103,126 @@ export function reduce(state: GameState, cmd: Command, rng: DeckSource): ReduceR
 }
 
 function newPlayer(profile: PlayerProfile): PlayerState {
-  return { ...profile, connected: true, sipsTotal: 0, hand: [] }
+  return { ...profile, connected: true }
 }
 
-function drink(draft: GameState, playerId: string, amount: number, reason: SipReason): void {
-  const player = playerById(draft, playerId)
-  player.sipsTotal += amount
-  draft.sipsLog.push({ playerId, amount, reason })
-}
-
-/** Trekt de volgende kaart uit de geschudde deck; herschudt bij uitputting. */
-function drawCard(draft: GameState, rng: DeckSource): Card {
-  if (draft.drawIndex >= draft.deck.length) {
-    draft.deck = rng.shuffle()
-    draft.drawIndex = 0
-  }
+/** Trekt de volgende kaart uit de geschudde deck. */
+function drawCard(draft: GameState): Card {
   return draft.deck[draft.drawIndex++]
 }
-
-// --- Vragenrondje --------------------------------------------------------
 
 function startGame(draft: GameState, events: EngineEvent[], rng: DeckSource): void {
   draft.deck = rng.shuffle()
   draft.drawIndex = 0
-  for (const player of draft.players) {
-    player.hand = []
-    player.sipsTotal = 0
-  }
-  draft.sipsLog = []
-  draft.phase = 'questions'
-  draft.turn = { playerId: draft.players[0].id, questionIndex: 0 }
-  events.push({ t: 'PHASE_CHANGED', phase: 'questions' })
+  draft.currentCard = null
+  draft.activeRules = []
+  draft.nextRuleId = 1
+  draft.kingsDrawn = 0
+  draft.cup = 0
+  draft.pending = null
+  draft.phase = 'playing'
+  draft.turn = { playerId: draft.players[0].id }
+  events.push({ t: 'PHASE_CHANGED', phase: 'playing' })
 }
 
-function applyAnswer(
+function flipCard(draft: GameState, events: EngineEvent[], rng: DeckSource): void {
+  const card = drawCard(draft)
+  draft.currentCard = card
+  events.push({ t: 'CARD_FLIPPED', card, animSeed: rng.seed() })
+
+  const effect = cardEffect(card.rank)
+  const flipperId = draft.turn!.playerId
+
+  switch (effect) {
+    case 'king': {
+      draft.kingsDrawn++
+      if (draft.kingsDrawn >= 4) {
+        // 4e koning: de speler drinkt het volle glas, het potje eindigt.
+        endGame(draft, events)
+        return
+      }
+      // Koning 1-3: de speler schenkt slokken in het glas (ADD_TO_CUP).
+      draft.pending = { kind: 'cup', playerId: flipperId }
+      return
+    }
+    case 'newRule':
+      // De speler typt een nieuwe regel (SET_RULE) voordat het spel doorgaat.
+      draft.pending = { kind: 'rule', playerId: flipperId }
+      return
+    case 'roleThumb':
+    case 'roleQuestion':
+      // Rol aan de speler koppelen; een eventuele vorige drager van dezelfde rol vervalt.
+      draft.activeRules = draft.activeRules.filter((r) => r.rank !== card.rank)
+      draft.activeRules.push({
+        id: draft.nextRuleId++,
+        rank: card.rank,
+        byPlayerId: flipperId,
+        text: '',
+      })
+      break
+    case 'none':
+      break
+  }
+
+  advanceOrEnd(draft, events)
+}
+
+function applyAddToCup(
   draft: GameState,
   events: EngineEvent[],
-  rng: DeckSource,
-  choice: AnswerChoice,
+  playerId: string,
+  amount: number,
 ): void {
-  const turn = draft.turn!
-  const index = turn.questionIndex
-  const player = playerById(draft, turn.playerId)
-  // De eigen tot nu toe opengelegde kaarten zijn de context voor hoger/lager,
-  // binnen/buiten en de suit-vraag. Vastleggen vóór de nieuwe kaart erbij komt.
-  const priorCards = player.hand.slice()
-  const card = drawCard(draft, rng)
-  player.hand.push(card)
-  events.push({ t: 'CARD_DEALT', playerId: turn.playerId, card, animSeed: rng.seed() })
-
-  const correct = evaluateAnswer(index, priorCards, card, choice)
-  const amount = questionSips(draft.rules, index)
-
-  if (correct) {
-    // Goed: de speler deelt N slokken uit; hij kiest zo een doelwit (GIVE_SIPS).
-    draft.pendingGive = { playerId: turn.playerId, amount }
-    return
-  }
-
-  // Fout: de speler drinkt zelf en de beurt gaat naar de volgende speler.
-  drink(draft, turn.playerId, amount, 'fout')
-  advanceQuestion(draft, events, rng)
+  draft.cup += amount
+  draft.pending = null
+  events.push({ t: 'CUP_FILLED', playerId, amount, total: draft.cup })
+  advanceOrEnd(draft, events)
 }
 
-/** Bepaalt of een antwoord goed is; `revealed` is de hand vóór deze kaart. */
-function evaluateAnswer(
-  index: QuestionIndex,
-  revealed: Card[],
-  card: Card,
-  choice: AnswerChoice,
-): boolean {
-  switch (index) {
-    case 0:
-      return color(card) === (choice === 'rood' ? 'red' : 'black')
-    case 1:
-      // Gelijk telt als fout, ongeacht de keuze.
-      if (card.rank === revealed[0].rank) return false
-      return choice === 'hoger' ? isHigher(card, revealed[0]) : !isHigher(card, revealed[0])
-    case 2: {
-      const inside = isInside(card, revealed[0], revealed[1])
-      return (choice === 'binnen') === inside
-    }
-    case 3: {
-      const has = sameSuit(card, revealed)
-      return (choice === 'heb') === has
-    }
-  }
-}
-
-/**
- * Rondje-per-vraag: eerst gaat dezelfde vraag de tafel rond, daarna pas de
- * volgende vraag (weer vanaf de eerste speler). Na de laatste speler van de
- * laatste vraag begint de piramide.
- */
-function advanceQuestion(draft: GameState, events: EngineEvent[], rng: DeckSource): void {
-  const turn = draft.turn!
-  const idx = draft.players.findIndex((p) => p.id === turn.playerId)
-  const next = draft.players[idx + 1]
-  if (next) {
-    // Zelfde vraag, volgende speler.
-    turn.playerId = next.id
-    return
-  }
-  // Iedereen heeft deze vraag gehad.
-  if (turn.questionIndex >= 3) {
-    startPyramid(draft, events, rng)
-  } else {
-    turn.questionIndex = (turn.questionIndex + 1) as QuestionIndex
-    turn.playerId = draft.players[0].id
-  }
-}
-
-// --- Slokken uitdelen (gedeeld door vragenrondje en piramide) ------------
-
-function applyGiveSips(
+function applySetRule(
   draft: GameState,
   events: EngineEvent[],
-  rng: DeckSource,
-  targetPlayerId: string,
+  playerId: string,
+  text: string,
 ): void {
-  const give = draft.pendingGive!
-  drink(draft, targetPlayerId, give.amount, 'gekregen')
-  events.push({
-    t: 'SIPS_GIVEN',
-    fromPlayerId: give.playerId,
-    toPlayerId: targetPlayerId,
-    amount: give.amount,
+  draft.activeRules.push({
+    id: draft.nextRuleId++,
+    rank: 10,
+    byPlayerId: playerId,
+    text: text.trim(),
   })
-  draft.pendingGive = null
+  draft.pending = null
+  advanceOrEnd(draft, events)
+}
 
-  if (draft.phase === 'questions') {
-    // De give hoorde bij een goed beantwoorde vraag: ga verder.
-    advanceQuestion(draft, events, rng)
+/** Geen kaarten meer over: einde. Anders de beurt naar de volgende speler. */
+function advanceOrEnd(draft: GameState, events: EngineEvent[]): void {
+  if (draft.drawIndex >= draft.deck.length) {
+    endGame(draft, events)
     return
   }
+  advanceTurn(draft)
+}
 
-  if (draft.phase === 'pyramid' && draft.pyramid?.openClaim) {
-    // De claim is afgehandeld; de afgelegde kaart is al bij PLAY_CARD uit de hand gehaald.
-    draft.pyramid.openClaim = null
+/** Volgende speler met de klok mee; slaat weggevallen spelers over. */
+function advanceTurn(draft: GameState): void {
+  const players = draft.players
+  const n = players.length
+  const idx = players.findIndex((p) => p.id === draft.turn!.playerId)
+  for (let step = 1; step <= n; step++) {
+    const cand = players[(idx + step) % n]
+    if (cand.connected) {
+      draft.turn = { playerId: cand.id }
+      return
+    }
   }
-}
-
-// --- Piramide ------------------------------------------------------------
-
-function startPyramid(draft: GameState, events: EngineEvent[], rng: DeckSource): void {
-  const rows: Card[][] = PYRAMID_ROW_SIZES.map((size) =>
-    Array.from({ length: size }, () => drawCard(draft, rng)),
-  )
-  draft.pyramid = {
-    rows,
-    flipIndex: 0,
-    currentRank: null,
-    currentRowValue: 0,
-    openClaim: null,
-  }
-  draft.turn = null
-  draft.phase = 'pyramid'
-  events.push({ t: 'PHASE_CHANGED', phase: 'pyramid' })
-}
-
-function flipNextCard(draft: GameState, events: EngineEvent[], rng: DeckSource): void {
-  const pyramid = draft.pyramid!
-  const flat = flatFlipOrder(pyramid.rows)
-  const next = flat[pyramid.flipIndex]
-  pyramid.flipIndex++
-  pyramid.currentRank = next.card.rank
-  pyramid.currentRowValue = next.rowValue
-  events.push({ t: 'CARD_FLIPPED', card: next.card, rowValue: next.rowValue, animSeed: rng.seed() })
-}
-
-function applyPlayCard(draft: GameState, playerId: string, card: Card): void {
-  const pyramid = draft.pyramid!
-  const player = playerById(draft, playerId)
-  const rankIdx = player.hand.findIndex((c) => c.rank === pyramid.currentRank)
-  const truthful = rankIdx >= 0
-  pyramid.openClaim = {
-    claimantId: playerId,
-    card,
-    rowValue: pyramid.currentRowValue,
-    truthful,
-  }
-  // Elke claim kost een kaart: je legt er eentje af (open bij een eerlijke claim, dicht
-  // bij een bluf). Zo kun je maximaal zoveel keer uitdelen als je kaarten hebt, ook
-  // liegen dus hooguit vier keer. Betrapt of niet: de afgelegde kaart is sowieso weg.
-  player.hand.splice(rankIdx >= 0 ? rankIdx : 0, 1)
-  // De claimant deelt de rij-slokken uit; hij kiest een doelwit (GIVE_SIPS).
-  draft.pendingGive = { playerId, amount: pyramidSips(draft.rules, pyramid.currentRowValue) }
-}
-
-function applyCallBluff(
-  draft: GameState,
-  events: EngineEvent[],
-  byPlayerId: string,
-  targetPlayerId: string,
-): void {
-  const pyramid = draft.pyramid!
-  const claim = pyramid.openClaim!
-  const rowSips = pyramidSips(draft.rules, claim.rowValue)
-  let verdict: BluffVerdict
-
-  if (!claim.truthful) {
-    // Betrapte leugenaar: drinkt dubbel, de claim vervalt (geen give).
-    verdict = 'betrapt'
-    drink(draft, claim.claimantId, bluffPenalty(rowSips), 'bluf')
-    draft.pendingGive = null
-  } else {
-    // Valse beschuldiging: de aanklager drinkt dubbel, de eerlijke claim staat.
-    // De geclaimde kaart is al bij PLAY_CARD afgelegd; pendingGive blijft staan
-    // zodat de claimant zijn verdiende slokken nog uitdeelt.
-    verdict = 'onterecht'
-    drink(draft, byPlayerId, bluffPenalty(rowSips), 'bluf')
-  }
-
-  pyramid.openClaim = null
-  events.push({ t: 'BLUFF_CALLED', byPlayerId, targetPlayerId, verdict })
-}
-
-// --- Bus -----------------------------------------------------------------
-
-function startBus(draft: GameState, events: EngineEvent[], rng: DeckSource): void {
-  const maxHand = Math.max(...draft.players.map((p) => p.hand.length))
-  const driverIds = draft.players.filter((p) => p.hand.length === maxHand).map((p) => p.id)
-  const cards = Array.from({ length: draft.rules.busLengte }, () => drawCard(draft, rng))
-  draft.bus = { driverIds, cards, position: 0, strikes: 0 }
-  draft.pyramid = null
-  draft.phase = 'bus'
-  events.push({ t: 'PHASE_CHANGED', phase: 'bus' })
-
-  // Een bus van één kaart is meteen uitgereden.
-  if (cards.length <= 1) endGame(draft, events)
-}
-
-function applyBusGuess(
-  draft: GameState,
-  events: EngineEvent[],
-  rng: DeckSource,
-  choice: BusChoice,
-): void {
-  const bus = draft.bus!
-  const current = bus.cards[bus.position]
-  const next = bus.cards[bus.position + 1]
-  const correct =
-    next.rank !== current.rank &&
-    (choice === 'hoger' ? next.rank > current.rank : next.rank < current.rank)
-
-  events.push({ t: 'BUS_CARD', card: next, correct, animSeed: rng.seed() })
-
-  if (correct) {
-    bus.position++
-    if (bus.position >= bus.cards.length - 1) endGame(draft, events)
-    return
-  }
-
-  // Fout: straf gelijk aan de kaartpositie waar je stond (bepaald vóór de reset).
-  // Elke chauffeur drinkt, daarna opnieuw beginnen bij kaart 1 met verse kaarten,
-  // dus de straf begint volgende poging ook weer bij 1.
-  const amount = busSips(draft.rules, bus.position + 1)
-  bus.strikes++
-  for (const id of bus.driverIds) drink(draft, id, amount, 'bus')
-  bus.cards = Array.from({ length: draft.rules.busLengte }, () => drawCard(draft, rng))
-  bus.position = 0
-  events.push({ t: 'BUS_RESET', animSeed: rng.seed() })
+  // Niemand verbonden: laat de beurt staan (host lost dit op).
 }
 
 function endGame(draft: GameState, events: EngineEvent[]): void {
   draft.phase = 'ended'
-  draft.bus = null
-  draft.pendingGive = null
+  draft.turn = null
+  draft.pending = null
   events.push({ t: 'PHASE_CHANGED', phase: 'ended' })
 }
 

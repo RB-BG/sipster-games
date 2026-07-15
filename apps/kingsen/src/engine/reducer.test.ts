@@ -1,317 +1,215 @@
 // Copyright © 2026 Kingsen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
-import { beforeEach, describe, expect, it } from 'vitest'
-import { card, orderedDeck, scriptedDeck, type DeckSource } from './deck'
-import { PYRAMID_ROW_SIZES } from './pyramid'
+import { describe, expect, it } from 'vitest'
+import { card, scriptedDeck } from './deck'
 import { createGame, reduce } from './reducer'
-import type { AnswerChoice, Card, Command, GameState, PlayerProfile } from './types'
+import type { Card, Command, GameState, PlayerProfile } from './types'
 
-const A: PlayerProfile = { id: 'a', name: 'Ann', emoji: '🅰️' }
-const B: PlayerProfile = { id: 'b', name: 'Bo', emoji: '🅱️' }
+const P1: PlayerProfile = { id: 'p1', name: 'Ann', emoji: '🦊' }
+const P2: PlayerProfile = { id: 'p2', name: 'Bo', emoji: '🐼' }
+const P3: PlayerProfile = { id: 'p3', name: 'Cas', emoji: '🐸' }
 
-function step(state: GameState, cmd: Command, rng: DeckSource): GameState {
-  const r = reduce(state, cmd, rng)
-  if (r.error) throw new Error(`onverwachte fout ${r.error} bij ${cmd.t}`)
-  return r.state
+/** Start een potje met een vast kaart-script en het opgegeven aantal spelers. */
+function started(deck: Card[], players: PlayerProfile[] = [P1, P2]) {
+  const rng = scriptedDeck(deck)
+  let state = createGame(players[0])
+  for (const p of players.slice(1)) {
+    state = reduce(state, { t: 'ADD_PLAYER', profile: p }, rng).state
+  }
+  state = reduce(state, { t: 'START_GAME' }, rng).state
+  return { state, rng }
 }
 
-/** Twee-speler-potje dat via de geordende deck in de questions-fase start. */
-function startedGame(rng: DeckSource): GameState {
-  let s = createGame(A, { standaardSlokken: 1, bluffen: true, busLengte: 5 })
-  s = step(s, { t: 'ADD_PLAYER', profile: B }, rng)
-  s = step(s, { t: 'START_GAME' }, rng)
-  return s
+/** Draai de volgende kaart namens de speler die aan zet is. */
+function flip(state: GameState, rng: ReturnType<typeof scriptedDeck>) {
+  return reduce(state, { t: 'FLIP_CARD', playerId: state.turn!.playerId }, rng)
 }
+
+function apply(state: GameState, cmd: Command, rng: ReturnType<typeof scriptedDeck>) {
+  return reduce(state, cmd, rng)
+}
+
+describe('createGame', () => {
+  it('begint in de lobby met alleen de host', () => {
+    const s = createGame(P1)
+    expect(s.phase).toBe('lobby')
+    expect(s.players).toHaveLength(1)
+    expect(s.hostId).toBe('p1')
+    expect(s.cup).toBe(0)
+    expect(s.kingsDrawn).toBe(0)
+  })
+})
 
 describe('START_GAME', () => {
-  it('deelt een deck, gaat naar questions en zet de eerste beurt', () => {
-    const rng = scriptedDeck(orderedDeck())
-    const s = startedGame(rng)
-    expect(s.phase).toBe('questions')
-    expect(s.deck.length).toBe(52)
-    expect(s.turn).toEqual({ playerId: 'a', questionIndex: 0 })
+  it('deelt de deck, zet de eerste speler aan zet en de fase op playing', () => {
+    const { state } = started([card(3, 'hearts'), card(4, 'spades')])
+    expect(state.phase).toBe('playing')
+    expect(state.turn?.playerId).toBe('p1')
+    expect(state.deck).toHaveLength(2)
+    expect(state.drawIndex).toBe(0)
+    expect(state.currentCard).toBeNull()
+  })
+
+  it('weigert met minder dan 2 spelers', () => {
+    const rng = scriptedDeck([])
+    const res = reduce(createGame(P1), { t: 'START_GAME' }, rng)
+    expect(res.error).toBe('NOT_ENOUGH_PLAYERS')
   })
 })
 
-describe('questions: goed vs fout', () => {
-  let rng: DeckSource
-  beforeEach(() => {
-    // Het rondje gaat per vraag de tafel rond: a krijgt idx 0,2,4,6; b krijgt 1,3,5,7.
-    rng = scriptedDeck(orderedDeck())
+describe('FLIP_CARD: gewone kaart', () => {
+  it('onthult de kaart en geeft de beurt door met de klok mee', () => {
+    const { state, rng } = started([card(3, 'hearts'), card(6, 'clubs')])
+    const res = flip(state, rng)
+    expect(res.state.currentCard).toEqual(card(3, 'hearts'))
+    expect(res.state.turn?.playerId).toBe('p2')
+    expect(res.events.some((e) => e.t === 'CARD_FLIPPED')).toBe(true)
   })
 
-  it('goed antwoord levert een pending give op; daarna is de volgende speler aan de beurt', () => {
-    let s = startedGame(rng)
-    // Q0 voor a: hearts2 is rood, antwoord 'rood' is goed.
-    s = step(s, { t: 'ANSWER', playerId: 'a', choice: 'rood' }, rng)
-    expect(s.pendingGive).toEqual({ playerId: 'a', amount: 1 })
-    // Geen antwoord toegestaan zolang de give openstaat.
-    expect(reduce(s, { t: 'ANSWER', playerId: 'a', choice: 'zwart' }, rng).error).toBe('PENDING_GIVE')
-    s = step(s, { t: 'GIVE_SIPS', playerId: 'a', targetPlayerId: 'b' }, rng)
-    expect(s.players[1].sipsTotal).toBe(1)
-    expect(s.pendingGive).toBeNull()
-    // Zelfde vraag (0), maar nu is speler b aan de beurt.
-    expect(s.turn).toEqual({ playerId: 'b', questionIndex: 0 })
+  it('wrapt de beurt terug naar de eerste speler', () => {
+    const { state, rng } = started([card(3, 'hearts'), card(6, 'clubs'), card(9, 'spades')])
+    let s = flip(state, rng).state
+    expect(s.turn?.playerId).toBe('p2')
+    s = flip(s, rng).state
+    expect(s.turn?.playerId).toBe('p1') // terug bij het begin, deck nog niet op
+    expect(s.phase).toBe('playing')
   })
 
-  it('fout antwoord laat de speler zelf drinken en geeft de beurt door', () => {
-    let s = startedGame(rng)
-    // Q0 voor a: hearts2 rood, antwoord 'zwart' is fout: 1 slok.
-    s = step(s, { t: 'ANSWER', playerId: 'a', choice: 'zwart' }, rng)
-    expect(s.players[0].sipsTotal).toBe(1)
-    expect(s.pendingGive).toBeNull()
-    expect(s.turn).toEqual({ playerId: 'b', questionIndex: 0 })
+  it('weigert een flip als het niet jouw beurt is', () => {
+    const { state, rng } = started([card(3, 'hearts')])
+    const res = reduce(state, { t: 'FLIP_CARD', playerId: 'p2' }, rng)
+    expect(res.error).toBe('NOT_YOUR_TURN')
   })
 
-  it('hoger/lager telt gelijk als fout', () => {
-    // a: 7h (Q0) en 7c (Q1) -> gelijke rank. b krijgt tussendoor zijn Q0-kaart.
-    const deck: Card[] = [card(7, 'hearts'), card(2, 'clubs'), card(7, 'clubs')]
-    const r = scriptedDeck([...deck, ...orderedDeck()])
-    let s = startedGame(r)
-    s = step(s, { t: 'ANSWER', playerId: 'a', choice: 'rood' }, r) // a Q0 goed (7h rood)
-    s = step(s, { t: 'GIVE_SIPS', playerId: 'a', targetPlayerId: 'b' }, r)
-    s = step(s, { t: 'ANSWER', playerId: 'b', choice: 'rood' }, r) // b Q0: 2c is zwart -> fout
-    // a Q1: 7c gelijk aan 7h -> altijd fout, ongeacht de keuze.
-    s = step(s, { t: 'ANSWER', playerId: 'a', choice: 'hoger' }, r)
-    expect(s.players[0].sipsTotal).toBe(2)
+  it('weigert een flip in de lobby', () => {
+    const rng = scriptedDeck([])
+    const res = reduce(createGame(P1), { t: 'FLIP_CARD', playerId: 'p1' }, rng)
+    expect(res.error).toBe('WRONG_PHASE')
   })
 })
 
-describe('questions -> pyramid transitie', () => {
-  it('rondje per vraag; na ieders laatste vraag wordt de piramide gelegd', () => {
-    // Rondje-per-vraag levert a de kaarten idx 0,2,4,6 en b idx 1,3,5,7.
-    // Deze harten-deck maakt elk 'wrong'-antwoord gegarandeerd fout:
-    //   a: 2h,5h,9h,7h   b: 3h,6h,10h,4h  (alles rood, Q1 hoger, Q2 buiten, Q3 zelfde suit)
-    const deck: Card[] = [
-      card(2, 'hearts'), card(3, 'hearts'), card(5, 'hearts'), card(6, 'hearts'),
-      card(9, 'hearts'), card(10, 'hearts'), card(7, 'hearts'), card(4, 'hearts'),
-    ]
-    const rng = scriptedDeck([...deck, ...orderedDeck()])
-    let s = startedGame(rng)
-    // Iedere beurt fout beantwoorden: geen give-stappen, elk 1+2+3+4 = 10 slokken.
-    const wrong: AnswerChoice[] = ['zwart', 'lager', 'binnen', 'niet']
-    while (s.phase === 'questions') {
-      const turn = s.turn!
-      s = step(s, { t: 'ANSWER', playerId: turn.playerId, choice: wrong[turn.questionIndex] }, rng)
-    }
-    expect(s.phase).toBe('pyramid')
-    expect(s.turn).toBeNull()
-    expect(s.pyramid?.rows.map((r) => r.length)).toEqual(PYRAMID_ROW_SIZES)
-    expect(s.players[0].hand.length).toBe(4)
-    expect(s.players[1].hand.length).toBe(4)
-    expect(s.players[0].sipsTotal).toBe(10)
-    expect(s.players[1].sipsTotal).toBe(10)
-  })
-})
+describe('King\'s Cup', () => {
+  it('koning 1-3 opent de cup-invoer en telt slokken op', () => {
+    const { state, rng } = started([card(13, 'spades'), card(3, 'hearts')])
+    const flipped = flip(state, rng)
+    expect(flipped.state.kingsDrawn).toBe(1)
+    expect(flipped.state.pending).toEqual({ kind: 'cup', playerId: 'p1' })
+    expect(flipped.state.turn?.playerId).toBe('p1') // beurt nog niet door
 
-// --- Piramide: claims en bluffen ----------------------------------------
+    // Zolang de cup niet gevuld is, kan niemand draaien.
+    const blocked = reduce(flipped.state, { t: 'FLIP_CARD', playerId: 'p1' }, rng)
+    expect(blocked.error).toBe('PENDING_INPUT')
 
-function pyramidGame(
-  handA: Card[],
-  handB: Card[],
-  currentRank: number | null,
-  rowValue: number,
-  bluffen = true,
-): GameState {
-  return {
-    version: 1,
-    phase: 'pyramid',
-    rules: { standaardSlokken: 1, bluffen, busLengte: 5 },
-    hostId: 'a',
-    players: [
-      { ...A, connected: true, sipsTotal: 0, hand: handA },
-      { ...B, connected: true, sipsTotal: 0, hand: handB },
-    ],
-    deck: orderedDeck(),
-    drawIndex: 30,
-    turn: null,
-    pyramid: {
-      rows: [],
-      flipIndex: 0,
-      currentRank: currentRank as Card['rank'] | null,
-      currentRowValue: rowValue,
-      openClaim: null,
-    },
-    bus: null,
-    pendingGive: null,
-    sipsLog: [],
-  }
-}
-
-describe('piramide claims', () => {
-  const rng = scriptedDeck(orderedDeck())
-
-  it('eerlijke claim legt de kaart af en deelt de rij-slokken uit', () => {
-    let s = pyramidGame([card(10, 'clubs')], [], 10, 3)
-    s = step(s, { t: 'PLAY_CARD', playerId: 'a', card: card(10, 'clubs') }, rng)
-    expect(s.pyramid?.openClaim?.truthful).toBe(true)
-    expect(s.pendingGive).toEqual({ playerId: 'a', amount: 3 })
-    s = step(s, { t: 'GIVE_SIPS', playerId: 'a', targetPlayerId: 'b' }, rng)
-    expect(s.players[1].sipsTotal).toBe(3)
-    expect(s.players[0].hand.length).toBe(0)
-    expect(s.pyramid?.openClaim).toBeNull()
+    const filled = apply(flipped.state, { t: 'ADD_TO_CUP', playerId: 'p1', amount: 4 }, rng)
+    expect(filled.state.cup).toBe(4)
+    expect(filled.state.pending).toBeNull()
+    expect(filled.state.turn?.playerId).toBe('p2')
+    expect(filled.events.some((e) => e.t === 'CUP_FILLED')).toBe(true)
   })
 
-  it('betrapte leugenaar drinkt dubbel en de give vervalt', () => {
-    let s = pyramidGame([card(5, 'clubs')], [], 10, 3)
-    s = step(s, { t: 'PLAY_CARD', playerId: 'a', card: card(10, 'hearts') }, rng)
-    expect(s.pyramid?.openClaim?.truthful).toBe(false)
-    s = step(s, { t: 'CALL_BLUFF', playerId: 'b', targetPlayerId: 'a' }, rng)
-    expect(s.players[0].sipsTotal).toBe(6) // 2 * rowValue 3
-    expect(s.players[1].sipsTotal).toBe(0)
-    expect(s.pendingGive).toBeNull()
-    expect(s.pyramid?.openClaim).toBeNull()
-    expect(s.players[0].hand.length).toBe(0) // bluffen legt (dicht) ook een kaart af
-  })
-
-  it('valse beschuldiging: aanklager drinkt dubbel, eerlijke claim staat', () => {
-    let s = pyramidGame([card(10, 'clubs')], [], 10, 3)
-    s = step(s, { t: 'PLAY_CARD', playerId: 'a', card: card(10, 'clubs') }, rng)
-    s = step(s, { t: 'CALL_BLUFF', playerId: 'b', targetPlayerId: 'a' }, rng)
-    expect(s.players[1].sipsTotal).toBe(6) // aanklager B drinkt dubbel
-    expect(s.players[0].hand.length).toBe(0) // eerlijke kaart afgelegd
-    expect(s.pendingGive).toEqual({ playerId: 'a', amount: 3 }) // give staat nog
-    s = step(s, { t: 'GIVE_SIPS', playerId: 'a', targetPlayerId: 'b' }, rng)
-    expect(s.players[1].sipsTotal).toBe(9)
-  })
-
-  it('bluffen kost ook een kaart, dus uitdelen is niet oneindig', () => {
-    // A heeft twee kaarten maar geen 10: elke bluf-claim legt er (dicht) eentje af.
-    let s = pyramidGame([card(2, 'clubs'), card(3, 'clubs')], [], 10, 3)
-    s = step(s, { t: 'PLAY_CARD', playerId: 'a', card: card(10, 'hearts') }, rng)
-    expect(s.pyramid?.openClaim?.truthful).toBe(false)
-    expect(s.players[0].hand.length).toBe(1)
-    s = step(s, { t: 'GIVE_SIPS', playerId: 'a', targetPlayerId: 'b' }, rng)
-    s = step(s, { t: 'PLAY_CARD', playerId: 'a', card: card(10, 'hearts') }, rng)
-    expect(s.players[0].hand.length).toBe(0)
-    s = step(s, { t: 'GIVE_SIPS', playerId: 'a', targetPlayerId: 'b' }, rng)
-    // Hand leeg: geen claim meer mogelijk.
-    expect(reduce(s, { t: 'PLAY_CARD', playerId: 'a', card: card(10, 'hearts') }, rng).error).toBe(
-      'INVALID_CARD',
+  it('weigert een ongeldig aantal slokken', () => {
+    const { state, rng } = started([card(13, 'spades')])
+    const flipped = flip(state, rng)
+    expect(reduce(flipped.state, { t: 'ADD_TO_CUP', playerId: 'p1', amount: 0 }, rng).error).toBe(
+      'INVALID_AMOUNT',
     )
-    expect(s.players[1].sipsTotal).toBe(6) // twee keer 3 uitgedeeld, daarna stopt het
-  })
-
-  it('zonder bluf-regel moet de claim waar zijn', () => {
-    const s = pyramidGame([card(5, 'clubs')], [], 10, 3, false)
-    expect(reduce(s, { t: 'PLAY_CARD', playerId: 'a', card: card(10, 'hearts') }, rng).error).toBe(
-      'INVALID_CARD',
+    expect(reduce(flipped.state, { t: 'ADD_TO_CUP', playerId: 'p1', amount: 99 }, rng).error).toBe(
+      'INVALID_AMOUNT',
     )
   })
 
-  it('je kunt je eigen claim niet aanvechten', () => {
-    let s = pyramidGame([card(10, 'clubs')], [], 10, 3)
-    s = step(s, { t: 'PLAY_CARD', playerId: 'a', card: card(10, 'clubs') }, rng)
-    expect(reduce(s, { t: 'CALL_BLUFF', playerId: 'a', targetPlayerId: 'a' }, rng).error).toBe(
-      'INVALID_TARGET',
+  it('de 4e koning eindigt het potje; de cup blijft staan om leeg te drinken', () => {
+    const deck = [card(13, 'spades'), card(13, 'hearts'), card(13, 'clubs'), card(13, 'diamonds')]
+    const { state: initial, rng } = started(deck)
+    let state = initial
+    // koning 1
+    state = flip(state, rng).state
+    state = apply(state, { t: 'ADD_TO_CUP', playerId: 'p1', amount: 2 }, rng).state
+    // koning 2
+    state = flip(state, rng).state
+    state = apply(state, { t: 'ADD_TO_CUP', playerId: 'p2', amount: 3 }, rng).state
+    // koning 3
+    state = flip(state, rng).state
+    state = apply(state, { t: 'ADD_TO_CUP', playerId: 'p1', amount: 1 }, rng).state
+    expect(state.kingsDrawn).toBe(3)
+    expect(state.cup).toBe(6)
+    // koning 4
+    const end = flip(state, rng)
+    expect(end.state.kingsDrawn).toBe(4)
+    expect(end.state.phase).toBe('ended')
+    expect(end.state.cup).toBe(6)
+    expect(end.state.currentCard).toEqual(card(13, 'diamonds'))
+    expect(end.state.pending).toBeNull()
+  })
+})
+
+describe('nieuwe regel (10)', () => {
+  it('opent de regel-invoer en legt de regel vast', () => {
+    const { state, rng } = started([card(10, 'clubs'), card(3, 'hearts')])
+    const flipped = flip(state, rng)
+    expect(flipped.state.pending).toEqual({ kind: 'rule', playerId: 'p1' })
+
+    const ruled = apply(flipped.state, { t: 'SET_RULE', playerId: 'p1', text: '  geen namen  ' }, rng)
+    expect(ruled.state.activeRules).toHaveLength(1)
+    expect(ruled.state.activeRules[0]).toMatchObject({ rank: 10, byPlayerId: 'p1', text: 'geen namen' })
+    expect(ruled.state.pending).toBeNull()
+    expect(ruled.state.turn?.playerId).toBe('p2')
+  })
+
+  it('weigert een lege regel', () => {
+    const { state, rng } = started([card(10, 'clubs')])
+    const flipped = flip(state, rng)
+    expect(reduce(flipped.state, { t: 'SET_RULE', playerId: 'p1', text: '   ' }, rng).error).toBe(
+      'INVALID_TEXT',
     )
   })
 })
 
-describe('piramide flippen en naar de bus', () => {
-  const rng = scriptedDeck(orderedDeck())
-
-  it('flipt van onder naar boven met oplopende rij-waarde', () => {
-    const s0 = pyramidGame([], [], null, 0)
-    const deck = orderedDeck()
-    let i = 0
-    s0.pyramid!.rows = PYRAMID_ROW_SIZES.map((size) => deck.slice(i, (i += size)))
-    const s = step(s0, { t: 'FLIP_PYRAMID', playerId: 'a' }, rng)
-    expect(s.pyramid?.flipIndex).toBe(1)
-    expect(s.pyramid?.currentRowValue).toBe(1)
-    expect(s.pyramid?.currentRank).toBe(deck[0].rank)
+describe('rollen (boer/vrouw)', () => {
+  it('koppelt de rol aan de speler zonder de beurt te blokkeren', () => {
+    const { state, rng } = started([card(11, 'spades'), card(12, 'hearts')])
+    const res = flip(state, rng)
+    expect(res.state.pending).toBeNull()
+    expect(res.state.activeRules).toHaveLength(1)
+    expect(res.state.activeRules[0]).toMatchObject({ rank: 11, byPlayerId: 'p1' })
+    expect(res.state.turn?.playerId).toBe('p2')
   })
 
-  it('NEXT_PHASE na de laatste flip start de bus met de meeste-kaarten-chauffeur', () => {
-    const s0 = pyramidGame([card(2, 'hearts'), card(3, 'hearts')], [card(4, 'hearts')], null, 0)
-    const deck = orderedDeck()
-    let i = 0
-    s0.pyramid!.rows = PYRAMID_ROW_SIZES.map((size) => deck.slice(i, (i += size)))
-    s0.pyramid!.flipIndex = 15
-    const s = step(s0, { t: 'NEXT_PHASE' }, rng)
-    expect(s.phase).toBe('bus')
-    expect(s.bus?.driverIds).toEqual(['a']) // A heeft 2 kaarten, B heeft er 1
-    expect(s.bus?.cards.length).toBe(5)
+  it('een nieuwe drager van dezelfde rol verdringt de vorige', () => {
+    const { state, rng } = started([card(11, 'spades'), card(11, 'hearts')])
+    let s = flip(state, rng).state // p1 wordt duimmeester
+    s = flip(s, rng).state // p2 draait ook een boer
+    const thumbRules = s.activeRules.filter((r) => r.rank === 11)
+    expect(thumbRules).toHaveLength(1)
+    expect(thumbRules[0].byPlayerId).toBe('p2')
   })
 })
 
-// --- Bus -----------------------------------------------------------------
-
-function busGame(cards: Card[], busLengte: number, deckTail: Card[]): GameState {
-  return {
-    version: 1,
-    phase: 'bus',
-    rules: { standaardSlokken: 1, bluffen: true, busLengte },
-    hostId: 'a',
-    players: [
-      { ...A, connected: true, sipsTotal: 0, hand: [] },
-      { ...B, connected: true, sipsTotal: 0, hand: [] },
-    ],
-    deck: deckTail,
-    drawIndex: 0,
-    turn: null,
-    pyramid: null,
-    bus: { driverIds: ['a'], cards, position: 0, strikes: 0 },
-    pendingGive: null,
-    sipsLog: [],
-  }
-}
-
-describe('bus', () => {
-  const rng = scriptedDeck(orderedDeck())
-
-  it('goede gok schuift een positie op', () => {
-    const s0 = busGame([card(5, 'hearts'), card(9, 'clubs'), card(3, 'spades')], 3, [])
-    const s = step(s0, { t: 'BUS_GUESS', playerId: 'a', choice: 'hoger' }, rng)
-    expect(s.bus?.position).toBe(1)
-    expect(s.phase).toBe('bus')
-  })
-
-  it('foute gok laat de chauffeur drinken en begint opnieuw met verse kaarten', () => {
-    const tail = [card(2, 'clubs'), card(4, 'clubs'), card(6, 'clubs')]
-    const s0 = busGame([card(5, 'hearts'), card(9, 'clubs'), card(3, 'spades')], 3, tail)
-    // 9 > 5, dus 'lager' is fout.
-    const s = step(s0, { t: 'BUS_GUESS', playerId: 'a', choice: 'lager' }, rng)
-    expect(s.players[0].sipsTotal).toBe(1) // fout op kaart 1 = 1 slok
-    expect(s.bus?.strikes).toBe(1)
-    expect(s.bus?.position).toBe(0)
-    expect(s.bus?.cards[0]).toEqual(tail[0]) // verse rij
-  })
-
-  it('de straf is gelijk aan de kaartpositie waar je fout gokt', () => {
-    const tail = [card(2, 'clubs'), card(4, 'clubs'), card(6, 'clubs')]
-    const s0 = busGame([card(5, 'hearts'), card(9, 'clubs'), card(4, 'spades')], 3, tail)
-    // 9 > 5, dus 'hoger' is goed: door naar kaart 2.
-    let s = step(s0, { t: 'BUS_GUESS', playerId: 'a', choice: 'hoger' }, rng)
-    expect(s.bus?.position).toBe(1)
-    // 4 < 9, dus 'hoger' is fout op kaart 2: 2 slokken.
-    s = step(s, { t: 'BUS_GUESS', playerId: 'a', choice: 'hoger' }, rng)
-    expect(s.players[0].sipsTotal).toBe(2)
-    expect(s.bus?.position).toBe(0) // terug naar kaart 1
-  })
-
-  it('laatste goede gok rijdt de bus uit -> ended', () => {
-    const s0 = busGame([card(5, 'hearts'), card(9, 'clubs')], 2, [])
-    const s = step(s0, { t: 'BUS_GUESS', playerId: 'a', choice: 'hoger' }, rng)
+describe('deck-uitputting', () => {
+  it('eindigt het potje als de laatste kaart gedraaid is', () => {
+    const { state, rng } = started([card(3, 'hearts'), card(6, 'clubs')])
+    let s = flip(state, rng).state
+    s = flip(s, rng).state
     expect(s.phase).toBe('ended')
   })
+})
 
-  it('alleen een chauffeur mag gokken', () => {
-    const s = busGame([card(5, 'hearts'), card(9, 'clubs')], 2, [])
-    expect(reduce(s, { t: 'BUS_GUESS', playerId: 'b', choice: 'hoger' }, rng).error).toBe(
-      'NOT_A_DRIVER',
-    )
+describe('FORFEIT_TURN', () => {
+  it('slaat de actieve speler over en laat openstaande invoer vallen', () => {
+    const { state, rng } = started([card(13, 'spades'), card(3, 'hearts')], [P1, P2, P3])
+    const flipped = flip(state, rng) // p1 trekt koning -> pending cup
+    expect(flipped.state.pending).not.toBeNull()
+    const forfeited = reduce(flipped.state, { t: 'FORFEIT_TURN' }, rng)
+    expect(forfeited.state.pending).toBeNull()
+    expect(forfeited.state.turn?.playerId).toBe('p2')
   })
 })
 
-describe('validatie basis', () => {
-  const rng = scriptedDeck(orderedDeck())
-  it('START_GAME vereist twee spelers', () => {
-    const s = createGame(A)
-    expect(reduce(s, { t: 'START_GAME' }, rng).error).toBe('NOT_ENOUGH_PLAYERS')
-  })
-  it('END_GAME kan niet vanuit de lobby', () => {
-    const s = createGame(A)
-    expect(reduce(s, { t: 'END_GAME' }, rng).error).toBe('WRONG_PHASE')
+describe('verbindingen', () => {
+  it('slaat weggevallen spelers over bij de beurtwissel', () => {
+    const { state, rng } = started([card(3, 'hearts'), card(4, 'spades')], [P1, P2, P3])
+    let s = reduce(state, { t: 'SET_CONNECTED', playerId: 'p2', connected: false }, rng).state
+    s = flip(s, rng).state // p1 draait; p2 is weg, dus p3 is aan de beurt
+    expect(s.turn?.playerId).toBe('p3')
   })
 })
