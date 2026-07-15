@@ -1,10 +1,10 @@
 // Copyright © 2026 Kingsen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
-// De synth-engine leeft in @sipster/core; hier alleen de bussen-namespace en de
-// spel-eigen namen (delen, fanfare, bluf) als aliassen op de neutrale core-tonen.
+// De synth-engine leeft in @sipster/core; hier alleen de kingsen-namespace en de
+// spel-eigen namen (draaien, fanfare) als aliassen op de neutrale core-tonen.
 import { configureSound } from '@sipster/core/sound'
 
-configureSound('bussen.muted')
+configureSound('kingsen.muted')
 
 export { isMuted, setMuted, playDrink, playSlap } from '@sipster/core/sound'
 export {

@@ -3,9 +3,9 @@
 import { createLocaleStore } from '@sipster/core/localeStore'
 import { locales, type Locale, type Strings } from '@/i18n/strings'
 
-// De store-logica leeft in @sipster/core; hier alleen de bussen-talen + namespace.
+// De store-logica leeft in @sipster/core; hier alleen de kingsen-talen + namespace.
 export const { useLocaleStore, useStrings } = createLocaleStore<Locale, Strings>(
   locales,
-  'bussen.locale',
+  'kingsen.locale',
   'nl',
 )
