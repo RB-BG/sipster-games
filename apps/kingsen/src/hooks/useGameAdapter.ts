@@ -2,7 +2,7 @@
 
 import type { Command, ErrorCode, GameState } from '@/engine/types'
 import type { GuestStatus } from '@/net/transport'
-import { useGameStore, type BluffToast, type CardAnim } from '@/store/gameStore'
+import { useGameStore, type CardAnim } from '@/store/gameStore'
 import { useNetStore } from '@/store/netStore'
 
 export interface GameAdapter {
@@ -12,7 +12,6 @@ export interface GameAdapter {
   isHost: boolean
   animating: boolean
   cardAnim: CardAnim | null
-  bluffToast: BluffToast | null
   lastError: ErrorCode | null
   /** Verbindingsstatus; hotseat is altijd 'idle'. */
   connection: GuestStatus | 'idle'
@@ -33,7 +32,6 @@ export function useGameAdapter(): GameAdapter {
       isHost: net.role === 'host',
       animating: net.animating,
       cardAnim: net.cardAnim,
-      bluffToast: net.bluffToast,
       lastError: net.lastError,
       connection: net.status,
       dispatch: net.sendCommand,
@@ -48,7 +46,6 @@ export function useGameAdapter(): GameAdapter {
     isHost: true,
     animating: hot.animating,
     cardAnim: hot.cardAnim,
-    bluffToast: hot.bluffToast,
     lastError: hot.lastError,
     connection: 'idle',
     dispatch: hot.dispatch,

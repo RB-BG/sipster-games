@@ -1,21 +1,12 @@
 // Copyright © 2026 Kingsen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
-import type {
-  AnswerChoice,
-  BluffVerdict,
-  BusChoice,
-  Card,
-  ErrorCode,
-  GameState,
-  PlayerProfile,
-  RuleConfig,
-} from '@/engine/types'
+import type { Card, ErrorCode, GameState, PlayerProfile, RuleConfig } from '@/engine/types'
 
 /** Hoog dit op bij incompatibele wijzigingen; clients met een andere versie weigeren. */
 export const PROTOCOL_VERSION = 1
 
-/** Soort kaart-animatie; alle drie landen op de host-authoritative kaart. */
-export type CardAnimKind = 'deal' | 'flip' | 'bus'
+/** Soort kaart-animatie. In Kingsen is er alleen de flip van de opengedraaide kaart. */
+export type CardAnimKind = 'flip'
 
 /** Guest -> host (de host stuurt zijn eigen intents door dezelfde loop, loopback). */
 export type Intent =
@@ -23,13 +14,9 @@ export type Intent =
   | { t: 'LEAVE' }
   | { t: 'SET_RULES'; rules: RuleConfig }
   | { t: 'START_GAME' }
-  | { t: 'ANSWER'; choice: AnswerChoice }
-  | { t: 'GIVE_SIPS'; targetPlayerId: string }
-  | { t: 'FLIP_PYRAMID' }
-  | { t: 'PLAY_CARD'; card: Card }
-  | { t: 'CALL_BLUFF'; targetPlayerId: string }
-  | { t: 'BUS_GUESS'; choice: BusChoice }
-  | { t: 'NEXT_PHASE' }
+  | { t: 'FLIP_CARD' }
+  | { t: 'ADD_TO_CUP'; amount: number }
+  | { t: 'SET_RULE'; text: string }
   /** Host-only: sla de beurt van de (weggevallen) actieve speler over. */
   | { t: 'FORFEIT_TURN' }
   | { t: 'END_GAME' }
@@ -37,13 +24,11 @@ export type Intent =
 
 /**
  * Host -> clients. Na elke mutatie gaat de volledige GameState mee (klein object):
- * geen delta's betekent geen desync en triviale reconnect. De CARD_EVENT-,
- * BLUFF_EVENT- en BUS_RESET_EVENT-berichten zijn transient (puur voor de
- * gelijktijdige animatie); de nieuwe waarden staan ook al in de bijbehorende STATE.
+ * geen delta's betekent geen desync en triviale reconnect. Het CARD_EVENT-bericht
+ * is transient (puur voor de gelijktijdige flip-animatie); de nieuwe waarden staan
+ * ook al in de bijbehorende STATE.
  */
 export type GameEvent =
   | { t: 'STATE'; state: GameState }
   | { t: 'CARD_EVENT'; animId: string; kind: CardAnimKind; card: Card; animSeed: number }
-  | { t: 'BLUFF_EVENT'; byPlayerId: string; targetPlayerId: string; verdict: BluffVerdict }
-  | { t: 'BUS_RESET_EVENT'; animSeed: number }
   | { t: 'ERROR'; code: ErrorCode }

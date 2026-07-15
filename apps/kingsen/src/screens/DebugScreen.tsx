@@ -3,11 +3,10 @@
 import { useRef, useState } from 'react'
 import { cardLabel } from '@/engine/cards'
 import { cryptoDeckSource } from '@/engine/deck'
-import { flatFlipOrder } from '@/engine/pyramid'
 import { createGame, reduce } from '@/engine/reducer'
 import type { Command, EngineEvent, ErrorCode, GameState } from '@/engine/types'
 
-const EMOJI = ['🃏', '🍺', '😎', '🦊', '🐙', '🍀', '🌶️', '🫠']
+const EMOJI = ['👑', '🍺', '😎', '🦊', '🐙', '🍀', '🌶️', '🫠']
 
 /**
  * Dev-only speeltuin (/?debug) om de engine zonder game-UI te bespelen.
@@ -29,12 +28,12 @@ export default function DebugScreen() {
     setLog((prev) => [...prev.slice(-14), ...result.events.map((e) => beschrijfEvent(e))])
   }
 
-  const { turn, pyramid, bus, pendingGive } = state
-  const others = state.players.filter((p) => p.id !== (pendingGive?.playerId ?? turn?.playerId))
+  const { turn, pending, currentCard } = state
+  const actorId = pending?.playerId ?? turn?.playerId ?? state.hostId
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 p-4 font-mono text-sm">
-      <h1 className="text-xl font-bold text-cyan">Bussen engine-debug</h1>
+      <h1 className="text-xl font-bold text-cyan">Kingsen engine-debug</h1>
 
       <section className="flex flex-wrap gap-2">
         {state.phase === 'lobby' && (
@@ -53,79 +52,41 @@ export default function DebugScreen() {
           </>
         )}
 
-        {pendingGive &&
-          others.map((p) => (
-            <DebugButton
-              key={p.id}
-              label={`geef → ${p.name}`}
-              onClick={() => dispatch({ t: 'GIVE_SIPS', playerId: pendingGive.playerId, targetPlayerId: p.id })}
-            />
-          ))}
-
-        {state.phase === 'questions' && turn && !pendingGive && (
+        {state.phase === 'playing' && pending === null && (
           <>
-            {(
-              [
-                ['rood', 'zwart'],
-                ['hoger', 'lager'],
-                ['binnen', 'buiten'],
-                ['heb', 'niet'],
-              ] as const
-            )[turn.questionIndex].map((choice) => (
-              <DebugButton
-                key={choice}
-                label={choice}
-                onClick={() => dispatch({ t: 'ANSWER', playerId: turn.playerId, choice })}
-              />
-            ))}
+            <DebugButton
+              label={`flip (${actorId})`}
+              onClick={() => dispatch({ t: 'FLIP_CARD', playerId: actorId })}
+            />
             <DebugButton label="forfeit" onClick={() => dispatch({ t: 'FORFEIT_TURN' })} />
           </>
         )}
 
-        {state.phase === 'pyramid' && pyramid && !pendingGive && (
+        {pending?.kind === 'cup' && (
           <>
-            <DebugButton label="flip" onClick={() => dispatch({ t: 'FLIP_PYRAMID', playerId: state.hostId })} />
-            {pyramid.currentRank !== null &&
-              pyramid.openClaim === null &&
-              state.players.map((p) => (
-                <DebugButton
-                  key={p.id}
-                  label={`${p.name} claimt ${pyramid.currentRank}`}
-                  onClick={() =>
-                    dispatch({
-                      t: 'PLAY_CARD',
-                      playerId: p.id,
-                      card: { rank: pyramid.currentRank!, suit: 'spades' },
-                    })
-                  }
-                />
-              ))}
-            {pyramid.openClaim &&
-              state.players
-                .filter((p) => p.id !== pyramid.openClaim!.claimantId)
-                .map((p) => (
-                  <DebugButton
-                    key={p.id}
-                    label={`${p.name} call bluff`}
-                    onClick={() =>
-                      dispatch({ t: 'CALL_BLUFF', playerId: p.id, targetPlayerId: pyramid.openClaim!.claimantId })
-                    }
-                  />
-                ))}
-            {pyramid.flipIndex >= flatFlipOrder(pyramid.rows).length && pyramid.openClaim === null && (
-              <DebugButton label="start bus" onClick={() => dispatch({ t: 'NEXT_PHASE' })} />
-            )}
+            {[1, 3, 5].map((amount) => (
+              <DebugButton
+                key={amount}
+                label={`schenk ${amount}`}
+                onClick={() => dispatch({ t: 'ADD_TO_CUP', playerId: pending.playerId, amount })}
+              />
+            ))}
           </>
         )}
 
-        {state.phase === 'bus' && bus && (
-          <>
-            <DebugButton label="hoger" onClick={() => dispatch({ t: 'BUS_GUESS', playerId: bus.driverIds[0], choice: 'hoger' })} />
-            <DebugButton label="lager" onClick={() => dispatch({ t: 'BUS_GUESS', playerId: bus.driverIds[0], choice: 'lager' })} />
-          </>
+        {pending?.kind === 'rule' && (
+          <DebugButton
+            label="regel: geen namen"
+            onClick={() => dispatch({ t: 'SET_RULE', playerId: pending.playerId, text: 'geen namen' })}
+          />
+        )}
+
+        {state.phase !== 'lobby' && (
+          <DebugButton label="einde" onClick={() => dispatch({ t: 'END_GAME' })} />
         )}
       </section>
 
+      {currentCard && <p className="text-cyan-soft">laatste kaart: {cardLabel(currentCard)}</p>}
       {error && <p className="text-destructive">⚠ {error}</p>}
 
       {log.length > 0 && (
@@ -157,18 +118,10 @@ function DebugButton({ label, onClick }: { label: string; onClick: () => void })
 
 function beschrijfEvent(e: EngineEvent): string {
   switch (e.t) {
-    case 'CARD_DEALT':
-      return `${e.playerId} krijgt ${cardLabel(e.card)}`
     case 'CARD_FLIPPED':
-      return `flip: ${cardLabel(e.card)} (rij ${e.rowValue})`
-    case 'SIPS_GIVEN':
-      return `${e.fromPlayerId} geeft ${e.amount} aan ${e.toPlayerId}`
-    case 'BLUFF_CALLED':
-      return `${e.byPlayerId} call bluft ${e.targetPlayerId}: ${e.verdict}`
-    case 'BUS_CARD':
-      return `bus: ${cardLabel(e.card)} (${e.correct ? 'goed' : 'fout'})`
-    case 'BUS_RESET':
-      return 'bus opnieuw'
+      return `flip: ${cardLabel(e.card)}`
+    case 'CUP_FILLED':
+      return `${e.playerId} schenkt ${e.amount} in (totaal ${e.total})`
     case 'PHASE_CHANGED':
       return `fase → ${e.phase}`
   }

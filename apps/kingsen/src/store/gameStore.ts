@@ -3,7 +3,7 @@
 import { create } from 'zustand'
 import { cryptoDeckSource } from '@/engine/deck'
 import { createGame, reduce } from '@/engine/reducer'
-import type { BluffVerdict, Card, Command, ErrorCode, GameState, PlayerProfile, RuleConfig } from '@/engine/types'
+import type { Card, Command, ErrorCode, GameState, PlayerProfile, RuleConfig } from '@/engine/types'
 import type { CardAnimKind } from '@/protocol/messages'
 
 /** Kaart-animatie voor de Card-component; landt op de host-authoritative kaart. */
@@ -14,28 +14,19 @@ export interface CardAnim {
   animSeed: number
 }
 
-/** Korte melding na een call bluff (net als de afslaan-toast in Mexxen). */
-export interface BluffToast {
-  id: number
-  byPlayerId: string
-  targetPlayerId: string
-  verdict: BluffVerdict
-}
-
 export type Screen = 'home' | 'setup' | 'host' | 'join' | 'rules'
 
 interface GameStore {
   state: GameState | null
   /**
-   * Wat de UI rendert: loopt één animatie achter op `state`, zodat chips en
-   * overlays de uitslag niet verklappen terwijl de kaart nog draait.
+   * Wat de UI rendert: loopt één animatie achter op `state`, zodat overlays en
+   * de meter de uitslag niet verklappen terwijl de kaart nog draait.
    */
   viewState: GameState | null
   screen: Screen
   /** true zolang de kaart-flip nog speelt; UI verklapt de uitslag dan nog niet. */
   animating: boolean
   cardAnim: CardAnim | null
-  bluffToast: BluffToast | null
   lastError: ErrorCode | null
   setScreen: (screen: Screen) => void
   startHotseat: (profiles: PlayerProfile[], rules: RuleConfig) => void
@@ -54,7 +45,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   screen: 'home',
   animating: false,
   cardAnim: null,
-  bluffToast: null,
   lastError: null,
 
   setScreen: (screen) => set({ screen }),
@@ -70,7 +60,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       viewState: state,
       animating: false,
       cardAnim: null,
-      bluffToast: null,
       lastError: null,
     })
   },
@@ -85,25 +74,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     let cardAnim = get().cardAnim
-    let bluffToast = get().bluffToast
     let startsAnim = false
     for (const event of result.events) {
-      if (event.t === 'CARD_DEALT') {
-        cardAnim = { id: ++animCounter, kind: 'deal', card: event.card, animSeed: event.animSeed }
-        startsAnim = true
-      } else if (event.t === 'CARD_FLIPPED') {
+      if (event.t === 'CARD_FLIPPED') {
         cardAnim = { id: ++animCounter, kind: 'flip', card: event.card, animSeed: event.animSeed }
         startsAnim = true
-      } else if (event.t === 'BUS_CARD') {
-        cardAnim = { id: ++animCounter, kind: 'bus', card: event.card, animSeed: event.animSeed }
-        startsAnim = true
-      } else if (event.t === 'BLUFF_CALLED') {
-        bluffToast = {
-          id: ++animCounter,
-          byPlayerId: event.byPlayerId,
-          targetPlayerId: event.targetPlayerId,
-          verdict: event.verdict,
-        }
       }
     }
 
@@ -113,7 +88,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       viewState: startsAnim ? get().viewState : result.state,
       lastError: null,
       cardAnim,
-      bluffToast,
       animating: startsAnim,
     })
   },
@@ -127,7 +101,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       screen: 'home',
       animating: false,
       cardAnim: null,
-      bluffToast: null,
       lastError: null,
     }),
 }))

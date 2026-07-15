@@ -8,7 +8,7 @@ import { createHostLoop, type HostLoop } from '@/net/hostLoop'
 import { createGuestTransport, createHostTransport } from '@/net/peerTransport'
 import type { GuestStatus, GuestTransport } from '@/net/transport'
 import type { GameEvent, Intent } from '@/protocol/messages'
-import type { BluffToast, CardAnim } from './gameStore'
+import type { CardAnim } from './gameStore'
 
 // Verbindingen zijn niet-serialiseerbaar; buiten de zustand-state houden.
 let hostLoop: HostLoop | null = null
@@ -18,7 +18,6 @@ let animCounter = 0
 // Dubbel-tik-bescherming voor guests: het rondje naar de host duurt even.
 let pendingAction = false
 let pendingActionTimer: number | null = null
-let lastBluffAt = 0
 // Rejoin na een page-reload: de host kan de oude verbinding nog open hebben.
 let joinProfile: PlayerProfile | null = null
 let joinRetries = 0
@@ -37,7 +36,6 @@ interface NetStore {
   myPlayerId: string | null
   animating: boolean
   cardAnim: CardAnim | null
-  bluffToast: BluffToast | null
   hostLobby(profile: PlayerProfile): Promise<void>
   joinLobby(roomCode: string, profile: PlayerProfile): Promise<void>
   sendIntent(intent: Intent): void
@@ -49,7 +47,7 @@ interface NetStore {
 
 /** Commands die een kaart-reveal (en dus een animatie) uitlokken. */
 function triggersReveal(cmd: Command): boolean {
-  return cmd.t === 'ANSWER' || cmd.t === 'FLIP_PYRAMID' || cmd.t === 'BUS_GUESS'
+  return cmd.t === 'FLIP_CARD'
 }
 
 export const useNetStore = create<NetStore>((set, get) => {
@@ -73,19 +71,6 @@ export const useNetStore = create<NetStore>((set, get) => {
           },
           animating: true,
         })
-        break
-      case 'BLUFF_EVENT':
-        set({
-          bluffToast: {
-            id: ++animCounter,
-            byPlayerId: event.byPlayerId,
-            targetPlayerId: event.targetPlayerId,
-            verdict: event.verdict,
-          },
-        })
-        break
-      case 'BUS_RESET_EVENT':
-        // De freeze loopt al via het CARD_EVENT van de foute kaart; niets extra nodig.
         break
       case 'ERROR':
         // Een afgewezen actie mag de optimistische animating-blokkade niet laten hangen.
@@ -127,7 +112,6 @@ export const useNetStore = create<NetStore>((set, get) => {
     myPlayerId: null,
     animating: false,
     cardAnim: null,
-    bluffToast: null,
 
     hostLobby: async (profile) => {
       set({ status: 'connecting', netError: null })
@@ -211,13 +195,6 @@ export const useNetStore = create<NetStore>((set, get) => {
         return
       }
 
-      if (cmd.t === 'CALL_BLUFF') {
-        // Eén tik = één call; een trillende dubbel-tik zou meteen een tweede sturen.
-        const now = performance.now()
-        if (now - lastBluffAt < 1200) return
-        lastBluffAt = now
-      }
-
       set({ lastError: null })
       get().sendIntent(intent)
     },
@@ -252,7 +229,6 @@ export const useNetStore = create<NetStore>((set, get) => {
         myPlayerId: null,
         animating: false,
         cardAnim: null,
-        bluffToast: null,
       })
     },
   }
@@ -273,20 +249,12 @@ function commandToIntent(cmd: Command): Intent | null {
       return { t: 'SET_RULES', rules: cmd.rules }
     case 'START_GAME':
       return { t: 'START_GAME' }
-    case 'ANSWER':
-      return { t: 'ANSWER', choice: cmd.choice }
-    case 'GIVE_SIPS':
-      return { t: 'GIVE_SIPS', targetPlayerId: cmd.targetPlayerId }
-    case 'FLIP_PYRAMID':
-      return { t: 'FLIP_PYRAMID' }
-    case 'PLAY_CARD':
-      return { t: 'PLAY_CARD', card: cmd.card }
-    case 'CALL_BLUFF':
-      return { t: 'CALL_BLUFF', targetPlayerId: cmd.targetPlayerId }
-    case 'BUS_GUESS':
-      return { t: 'BUS_GUESS', choice: cmd.choice }
-    case 'NEXT_PHASE':
-      return { t: 'NEXT_PHASE' }
+    case 'FLIP_CARD':
+      return { t: 'FLIP_CARD' }
+    case 'ADD_TO_CUP':
+      return { t: 'ADD_TO_CUP', amount: cmd.amount }
+    case 'SET_RULE':
+      return { t: 'SET_RULE', text: cmd.text }
     case 'FORFEIT_TURN':
       return { t: 'FORFEIT_TURN' }
     case 'END_GAME':
