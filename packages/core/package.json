@@ -9,14 +9,16 @@
     "./sound": "./src/lib/sound.ts",
     "./haptics": "./src/lib/haptics.ts",
     "./useWakeLock": "./src/hooks/useWakeLock.ts",
-    "./Coaster": "./src/components/Coaster.tsx"
+    "./Coaster": "./src/components/Coaster.tsx",
+    "./localeStore": "./src/store/localeStore.ts"
   },
   "dependencies": {
     "@capacitor-community/keep-awake": "^8.0.1",
     "@capacitor/core": "^8.4.1",
     "@capacitor/haptics": "^8.0.2",
     "clsx": "^2.1.1",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "zustand": "^5.0.14"
   },
   "peerDependencies": {
     "react": "^19.2.5"
