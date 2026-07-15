@@ -1,7 +1,25 @@
 # Monorepo-migratie: mexxen + bussen → `sipster-games`
 
-> Status: plan, nog niet uitgevoerd. Beschrijft hoe we mexxen en bussen samenbrengen in één
-> monorepo met een gedeelde `core`, zonder de deployments te koppelen.
+> Status: grotendeels uitgevoerd in `sipster-games`. Beschrijft hoe we mexxen en bussen
+> samenbrengen in één monorepo met een gedeelde `core`, zonder de deployments te koppelen.
+
+## Voortgang
+- **Fase 0 + 1 — gedaan.** Monorepo met npm workspaces + Turborepo; mexxen en bussen via
+  `git subtree` geïmporteerd mét historie; LF-normalisatie; workspace-namen `@sipster/mexxen`
+  en `@sipster/bussen`; één root-lockfile. `turbo run test lint build` groen voor beide apps.
+- **Fase 2 — gedaan.** `@sipster/core` levert `cn`, `mulberry32`, `useWakeLock`, `Coaster` en
+  de WebAudio-/haptiek-engine (neutrale namen + `configureSound(muteKey)`). Apps gebruiken
+  dunne re-export-adapters, dus geen call-site is gewijzigd.
+- **Fase 3 — deels gedaan, bewust afgekapt.** `localeStore` is een `createLocaleStore`-factory
+  in `core` geworden (per-app `locales` + namespace via adapter). De rest van fase 3
+  (`transport`/`peerTransport`/`hostLoop`/stores/`useGameAdapter` generiek) is **niet** gedaan:
+  die raakt de P2P-netcode, die niet zonder echt device / twee toestellen te verifiëren is, voor
+  beperkte extra DRY-winst. Bewust per app gelaten (zie het risico-argument hieronder).
+- **Vercel** — per-app `vercel.json` met expliciete `buildCommand`/`outputDirectory` + `turbo-ignore`.
+  Dashboard: per project Root Directory op `apps/<naam>` zetten (handmatig).
+- **Capacitor** — `apps/bussen/android` gegenereerd (appId `games.sipster.bussen`); mexxen had al een `android/`.
+- **Nog te doen (handmatig):** Vercel-projecten op de nieuwe repo met de juiste Root Directory +
+  domeinen; daarna de losse `mexxen`- en `bussen`-repo's archiveren.
 
 ## Context
 `mexxen` en `bussen` zijn twee bijna identieke projecten (zelfde stack, zelfde gelaagde
