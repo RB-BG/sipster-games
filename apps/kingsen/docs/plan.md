@@ -20,4 +20,8 @@ De spelregels staan in [`kingsen-regels.md`](./kingsen-regels.md) (bron van waar
 
 ## Voortgang
 
-- Chunk 1 (scaffold): in uitvoering.
+- Chunk 1 (scaffold): afgerond.
+- Chunk 2 (engine): afgerond, 43 vitest-tests groen.
+- Chunk 3 (hotseat + GameScreen): afgerond (CupMeter, cirkel-flip, regel/koning-invoer).
+- Chunk 4 (P2P): bedraad (protocol, host-loop met tests, net-store, lobby, QR-join). Twee-device-test staat nog open (preview kan P2P/animaties niet valideren).
+- Chunk 5 (polish): open. Ideeën: cup-fill- en waterval-effect, meter-animatie, geluidsvarianten, extra emoji-set, en de twee-device-rooktest.
