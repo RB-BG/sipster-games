@@ -1,51 +1,32 @@
 // Copyright © 2026 Bussen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
-import type { Die } from './types'
+/**
+ * Laag-niveau crypto-primitieven, alleen op de host gebruikt. De deck-bron
+ * (deck.ts) bouwt hierop een uniforme Fisher-Yates-shuffle; de reducer blijft
+ * deterministisch testbaar via een scripted deck.
+ */
 
 /**
- * Bron van worp-uitkomsten en animatie-seeds.
- * Injecteerbaar zodat de reducer deterministisch testbaar is.
+ * Uniform geheel getal in [0, maxExclusive) zonder modulo-bias, via
+ * rejection sampling op een 32-bit trekking.
  */
-export interface RollSource {
-  roll(): Die
-  /** 32-bit seed voor de gedeelde worp-animatie op alle clients. */
-  seed(): number
+export function randomInt(maxExclusive: number): number {
+  if (maxExclusive <= 0) throw new Error('randomInt vereist maxExclusive > 0')
+  if (maxExclusive === 1) return 0
+  const buf = new Uint32Array(1)
+  // Grootste veelvoud van maxExclusive dat binnen 2^32 past: alles daarboven weggooien.
+  const limit = Math.floor(0x100000000 / maxExclusive) * maxExclusive
+  let v: number
+  do {
+    crypto.getRandomValues(buf)
+    v = buf[0]
+  } while (v >= limit)
+  return v % maxExclusive
 }
 
-/** Productie-bron: cryptografisch uniform, alleen op de host gebruiken. */
-export function cryptoRollSource(): RollSource {
-  return {
-    roll() {
-      // Rejection sampling: 252 is het grootste zesvoud <= 256, dus geen modulo-bias.
-      const buf = new Uint8Array(1)
-      let v: number
-      do {
-        crypto.getRandomValues(buf)
-        v = buf[0]
-      } while (v >= 252)
-      return ((v % 6) + 1) as Die
-    },
-    seed() {
-      const buf = new Uint32Array(1)
-      crypto.getRandomValues(buf)
-      return buf[0]
-    },
-  }
-}
-
-/** Testbron: levert een vooraf bepaald script van waarden af. */
-export function scriptedRollSource(values: Die[]): RollSource {
-  let i = 0
-  let seedCounter = 0
-  return {
-    roll() {
-      if (i >= values.length) {
-        throw new Error(`scriptedRollSource is leeg na ${values.length} worpen`)
-      }
-      return values[i++]
-    },
-    seed() {
-      return ++seedCounter
-    },
-  }
+/** 32-bit seed voor de gedeelde kaart-animatie op alle clients. */
+export function randomSeed(): number {
+  const buf = new Uint32Array(1)
+  crypto.getRandomValues(buf)
+  return buf[0]
 }

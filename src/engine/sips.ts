@@ -1,32 +1,28 @@
 // Copyright © 2026 Bussen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
-import type { AfslaanVerdict, RuleConfig } from './types'
+import type { QuestionIndex, RuleConfig } from './types'
 
 /**
- * Slokken voor de verliezer van een ronde: elke mex die ronde verdubbelt de inzet.
- * standaard aantal × 2^aantal-mexxen × tiebreak-verdubbeling.
- * (2 → 4 bij één mex → 8 bij twee mexxen, enz.)
+ * Slokken-formules voor bussen. Alles schaalt met de basiseenheid
+ * `standaardSlokken` (standaard 1, dus de natuurlijke getallen).
  */
-export function loserSips(rules: RuleConfig, mexCount: number, multiplier = 1): number {
-  return rules.standaardSlokken * 2 ** mexCount * multiplier
+
+/** Vraag N (0-based index) is N+1 slokken waard. */
+export function questionSips(rules: RuleConfig, questionIndex: QuestionIndex): number {
+  return (questionIndex + 1) * rules.standaardSlokken
 }
 
-/** Bij 31 deelt de gooier het standaard aantal slokken uit. */
-export function sips31(rules: RuleConfig): number {
-  return rules.standaardSlokken
+/** Een piramide-rij is z'n rij-waarde aan slokken waard. */
+export function pyramidSips(rules: RuleConfig, rowValue: number): number {
+  return rowValue * rules.standaardSlokken
 }
 
-/** Strafmatrix voor afslaan; terecht afslaan kost niets. */
-export function afslaanPenalty(verdict: AfslaanVerdict): number {
-  switch (verdict) {
-    case 'terecht':
-      return 0
-    case 'onterecht':
-      return 2
-    case 'zelfAfgeklopt':
-    case 'mexAfgeklopt':
-      return 4
-    case 'eigenMexAfgeklopt':
-      return 8
-  }
+/** Betrapte leugenaar of valse beschuldiger: dubbel de inzet. */
+export function bluffPenalty(rowSips: number): number {
+  return rowSips * 2
+}
+
+/** Foute bus-gok: oplopende straf 1, 2, 3, … naar het aantal missers. */
+export function busSips(rules: RuleConfig, strikeNumber: number): number {
+  return strikeNumber * rules.standaardSlokken
 }

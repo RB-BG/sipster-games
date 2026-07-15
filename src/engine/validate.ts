@@ -1,12 +1,12 @@
 // Copyright © 2026 Bussen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
-import { scoreRank } from './score'
-import type { Command, ErrorCode, GameState, TurnState } from './types'
+import { pyramidTotal } from './pyramid'
+import type { AnswerChoice, Command, ErrorCode, GameState, QuestionIndex } from './types'
 
 /**
  * Controleert of een command nu geldig is. Puur: geen state-mutatie.
- * Autorisatie (mag deze peer dit namens deze speler?) is de taak van de host-loop,
- * niet van de engine: hotseat kent geen peers.
+ * Autorisatie (mag deze peer dit namens deze speler?) is de taak van de
+ * host-loop, niet van de engine: hotseat kent geen peers.
  */
 export function validateCommand(state: GameState, cmd: Command): ErrorCode | null {
   switch (cmd.t) {
@@ -23,6 +23,7 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
     case 'SET_RULES':
       if (state.phase !== 'lobby') return 'WRONG_PHASE'
       if (cmd.rules.standaardSlokken < 1) return 'INVALID_RULES'
+      if (cmd.rules.busLengte < 1 || cmd.rules.busLengte > 10) return 'INVALID_RULES'
       return null
 
     case 'START_GAME':
@@ -30,108 +31,90 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
       if (state.players.length < 2) return 'NOT_ENOUGH_PLAYERS'
       return null
 
-    case 'ROLL': {
-      const err = requireTurn(state, cmd.playerId)
-      if (err) return err
-      const turn = state.turn as TurnState
-      if (turn.pending31) return 'PENDING_31'
-      // Kan alleen bij een open 65-op-laatste-worp (omgekeerde mex): flippen of blijven staan.
-      if (turn.throwsUsed >= turn.maxThrows) return 'WRONG_PHASE'
-      if (turn.dice !== null) {
-        const rollable = turn.dice.some((d) => !d.onTable || d.vers === 'stale')
-        if (!rollable) return 'NO_ROLLABLE_DICE'
-      }
+    case 'ANSWER': {
+      if (state.phase !== 'questions' || state.turn === null) return 'WRONG_PHASE'
+      if (state.turn.playerId !== cmd.playerId) return 'NOT_YOUR_TURN'
+      if (state.pendingGive !== null) return 'PENDING_GIVE'
+      if (!choiceFitsQuestion(state.turn.questionIndex, cmd.choice)) return 'INVALID_CHOICE'
       return null
     }
 
-    case 'HOLD_DIE':
-    case 'PICKUP_DIE': {
-      const err = requireTurn(state, cmd.playerId)
-      if (err) return err
-      const turn = state.turn as TurnState
-      if (turn.pending31) return 'PENDING_31'
-      if (turn.dice === null) return 'HAS_NOT_THROWN'
-      const die = turn.dice[cmd.dieId]
-      // Verse en stale 1/2 zijn onaanraakbaar: liggen verplicht, of moeten verplicht mee.
-      if (die.vers !== null) return 'INVALID_DIE'
-      if (cmd.t === 'HOLD_DIE' && die.onTable) return 'INVALID_DIE'
-      // Een vrije steen "oppakken" mag als afslaan-preventiegebaar bij een open window.
-      if (cmd.t === 'PICKUP_DIE' && !die.onTable && !turn.afslaanWindow) return 'INVALID_DIE'
-      return null
-    }
-
-    case 'END_TURN': {
-      const err = requireTurn(state, cmd.playerId)
-      if (err) return err
-      const turn = state.turn as TurnState
-      if (turn.pending31) return 'PENDING_31'
-      if (turn.dice === null) return 'HAS_NOT_THROWN'
-      return null
-    }
-
-    case 'GIVE_SIPS_31': {
-      const err = requireTurn(state, cmd.playerId)
-      if (err) return err
-      const turn = state.turn as TurnState
-      if (!turn.pending31) return 'NOT_PENDING_31'
+    case 'GIVE_SIPS': {
+      if (state.pendingGive === null) return 'NOT_PENDING_GIVE'
+      if (state.pendingGive.playerId !== cmd.playerId) return 'NOT_YOUR_TURN'
       if (cmd.targetPlayerId === cmd.playerId) return 'INVALID_TARGET'
       if (!state.players.some((p) => p.id === cmd.targetPlayerId)) return 'INVALID_TARGET'
       return null
     }
 
-    case 'TIEBREAK_ROLL': {
-      if (state.phase !== 'tiebreak' || state.tiebreak === null) return 'WRONG_PHASE'
-      if (!state.tiebreak.playerIds.includes(cmd.playerId)) return 'NOT_YOUR_TURN'
-      if (state.tiebreak.rolls[cmd.playerId] !== null) return 'ALREADY_ROLLED'
+    case 'FLIP_PYRAMID': {
+      if (state.phase !== 'pyramid' || state.pyramid === null) return 'WRONG_PHASE'
+      if (state.pyramid.openClaim !== null) return 'CLAIM_IN_PROGRESS'
+      if (state.pyramid.flipIndex >= pyramidTotal(state.pyramid)) return 'NOTHING_TO_FLIP'
       return null
     }
 
-    case 'NEXT_ROUND':
-    case 'END_GAME':
-      if (state.phase !== 'roundEnd') return 'WRONG_PHASE'
+    case 'PLAY_CARD': {
+      if (state.phase !== 'pyramid' || state.pyramid === null) return 'WRONG_PHASE'
+      if (!state.players.some((p) => p.id === cmd.playerId)) return 'UNKNOWN_PLAYER'
+      const { currentRank, openClaim } = state.pyramid
+      if (currentRank === null) return 'WRONG_PHASE'
+      if (openClaim !== null) return 'CLAIM_IN_PROGRESS'
+      if (cmd.card.rank !== currentRank) return 'INVALID_CARD'
+      // Zonder de bluf-regel moet de claim waar zijn: de kaart moet in de hand zitten.
+      if (!state.rules.bluffen) {
+        const player = state.players.find((p) => p.id === cmd.playerId)
+        if (!player || !player.hand.some((c) => c.rank === currentRank)) return 'INVALID_CARD'
+      }
       return null
+    }
+
+    case 'CALL_BLUFF': {
+      if (state.phase !== 'pyramid' || state.pyramid === null) return 'WRONG_PHASE'
+      if (!state.rules.bluffen) return 'WRONG_PHASE'
+      const { openClaim } = state.pyramid
+      if (openClaim === null) return 'NO_OPEN_CLAIM'
+      if (!state.players.some((p) => p.id === cmd.playerId)) return 'UNKNOWN_PLAYER'
+      if (cmd.playerId === openClaim.claimantId) return 'INVALID_TARGET'
+      if (cmd.targetPlayerId !== openClaim.claimantId) return 'INVALID_TARGET'
+      return null
+    }
+
+    case 'BUS_GUESS': {
+      if (state.phase !== 'bus' || state.bus === null) return 'WRONG_PHASE'
+      if (!state.bus.driverIds.includes(cmd.playerId)) return 'NOT_A_DRIVER'
+      if (cmd.choice !== 'hoger' && cmd.choice !== 'lager') return 'INVALID_CHOICE'
+      return null
+    }
+
+    case 'NEXT_PHASE': {
+      if (state.phase !== 'pyramid' || state.pyramid === null) return 'WRONG_PHASE'
+      if (state.pyramid.openClaim !== null) return 'CLAIM_IN_PROGRESS'
+      if (state.pyramid.flipIndex < pyramidTotal(state.pyramid)) return 'WRONG_PHASE'
+      return null
+    }
 
     case 'SET_CONNECTED':
       if (!state.players.some((p) => p.id === cmd.playerId)) return 'UNKNOWN_PLAYER'
       return null
 
     case 'FORFEIT_TURN':
-      // Ook een weggevallen speler in de kamp moet over te slaan zijn.
-      if (state.phase === 'tiebreak' && state.tiebreak !== null) {
-        if (!state.tiebreak.playerIds.includes(cmd.playerId)) return 'NOT_YOUR_TURN'
-        if (state.tiebreak.rolls[cmd.playerId] !== null) return 'ALREADY_ROLLED'
-        return null
-      }
-      if (state.phase !== 'playing' || state.turn === null || state.turn.locked)
-        return 'WRONG_PHASE'
-      if (state.turn.playerId !== cmd.playerId) return 'NOT_YOUR_TURN'
+      if (state.phase !== 'questions' || state.turn === null) return 'WRONG_PHASE'
       return null
 
-    case 'FLIP_65': {
-      if (!state.rules.omgekeerdeMex) return 'WRONG_PHASE'
-      const err = requireTurn(state, cmd.playerId)
-      if (err) return err
-      const turn = state.turn as TurnState
-      if (turn.pending31) return 'PENDING_31'
-      if (turn.dice === null) return 'HAS_NOT_THROWN'
-      if (scoreRank(turn.dice[0].value, turn.dice[1].value) !== 65) return 'INVALID_DIE'
-      return null
-    }
-
-    case 'AFSLAAN':
-      // Ook een onterechte afklop is een geldige actie: de reducer velt het
-      // oordeel. Ook in roundEnd, want een mex die de ronde afsloot moet
-      // afklopbaar blijven (4/8 slokken straf).
-      if (!state.rules.afslaan || (state.phase !== 'playing' && state.phase !== 'roundEnd'))
-        return 'WRONG_PHASE'
-      if (!state.players.some((p) => p.id === cmd.playerId)) return 'UNKNOWN_PLAYER'
+    case 'END_GAME':
+      if (state.phase === 'lobby') return 'WRONG_PHASE'
       return null
   }
 }
 
-function requireTurn(state: GameState, playerId: string): ErrorCode | null {
-  if (state.phase !== 'playing' || state.turn === null) return 'WRONG_PHASE'
-  if (state.turn.locked) return 'WRONG_PHASE'
-  if (state.turn.playerId !== playerId) return 'NOT_YOUR_TURN'
-  return null
+const QUESTION_CHOICES: Record<QuestionIndex, AnswerChoice[]> = {
+  0: ['rood', 'zwart'],
+  1: ['hoger', 'lager'],
+  2: ['binnen', 'buiten'],
+  3: ['heb', 'niet'],
+}
+
+function choiceFitsQuestion(index: QuestionIndex, choice: AnswerChoice): boolean {
+  return QUESTION_CHOICES[index].includes(choice)
 }
