@@ -22,7 +22,11 @@ export function bluffPenalty(rowSips: number): number {
   return rowSips * 2
 }
 
-/** Foute bus-gok: oplopende straf 1, 2, 3, … naar het aantal missers. */
-export function busSips(rules: RuleConfig, strikeNumber: number): number {
-  return strikeNumber * rules.standaardSlokken
+/**
+ * Foute bus-gok: je drinkt evenveel slokken als de kaartpositie waar je stond
+ * (kaart 1 = 1, kaart 3 = 3, …). De straf loopt dus op naarmate je verder komt,
+ * maar na de misser ga je terug naar kaart 1 en begint hij weer bij 1.
+ */
+export function busSips(rules: RuleConfig, cardNumber: number): number {
+  return cardNumber * rules.standaardSlokken
 }

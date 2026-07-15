@@ -379,9 +379,11 @@ function applyBusGuess(
     return
   }
 
-  // Fout: oplopende straf voor elke chauffeur, opnieuw beginnen met verse kaarten.
+  // Fout: straf gelijk aan de kaartpositie waar je stond (bepaald vóór de reset).
+  // Elke chauffeur drinkt, daarna opnieuw beginnen bij kaart 1 met verse kaarten,
+  // dus de straf begint volgende poging ook weer bij 1.
+  const amount = busSips(draft.rules, bus.position + 1)
   bus.strikes++
-  const amount = busSips(draft.rules, bus.strikes)
   for (const id of bus.driverIds) drink(draft, id, amount, 'bus')
   bus.cards = Array.from({ length: draft.rules.busLengte }, () => drawCard(draft, rng))
   bus.position = 0

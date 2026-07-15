@@ -272,10 +272,22 @@ describe('bus', () => {
     const s0 = busGame([card(5, 'hearts'), card(9, 'clubs'), card(3, 'spades')], 3, tail)
     // 9 > 5, dus 'lager' is fout.
     const s = step(s0, { t: 'BUS_GUESS', playerId: 'a', choice: 'lager' }, rng)
-    expect(s.players[0].sipsTotal).toBe(1) // eerste misser = 1 slok
+    expect(s.players[0].sipsTotal).toBe(1) // fout op kaart 1 = 1 slok
     expect(s.bus?.strikes).toBe(1)
     expect(s.bus?.position).toBe(0)
     expect(s.bus?.cards[0]).toEqual(tail[0]) // verse rij
+  })
+
+  it('de straf is gelijk aan de kaartpositie waar je fout gokt', () => {
+    const tail = [card(2, 'clubs'), card(4, 'clubs'), card(6, 'clubs')]
+    const s0 = busGame([card(5, 'hearts'), card(9, 'clubs'), card(4, 'spades')], 3, tail)
+    // 9 > 5, dus 'hoger' is goed: door naar kaart 2.
+    let s = step(s0, { t: 'BUS_GUESS', playerId: 'a', choice: 'hoger' }, rng)
+    expect(s.bus?.position).toBe(1)
+    // 4 < 9, dus 'hoger' is fout op kaart 2: 2 slokken.
+    s = step(s, { t: 'BUS_GUESS', playerId: 'a', choice: 'hoger' }, rng)
+    expect(s.players[0].sipsTotal).toBe(2)
+    expect(s.bus?.position).toBe(0) // terug naar kaart 1
   })
 
   it('laatste goede gok rijdt de bus uit -> ended', () => {

@@ -31,7 +31,7 @@ describe('bluffPenalty', () => {
 })
 
 describe('busSips', () => {
-  it('loopt op met het aantal missers', () => {
+  it('is gelijk aan de kaartpositie waar je fout gokt', () => {
     expect(busSips(DEFAULT_RULES, 1)).toBe(1)
     expect(busSips(DEFAULT_RULES, 2)).toBe(2)
     expect(busSips({ ...DEFAULT_RULES, standaardSlokken: 2 }, 3)).toBe(6)

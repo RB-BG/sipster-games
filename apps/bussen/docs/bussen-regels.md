@@ -39,7 +39,7 @@ Na de laatste omgedraaide kaart wordt de speler (of spelers) met de **meeste kaa
 De buschauffeur krijgt een rij van N kaarten (standaard 5) gesloten voor zich. Positie 0 (de eerste kaart) wordt open gelegd. Voor elke volgende kaart gokt de speler hoger of lager dan de vorige open kaart.
 
 - Goed: schuif een positie op.
-- Fout: de speler drinkt (oplopend: 1, dan 2, dan 3, …), de rij wordt opnieuw gesloten gelegd en de speler begint weer bij positie 0.
+- Fout: de speler drinkt evenveel slokken als de kaartpositie waar hij stond (fout op kaart 1 = 1 slok, op kaart 3 = 3 slokken). De rij wordt opnieuw gesloten gelegd en de speler begint weer bij positie 0; de straf begint daarmee volgende poging ook weer bij 1. De straf loopt dus op naarmate je verder komt, maar niet over losse missers heen.
 
 Zodra de hele rij zonder fout is doorlopen, is de bus uitgereden en is het potje afgelopen (`ended`).
 
