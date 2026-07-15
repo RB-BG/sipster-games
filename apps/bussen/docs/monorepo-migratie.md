@@ -10,6 +10,10 @@
 - **Fase 2 — gedaan.** `@sipster/core` levert `cn`, `mulberry32`, `useWakeLock`, `Coaster` en
   de WebAudio-/haptiek-engine (neutrale namen + `configureSound(muteKey)`). Apps gebruiken
   dunne re-export-adapters, dus geen call-site is gewijzigd.
+  NB: van de tier B-tabel hieronder zijn alleen `sound`/`haptics` daadwerkelijk verplaatst;
+  `storage`, `net/peerTransport` en de UI-componenten (`LocaleSwitch`/`QrShare`/`DrinkShots`)
+  zijn **bewust per app gebleven** (`storage`: een generieke factory bespaart nauwelijks code;
+  `peerTransport`: hoort bij de niet-hier-testbare P2P-laag van fase 3).
 - **Fase 3 — deels gedaan, bewust afgekapt.** `localeStore` is een `createLocaleStore`-factory
   in `core` geworden (per-app `locales` + namespace via adapter). De rest van fase 3
   (`transport`/`peerTransport`/`hostLoop`/stores/`useGameAdapter` generiek) is **niet** gedaan:
