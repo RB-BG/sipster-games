@@ -10,7 +10,7 @@ import type {
   WireEnvelope,
 } from './transport'
 
-const PEER_PREFIX = 'mexxen-'
+const PEER_PREFIX = 'bussen-'
 // Zonder 0/O/1/I: roomcodes worden hardop voorgelezen aan de bar.
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 const CODE_LENGTH = 4
@@ -33,7 +33,7 @@ function unwrap(data: unknown): Intent | GameEvent | null {
   return envelope.msg
 }
 
-/** Host: claimt peer-id `mexxen-<code>`; bij een bezette code een nieuwe proberen. */
+/** Host: claimt peer-id `bussen-<code>`; bij een bezette code een nieuwe proberen. */
 export function createHostTransport(callbacks: HostCallbacks): Promise<HostTransport> {
   return new Promise((resolve, reject) => {
     let attempts = 0
