@@ -29,62 +29,70 @@ describe('START_GAME', () => {
     const s = startedGame(rng)
     expect(s.phase).toBe('questions')
     expect(s.deck.length).toBe(52)
-    expect(s.turn).toEqual({ playerId: 'a', questionIndex: 0, revealed: [] })
+    expect(s.turn).toEqual({ playerId: 'a', questionIndex: 0 })
   })
 })
 
 describe('questions: goed vs fout', () => {
   let rng: DeckSource
   beforeEach(() => {
-    // Ann krijgt hearts 2,3,4,5 (idx 0..3): rood, oplopend.
+    // Het rondje gaat per vraag de tafel rond: a krijgt idx 0,2,4,6; b krijgt 1,3,5,7.
     rng = scriptedDeck(orderedDeck())
   })
 
-  it('goed antwoord levert een pending give op die slokken uitdeelt', () => {
+  it('goed antwoord levert een pending give op; daarna is de volgende speler aan de beurt', () => {
     let s = startedGame(rng)
-    // Q0: hearts2 is rood, antwoord 'rood' is goed.
+    // Q0 voor a: hearts2 is rood, antwoord 'rood' is goed.
     s = step(s, { t: 'ANSWER', playerId: 'a', choice: 'rood' }, rng)
     expect(s.pendingGive).toEqual({ playerId: 'a', amount: 1 })
     // Geen antwoord toegestaan zolang de give openstaat.
-    expect(reduce(s, { t: 'ANSWER', playerId: 'a', choice: 'hoger' }, rng).error).toBe('PENDING_GIVE')
+    expect(reduce(s, { t: 'ANSWER', playerId: 'a', choice: 'zwart' }, rng).error).toBe('PENDING_GIVE')
     s = step(s, { t: 'GIVE_SIPS', playerId: 'a', targetPlayerId: 'b' }, rng)
     expect(s.players[1].sipsTotal).toBe(1)
     expect(s.pendingGive).toBeNull()
-    expect(s.turn?.questionIndex).toBe(1)
+    // Zelfde vraag (0), maar nu is speler b aan de beurt.
+    expect(s.turn).toEqual({ playerId: 'b', questionIndex: 0 })
   })
 
-  it('fout antwoord laat de speler zelf drinken en gaat door', () => {
+  it('fout antwoord laat de speler zelf drinken en geeft de beurt door', () => {
     let s = startedGame(rng)
-    // Q0: hearts2 rood, antwoord 'zwart' is fout: 1 slok.
+    // Q0 voor a: hearts2 rood, antwoord 'zwart' is fout: 1 slok.
     s = step(s, { t: 'ANSWER', playerId: 'a', choice: 'zwart' }, rng)
     expect(s.players[0].sipsTotal).toBe(1)
     expect(s.pendingGive).toBeNull()
-    expect(s.turn?.questionIndex).toBe(1)
+    expect(s.turn).toEqual({ playerId: 'b', questionIndex: 0 })
   })
 
   it('hoger/lager telt gelijk als fout', () => {
-    // Deck zo dat kaart 2 gelijk is aan kaart 1 in rank.
-    const deck: Card[] = [card(7, 'hearts'), card(7, 'clubs'), card(3, 'spades'), card(4, 'spades')]
+    // a: 7h (Q0) en 7c (Q1) -> gelijke rank. b krijgt tussendoor zijn Q0-kaart.
+    const deck: Card[] = [card(7, 'hearts'), card(2, 'clubs'), card(7, 'clubs')]
     const r = scriptedDeck([...deck, ...orderedDeck()])
     let s = startedGame(r)
-    s = step(s, { t: 'ANSWER', playerId: 'a', choice: 'rood' }, r) // Q0 goed
+    s = step(s, { t: 'ANSWER', playerId: 'a', choice: 'rood' }, r) // a Q0 goed (7h rood)
     s = step(s, { t: 'GIVE_SIPS', playerId: 'a', targetPlayerId: 'b' }, r)
-    // Q1: 7 vs 7 gelijk -> altijd fout.
+    s = step(s, { t: 'ANSWER', playerId: 'b', choice: 'rood' }, r) // b Q0: 2c is zwart -> fout
+    // a Q1: 7c gelijk aan 7h -> altijd fout, ongeacht de keuze.
     s = step(s, { t: 'ANSWER', playerId: 'a', choice: 'hoger' }, r)
     expect(s.players[0].sipsTotal).toBe(2)
   })
 })
 
 describe('questions -> pyramid transitie', () => {
-  it('na de laatste speler zijn Q4 wordt de piramide gelegd', () => {
-    const rng = scriptedDeck(orderedDeck())
+  it('rondje per vraag; na ieders laatste vraag wordt de piramide gelegd', () => {
+    // Rondje-per-vraag levert a de kaarten idx 0,2,4,6 en b idx 1,3,5,7.
+    // Deze harten-deck maakt elk 'wrong'-antwoord gegarandeerd fout:
+    //   a: 2h,5h,9h,7h   b: 3h,6h,10h,4h  (alles rood, Q1 hoger, Q2 buiten, Q3 zelfde suit)
+    const deck: Card[] = [
+      card(2, 'hearts'), card(3, 'hearts'), card(5, 'hearts'), card(6, 'hearts'),
+      card(9, 'hearts'), card(10, 'hearts'), card(7, 'hearts'), card(4, 'hearts'),
+    ]
+    const rng = scriptedDeck([...deck, ...orderedDeck()])
     let s = startedGame(rng)
-    // Beide spelers vier keer fout: geen give-stappen nodig, elk 1+2+3+4 = 10 slokken.
+    // Iedere beurt fout beantwoorden: geen give-stappen, elk 1+2+3+4 = 10 slokken.
     const wrong: AnswerChoice[] = ['zwart', 'lager', 'binnen', 'niet']
-    for (let p = 0; p < 2; p++) {
-      for (const choice of wrong) {
-        s = step(s, { t: 'ANSWER', playerId: s.turn!.playerId, choice }, rng)
-      }
+    while (s.phase === 'questions') {
+      const turn = s.turn!
+      s = step(s, { t: 'ANSWER', playerId: turn.playerId, choice: wrong[turn.questionIndex] }, rng)
     }
     expect(s.phase).toBe('pyramid')
     expect(s.turn).toBeNull()

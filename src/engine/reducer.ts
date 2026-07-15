@@ -108,9 +108,9 @@ export function reduce(state: GameState, cmd: Command, rng: DeckSource): ReduceR
       break
 
     case 'FORFEIT_TURN':
-      // Weggevallen speler in het vragenrondje: sla zijn resterende vragen over.
+      // Weggevallen speler in het vragenrondje: sla zijn beurt over.
       draft.pendingGive = null
-      advanceQuestions(draft, events, rng)
+      advanceQuestion(draft, events, rng)
       break
 
     case 'END_GAME':
@@ -156,7 +156,7 @@ function startGame(draft: GameState, events: EngineEvent[], rng: DeckSource): vo
   }
   draft.sipsLog = []
   draft.phase = 'questions'
-  draft.turn = { playerId: draft.players[0].id, questionIndex: 0, revealed: [] }
+  draft.turn = { playerId: draft.players[0].id, questionIndex: 0 }
   events.push({ t: 'PHASE_CHANGED', phase: 'questions' })
 }
 
@@ -168,13 +168,15 @@ function applyAnswer(
 ): void {
   const turn = draft.turn!
   const index = turn.questionIndex
-  const card = drawCard(draft, rng)
   const player = playerById(draft, turn.playerId)
+  // De eigen tot nu toe opengelegde kaarten zijn de context voor hoger/lager,
+  // binnen/buiten en de suit-vraag. Vastleggen vóór de nieuwe kaart erbij komt.
+  const priorCards = player.hand.slice()
+  const card = drawCard(draft, rng)
   player.hand.push(card)
   events.push({ t: 'CARD_DEALT', playerId: turn.playerId, card, animSeed: rng.seed() })
 
-  const correct = evaluateAnswer(index, turn.revealed, card, choice)
-  turn.revealed.push(card)
+  const correct = evaluateAnswer(index, priorCards, card, choice)
   const amount = questionSips(draft.rules, index)
 
   if (correct) {
@@ -183,9 +185,9 @@ function applyAnswer(
     return
   }
 
-  // Fout: de speler drinkt zelf en gaat door naar de volgende vraag/speler.
+  // Fout: de speler drinkt zelf en de beurt gaat naar de volgende speler.
   drink(draft, turn.playerId, amount, 'fout')
-  stepAfterQuestion(draft, events, rng)
+  advanceQuestion(draft, events, rng)
 }
 
 /** Bepaalt of een antwoord goed is; `revealed` is de hand vóór deze kaart. */
@@ -213,24 +215,26 @@ function evaluateAnswer(
   }
 }
 
-/** Na een afgehandelde vraag: volgende vraag, of volgende speler/fase. */
-function stepAfterQuestion(draft: GameState, events: EngineEvent[], rng: DeckSource): void {
-  const turn = draft.turn!
-  if (turn.questionIndex >= 3) {
-    advanceQuestions(draft, events, rng)
-  } else {
-    turn.questionIndex = (turn.questionIndex + 1) as QuestionIndex
-  }
-}
-
-function advanceQuestions(draft: GameState, events: EngineEvent[], rng: DeckSource): void {
+/**
+ * Rondje-per-vraag: eerst gaat dezelfde vraag de tafel rond, daarna pas de
+ * volgende vraag (weer vanaf de eerste speler). Na de laatste speler van de
+ * laatste vraag begint de piramide.
+ */
+function advanceQuestion(draft: GameState, events: EngineEvent[], rng: DeckSource): void {
   const turn = draft.turn!
   const idx = draft.players.findIndex((p) => p.id === turn.playerId)
   const next = draft.players[idx + 1]
   if (next) {
-    draft.turn = { playerId: next.id, questionIndex: 0, revealed: [] }
-  } else {
+    // Zelfde vraag, volgende speler.
+    turn.playerId = next.id
+    return
+  }
+  // Iedereen heeft deze vraag gehad.
+  if (turn.questionIndex >= 3) {
     startPyramid(draft, events, rng)
+  } else {
+    turn.questionIndex = (turn.questionIndex + 1) as QuestionIndex
+    turn.playerId = draft.players[0].id
   }
 }
 
@@ -254,7 +258,7 @@ function applyGiveSips(
 
   if (draft.phase === 'questions') {
     // De give hoorde bij een goed beantwoorde vraag: ga verder.
-    stepAfterQuestion(draft, events, rng)
+    advanceQuestion(draft, events, rng)
     return
   }
 
