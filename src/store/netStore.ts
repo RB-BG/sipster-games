@@ -1,27 +1,14 @@
 // Copyright © 2026 Bussen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
 import { create } from 'zustand'
-import type {
-  AfslaanVerdict,
-  Command,
-  ErrorCode,
-  GameState,
-  PlayerProfile,
-  RuleConfig,
-} from '@/engine/types'
+import type { Command, ErrorCode, GameState, PlayerProfile, RuleConfig } from '@/engine/types'
 import { useLocaleStore } from './localeStore'
 import { loadRules, saveRules } from '@/lib/storage'
 import { createHostLoop, type HostLoop } from '@/net/hostLoop'
 import { createGuestTransport, createHostTransport } from '@/net/peerTransport'
 import type { GuestStatus, GuestTransport } from '@/net/transport'
 import type { GameEvent, Intent } from '@/protocol/messages'
-import type { FlipAnim, RollAnim } from './gameStore'
-
-export interface AfslaanToast {
-  id: number
-  byPlayerId: string
-  verdict: AfslaanVerdict
-}
+import type { BluffToast, CardAnim } from './gameStore'
 
 // Verbindingen zijn niet-serialiseerbaar; buiten de zustand-state houden.
 let hostLoop: HostLoop | null = null
@@ -29,14 +16,12 @@ let guestTransport: GuestTransport | null = null
 let visibilityHandler: (() => void) | null = null
 let animCounter = 0
 // Dubbel-tik-bescherming voor guests: het rondje naar de host duurt even.
-let pendingRoll = false
-let pendingRollTimer: number | null = null
-let lastAfslaanAt = 0
+let pendingAction = false
+let pendingActionTimer: number | null = null
+let lastBluffAt = 0
 // Rejoin na een page-reload: de host kan de oude verbinding nog open hebben.
 let joinProfile: PlayerProfile | null = null
 let joinRetries = 0
-const FLIP_SETTLE_MS = 450
-let flipTimer: number | null = null
 
 interface NetStore {
   role: 'none' | 'host' | 'guest'
@@ -51,9 +36,8 @@ interface NetStore {
   lastError: ErrorCode | null
   myPlayerId: string | null
   animating: boolean
-  rollAnim: RollAnim | null
-  flipAnim: FlipAnim | null
-  afslaanToast: AfslaanToast | null
+  cardAnim: CardAnim | null
+  bluffToast: BluffToast | null
   hostLobby(profile: PlayerProfile): Promise<void>
   joinLobby(roomCode: string, profile: PlayerProfile): Promise<void>
   sendIntent(intent: Intent): void
@@ -61,6 +45,11 @@ interface NetStore {
   setRules(rules: RuleConfig): void
   onRollSettled(): void
   leave(): void
+}
+
+/** Commands die een kaart-reveal (en dus een animatie) uitlokken. */
+function triggersReveal(cmd: Command): boolean {
+  return cmd.t === 'ANSWER' || cmd.t === 'FLIP_PYRAMID' || cmd.t === 'BUS_GUESS'
 }
 
 export const useNetStore = create<NetStore>((set, get) => {
@@ -73,55 +62,40 @@ export const useNetStore = create<NetStore>((set, get) => {
           viewState: get().animating ? (get().viewState ?? event.state) : event.state,
         })
         break
-      case 'ROLL_EVENT':
-        clearPendingRoll()
+      case 'CARD_EVENT':
+        clearPendingAction()
         set({
-          rollAnim: {
+          cardAnim: {
             id: ++animCounter,
-            dieIds: event.dieIds,
-            values: event.values,
+            kind: event.kind,
+            card: event.card,
             animSeed: event.animSeed,
           },
           animating: true,
         })
         break
-      case 'TIEBREAK_ROLL_EVENT':
-        clearPendingRoll()
+      case 'BLUFF_EVENT':
         set({
-          rollAnim: {
+          bluffToast: {
             id: ++animCounter,
-            dieIds: [0],
-            values: [event.value],
-            animSeed: event.animSeed,
-            single: true,
+            byPlayerId: event.byPlayerId,
+            targetPlayerId: event.targetPlayerId,
+            verdict: event.verdict,
           },
-          animating: true,
         })
         break
-      case 'FLIP_EVENT':
-        // De flip is een korte animatie zonder settle-callback: timer rondt af.
-        set({
-          flipAnim: { id: ++animCounter, values: [event.values[0], event.values[1]] },
-          animating: true,
-        })
-        if (flipTimer !== null) window.clearTimeout(flipTimer)
-        flipTimer = window.setTimeout(() => get().onRollSettled(), FLIP_SETTLE_MS)
-        break
-      case 'AFSLAAN_EVENT':
-        set({
-          afslaanToast: { id: ++animCounter, byPlayerId: event.byPlayerId, verdict: event.verdict },
-        })
+      case 'BUS_RESET_EVENT':
+        // De freeze loopt al via het CARD_EVENT van de foute kaart; niets extra nodig.
         break
       case 'ERROR':
-        // Een afgewezen worp mag de optimistische animating-blokkade niet laten hangen.
-        if (pendingRoll) {
-          clearPendingRoll()
+        // Een afgewezen actie mag de optimistische animating-blokkade niet laten hangen.
+        if (pendingAction) {
+          clearPendingAction()
           set({ lastError: event.code, animating: false })
         } else {
           set({ lastError: event.code })
         }
         // Rejoin-race na een reload: de host ziet onze oude verbinding nog open.
-        // Even wachten en opnieuw joinen; na een paar seconden is die stale close verwerkt.
         if (event.code === 'ALREADY_JOINED' && get().netState === null && joinRetries < 3) {
           joinRetries++
           window.setTimeout(() => {
@@ -134,11 +108,11 @@ export const useNetStore = create<NetStore>((set, get) => {
     }
   }
 
-  function clearPendingRoll() {
-    pendingRoll = false
-    if (pendingRollTimer !== null) {
-      window.clearTimeout(pendingRollTimer)
-      pendingRollTimer = null
+  function clearPendingAction() {
+    pendingAction = false
+    if (pendingActionTimer !== null) {
+      window.clearTimeout(pendingActionTimer)
+      pendingActionTimer = null
     }
   }
 
@@ -152,9 +126,8 @@ export const useNetStore = create<NetStore>((set, get) => {
     lastError: null,
     myPlayerId: null,
     animating: false,
-    rollAnim: null,
-    flipAnim: null,
-    afslaanToast: null,
+    cardAnim: null,
+    bluffToast: null,
 
     hostLobby: async (profile) => {
       set({ status: 'connecting', netError: null })
@@ -221,18 +194,16 @@ export const useNetStore = create<NetStore>((set, get) => {
       const intent = commandToIntent(cmd)
       if (!intent) return
 
-      if (cmd.t === 'ROLL' || cmd.t === 'TIEBREAK_ROLL') {
-        if (get().animating || pendingRoll) return
-        // Optimistisch blokkeren tot het ROLL_EVENT (of een ERROR) terugkomt;
-        // de timeout is het vangnet als de host nooit antwoordt. Ruim genoeg
-        // dat een trage host niet tot een dubbele worp verleidt, en met een
-        // resync zodat de knop pas na verse state weer vrijkomt.
-        pendingRoll = true
+      if (triggersReveal(cmd)) {
+        if (get().animating || pendingAction) return
+        // Optimistisch blokkeren tot het CARD_EVENT (of een ERROR) terugkomt;
+        // de timeout is het vangnet als de host nooit antwoordt.
+        pendingAction = true
         set({ animating: true, lastError: null })
-        pendingRollTimer = window.setTimeout(() => {
-          if (!pendingRoll) return
-          pendingRoll = false
-          pendingRollTimer = null
+        pendingActionTimer = window.setTimeout(() => {
+          if (!pendingAction) return
+          pendingAction = false
+          pendingActionTimer = null
           set({ animating: false })
           get().sendIntent({ t: 'REQUEST_SYNC' })
         }, 8000)
@@ -240,12 +211,11 @@ export const useNetStore = create<NetStore>((set, get) => {
         return
       }
 
-      if (cmd.t === 'AFSLAAN') {
-        // Eén fysieke klap = één intent; een trillende dubbel-tik zou de
-        // terechte afslager meteen een onterechte tweede klap bezorgen.
+      if (cmd.t === 'CALL_BLUFF') {
+        // Eén tik = één call; een trillende dubbel-tik zou meteen een tweede sturen.
         const now = performance.now()
-        if (now - lastAfslaanAt < 1200) return
-        lastAfslaanAt = now
+        if (now - lastBluffAt < 1200) return
+        lastBluffAt = now
       }
 
       set({ lastError: null })
@@ -260,11 +230,7 @@ export const useNetStore = create<NetStore>((set, get) => {
     onRollSettled: () => set({ animating: false, viewState: get().netState }),
 
     leave: () => {
-      clearPendingRoll()
-      if (flipTimer !== null) {
-        window.clearTimeout(flipTimer)
-        flipTimer = null
-      }
+      clearPendingAction()
       joinProfile = null
       if (get().role === 'guest') guestTransport?.sendIntent({ t: 'LEAVE' })
       if (visibilityHandler) {
@@ -285,9 +251,8 @@ export const useNetStore = create<NetStore>((set, get) => {
         lastError: null,
         myPlayerId: null,
         animating: false,
-        rollAnim: null,
-        flipAnim: null,
-        afslaanToast: null,
+        cardAnim: null,
+        bluffToast: null,
       })
     },
   }
@@ -308,24 +273,24 @@ function commandToIntent(cmd: Command): Intent | null {
       return { t: 'SET_RULES', rules: cmd.rules }
     case 'START_GAME':
       return { t: 'START_GAME' }
-    case 'ROLL':
-      return { t: 'ROLL' }
-    case 'HOLD_DIE':
-      return { t: 'HOLD_DIE', dieId: cmd.dieId }
-    case 'PICKUP_DIE':
-      return { t: 'PICKUP_DIE', dieId: cmd.dieId }
-    case 'END_TURN':
-      return { t: 'END_TURN' }
-    case 'GIVE_SIPS_31':
-      return { t: 'GIVE_SIPS_31', targetPlayerId: cmd.targetPlayerId }
-    case 'TIEBREAK_ROLL':
-      return { t: 'TIEBREAK_ROLL' }
-    case 'NEXT_ROUND':
-      return { t: 'NEXT_ROUND' }
-    case 'END_GAME':
-      return { t: 'END_GAME' }
+    case 'ANSWER':
+      return { t: 'ANSWER', choice: cmd.choice }
+    case 'GIVE_SIPS':
+      return { t: 'GIVE_SIPS', targetPlayerId: cmd.targetPlayerId }
+    case 'FLIP_PYRAMID':
+      return { t: 'FLIP_PYRAMID' }
+    case 'PLAY_CARD':
+      return { t: 'PLAY_CARD', card: cmd.card }
+    case 'CALL_BLUFF':
+      return { t: 'CALL_BLUFF', targetPlayerId: cmd.targetPlayerId }
+    case 'BUS_GUESS':
+      return { t: 'BUS_GUESS', choice: cmd.choice }
+    case 'NEXT_PHASE':
+      return { t: 'NEXT_PHASE' }
     case 'FORFEIT_TURN':
       return { t: 'FORFEIT_TURN' }
+    case 'END_GAME':
+      return { t: 'END_GAME' }
     default:
       return null
   }

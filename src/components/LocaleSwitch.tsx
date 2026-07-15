@@ -32,7 +32,7 @@ export default function LocaleSwitch() {
             aria-pressed={active}
             className={
               active
-                ? 'rounded-md bg-amber-warm px-2.5 py-1 font-semibold text-wood-950'
+                ? 'rounded-md bg-cyan px-2.5 py-1 font-semibold text-night-950'
                 : 'rounded-md px-2.5 py-1 text-muted-foreground transition-colors active:text-ivory'
             }
           >

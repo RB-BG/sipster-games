@@ -1,32 +1,25 @@
 // Copyright © 2026 Bussen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
 import { create } from 'zustand'
+import { cryptoDeckSource } from '@/engine/deck'
 import { createGame, reduce } from '@/engine/reducer'
-import { cryptoRollSource } from '@/engine/rng'
-import type {
-  Command,
-  Die,
-  DieId,
-  ErrorCode,
-  GameState,
-  PlayerProfile,
-  RuleConfig,
-} from '@/engine/types'
+import type { BluffVerdict, Card, Command, ErrorCode, GameState, PlayerProfile, RuleConfig } from '@/engine/types'
+import type { CardAnimKind } from '@/protocol/messages'
 
-/** Worp-animatie voor de Dice-component; zelfde vorm als RollRequest daar. */
-export interface RollAnim {
+/** Kaart-animatie voor de Card-component; landt op de host-authoritative kaart. */
+export interface CardAnim {
   id: number
-  dieIds: DieId[]
-  values: Die[]
+  kind: CardAnimKind
+  card: Card
   animSeed: number
-  /** Kamp-worp: er telt maar één steen, dus toon geen gecombineerde score. */
-  single?: boolean
 }
 
-/** Omdraai-animatie (omgekeerde mex): per die-id de nieuwe waarde. */
-export interface FlipAnim {
+/** Korte melding na een call bluff (net als de afslaan-toast in Mexxen). */
+export interface BluffToast {
   id: number
-  values: (Die | null)[]
+  byPlayerId: string
+  targetPlayerId: string
+  verdict: BluffVerdict
 }
 
 export type Screen = 'home' | 'setup' | 'host' | 'join' | 'rules'
@@ -35,14 +28,14 @@ interface GameStore {
   state: GameState | null
   /**
    * Wat de UI rendert: loopt één animatie achter op `state`, zodat chips en
-   * overlays de uitslag niet verklappen terwijl de stenen nog rollen.
+   * overlays de uitslag niet verklappen terwijl de kaart nog draait.
    */
   viewState: GameState | null
   screen: Screen
-  /** true zolang de 3D-worp nog speelt; UI verklapt de uitslag dan nog niet. */
+  /** true zolang de kaart-flip nog speelt; UI verklapt de uitslag dan nog niet. */
   animating: boolean
-  rollAnim: RollAnim | null
-  flipAnim: FlipAnim | null
+  cardAnim: CardAnim | null
+  bluffToast: BluffToast | null
   lastError: ErrorCode | null
   setScreen: (screen: Screen) => void
   startHotseat: (profiles: PlayerProfile[], rules: RuleConfig) => void
@@ -52,19 +45,16 @@ interface GameStore {
 }
 
 // Hotseat: dit toestel is de host, dus de crypto-bron mag hier draaien.
-const rng = cryptoRollSource()
-
-/** De flip-animatie (350ms) heeft geen settle-callback; een timer rondt af. */
-const FLIP_SETTLE_MS = 450
-let flipTimer: number | null = null
+const rng = cryptoDeckSource()
+let animCounter = 0
 
 export const useGameStore = create<GameStore>((set, get) => ({
   state: null,
   viewState: null,
   screen: 'home',
   animating: false,
-  rollAnim: null,
-  flipAnim: null,
+  cardAnim: null,
+  bluffToast: null,
   lastError: null,
 
   setScreen: (screen) => set({ screen }),
@@ -75,7 +65,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       state = reduce(state, { t: 'ADD_PLAYER', profile }, rng).state
     }
     state = reduce(state, { t: 'START_GAME' }, rng).state
-    set({ state, viewState: state, animating: false, rollAnim: null, flipAnim: null, lastError: null })
+    set({
+      state,
+      viewState: state,
+      animating: false,
+      cardAnim: null,
+      bluffToast: null,
+      lastError: null,
+    })
   },
 
   dispatch: (cmd) => {
@@ -87,34 +84,26 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return
     }
 
-    let rollAnim = get().rollAnim
-    let flipAnim = get().flipAnim
+    let cardAnim = get().cardAnim
+    let bluffToast = get().bluffToast
     let startsAnim = false
     for (const event of result.events) {
-      if (event.t === 'DICE_ROLLED') {
-        rollAnim = {
-          id: result.state.version,
-          dieIds: event.dieIds,
-          values: event.values,
-          animSeed: event.animSeed,
+      if (event.t === 'CARD_DEALT') {
+        cardAnim = { id: ++animCounter, kind: 'deal', card: event.card, animSeed: event.animSeed }
+        startsAnim = true
+      } else if (event.t === 'CARD_FLIPPED') {
+        cardAnim = { id: ++animCounter, kind: 'flip', card: event.card, animSeed: event.animSeed }
+        startsAnim = true
+      } else if (event.t === 'BUS_CARD') {
+        cardAnim = { id: ++animCounter, kind: 'bus', card: event.card, animSeed: event.animSeed }
+        startsAnim = true
+      } else if (event.t === 'BLUFF_CALLED') {
+        bluffToast = {
+          id: ++animCounter,
+          byPlayerId: event.byPlayerId,
+          targetPlayerId: event.targetPlayerId,
+          verdict: event.verdict,
         }
-        startsAnim = true
-      } else if (event.t === 'TIEBREAK_ROLLED') {
-        // Kamp-worp: één steen (die 0) met de gegooide waarde.
-        rollAnim = {
-          id: result.state.version,
-          dieIds: [0],
-          values: [event.value],
-          animSeed: event.animSeed,
-          single: true,
-        }
-        startsAnim = true
-      } else if (event.t === 'FLIPPED_65') {
-        flipAnim = { id: result.state.version, values: [event.values[0], event.values[1]] }
-        // De flip is een korte animatie zonder settle-callback: timer rondt af.
-        startsAnim = true
-        if (flipTimer !== null) window.clearTimeout(flipTimer)
-        flipTimer = window.setTimeout(() => get().onRollSettled(), FLIP_SETTLE_MS)
       }
     }
 
@@ -123,8 +112,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       // Tijdens een animatie blijft de weergave op de oude stand hangen.
       viewState: startsAnim ? get().viewState : result.state,
       lastError: null,
-      rollAnim,
-      flipAnim,
+      cardAnim,
+      bluffToast,
       animating: startsAnim,
     })
   },
@@ -137,8 +126,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       viewState: null,
       screen: 'home',
       animating: false,
-      rollAnim: null,
-      flipAnim: null,
+      cardAnim: null,
+      bluffToast: null,
       lastError: null,
     }),
 }))

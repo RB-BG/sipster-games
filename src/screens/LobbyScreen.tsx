@@ -48,13 +48,13 @@ export default function LobbyScreen() {
       {roomCode && (
         <Coaster className="flex flex-col items-center gap-2">
           <p className="text-sm text-muted-foreground">{strings.roomCodeLabel}</p>
-          <p className="text-4xl font-bold tracking-[0.3em] text-amber-soft">{roomCode}</p>
+          <p className="text-4xl font-bold tracking-[0.3em] text-cyan-soft">{roomCode}</p>
           <QrShare roomCode={roomCode} />
         </Coaster>
       )}
 
       {status === 'reconnecting' && (
-        <p className="flex items-center gap-2 text-sm text-amber-soft">
+        <p className="flex items-center gap-2 text-sm text-cyan-soft">
           <WifiOff className="size-4" /> {strings.reconnecting}
         </p>
       )}

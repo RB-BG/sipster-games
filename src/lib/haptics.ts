@@ -15,13 +15,13 @@ function web(pattern: number | number[]): void {
   navigator.vibrate?.(pattern)
 }
 
-/** Lichte tik bij het gooien. */
-export function hapticRoll(): void {
+/** Lichte tik bij het delen of omdraaien van een kaart. */
+export function hapticDeal(): void {
   if (native) void Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
   else web(30)
 }
 
-/** Doffe klap bij afslaan. */
+/** Doffe klap bij een call bluff. */
 export function hapticSlap(): void {
   if (native) void Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => {})
   else web(80)
@@ -33,14 +33,8 @@ export function hapticDrink(): void {
   else web(40)
 }
 
-/** Feestelijke roffel bij mex. */
-export function hapticMex(): void {
+/** Feestelijke roffel bij een goede uitkomst of het uitrijden van de bus. */
+export function hapticFanfare(): void {
   if (native) void Haptics.notification({ type: NotificationType.Success }).catch(() => {})
   else web([50, 60, 50])
-}
-
-/** Roffel bij de ridderslag. */
-export function hapticRidder(): void {
-  if (native) void Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {})
-  else web([40, 40, 80])
 }

@@ -1,17 +1,16 @@
 // Copyright © 2026 Bussen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
-import { rankLabel } from '@/engine/score'
 import type { PlayerState } from '@/engine/types'
 import { cn } from '@/lib/utils'
 
 interface PlayerChipProps {
   player: PlayerState
   active: boolean
-  /** 'ridder' of 'dubbel' toont het schildje. */
-  ridder?: 'ridder' | 'dubbel' | null
+  /** Toont het bus-icoon als deze speler de bus rijdt. */
+  driver?: boolean
 }
 
-export default function PlayerChip({ player, active, ridder }: PlayerChipProps) {
+export default function PlayerChip({ player, active, driver }: PlayerChipProps) {
   return (
     <div
       className={cn(
@@ -22,13 +21,11 @@ export default function PlayerChip({ player, active, ridder }: PlayerChipProps) 
     >
       <span className="text-lg leading-none">
         {player.emoji}
-        {ridder && <span className="text-sm">🛡️{ridder === 'dubbel' ? '²' : ''}</span>}
+        {driver && <span className="text-sm">🚌</span>}
       </span>
       <span className="max-w-20 truncate font-semibold">{player.name}</span>
       <span className={active ? 'opacity-80' : 'text-muted-foreground'}>
-        {player.roundScore !== null ? rankLabel(player.roundScore) : '·'}
-        {' · '}
-        {player.sipsTotal}🍺
+        {player.hand.length}🃏 · {player.sipsTotal}🍺
       </span>
     </div>
   )

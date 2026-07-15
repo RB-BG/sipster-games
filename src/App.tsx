@@ -11,23 +11,23 @@ import { useStrings } from '@/store/localeStore'
 import { useGameStore } from '@/store/gameStore'
 import { useNetStore } from '@/store/netStore'
 
-// Lazy zodat three/rapier niet in de startbundel zitten.
-const DiceLabScreen = lazy(() => import('@/screens/DiceLabScreen'))
+// Lazy zodat de dev-speeltuin en het spel niet in de startbundel zitten.
+const CardsLabScreen = lazy(() => import('@/screens/CardsLabScreen'))
 const GameScreen = lazy(() => import('@/screens/GameScreen'))
 
 export default function App() {
   const strings = useStrings()
-  const loader = <p className="p-8 text-muted-foreground">{strings.rolling}</p>
+  const loader = <p className="p-8 text-muted-foreground">{strings.dealing}</p>
   const hasGame = useGameStore((s) => s.state !== null)
   const screen = useGameStore((s) => s.screen)
   const role = useNetStore((s) => s.role)
   const netPhase = useNetStore((s) => s.netState?.phase ?? 'lobby')
 
-  // Dev-hulpschermen: /?debug (engine), /?dice (3D-steering).
+  // Dev-hulpschermen: /?debug (engine), /?cards (kaart-flip-steering).
   const params = new URLSearchParams(window.location.search)
   if (params.has('debug')) return <DebugScreen />
-  if (params.has('dice')) {
-    return <Suspense fallback={loader}>{<DiceLabScreen />}</Suspense>
+  if (params.has('cards')) {
+    return <Suspense fallback={loader}>{<CardsLabScreen />}</Suspense>
   }
 
   // Verbonden (host of guest): lobby tot de host start, daarna het spel.

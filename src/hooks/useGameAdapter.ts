@@ -2,8 +2,8 @@
 
 import type { Command, ErrorCode, GameState } from '@/engine/types'
 import type { GuestStatus } from '@/net/transport'
-import { useGameStore, type FlipAnim, type RollAnim } from '@/store/gameStore'
-import { useNetStore, type AfslaanToast } from '@/store/netStore'
+import { useGameStore, type BluffToast, type CardAnim } from '@/store/gameStore'
+import { useNetStore } from '@/store/netStore'
 
 export interface GameAdapter {
   state: GameState | null
@@ -11,9 +11,8 @@ export interface GameAdapter {
   myPlayerId: string | null
   isHost: boolean
   animating: boolean
-  rollAnim: RollAnim | null
-  flipAnim: FlipAnim | null
-  afslaanToast: AfslaanToast | null
+  cardAnim: CardAnim | null
+  bluffToast: BluffToast | null
   lastError: ErrorCode | null
   /** Verbindingsstatus; hotseat is altijd 'idle'. */
   connection: GuestStatus | 'idle'
@@ -33,9 +32,8 @@ export function useGameAdapter(): GameAdapter {
       myPlayerId: net.myPlayerId,
       isHost: net.role === 'host',
       animating: net.animating,
-      rollAnim: net.rollAnim,
-      flipAnim: net.flipAnim,
-      afslaanToast: net.afslaanToast,
+      cardAnim: net.cardAnim,
+      bluffToast: net.bluffToast,
       lastError: net.lastError,
       connection: net.status,
       dispatch: net.sendCommand,
@@ -49,9 +47,8 @@ export function useGameAdapter(): GameAdapter {
     myPlayerId: null,
     isHost: true,
     animating: hot.animating,
-    rollAnim: hot.rollAnim,
-    flipAnim: hot.flipAnim,
-    afslaanToast: null,
+    cardAnim: hot.cardAnim,
+    bluffToast: hot.bluffToast,
     lastError: hot.lastError,
     connection: 'idle',
     dispatch: hot.dispatch,

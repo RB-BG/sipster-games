@@ -30,8 +30,8 @@ export default function QrShare({ roomCode }: { roomCode: string }) {
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <div className="rounded-xl bg-ivory p-3">
-        <QRCodeSVG value={link} size={144} bgColor="#f3ecd9" fgColor="#17130e" />
+      <div className="rounded-xl bg-card-face p-3">
+        <QRCodeSVG value={link} size={144} bgColor="#f2f4fb" fgColor="#0b1020" />
       </div>
       <p className="text-sm text-muted-foreground">{strings.scanToJoin}</p>
       <div className="flex gap-2">

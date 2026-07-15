@@ -1,6 +1,6 @@
 // Copyright © 2026 Bussen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
-import { BookOpen, Dices, Smartphone, Users } from 'lucide-react'
+import { BookOpen, Smartphone, Spade, Users } from 'lucide-react'
 import LocaleSwitch from '@/components/LocaleSwitch'
 import { useStrings } from '@/store/localeStore'
 import { useGameStore } from '@/store/gameStore'
@@ -15,7 +15,7 @@ export default function HomeScreen() {
         <LocaleSwitch />
       </div>
       <div className="flex flex-col items-center gap-3">
-        <Dices className="size-14 text-amber-warm" aria-hidden />
+        <Spade className="size-14 text-cyan" aria-hidden />
         <h1 className="font-heading text-6xl font-bold tracking-tight text-ivory">
           {strings.appName}
         </h1>

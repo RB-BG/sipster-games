@@ -3,7 +3,7 @@
 import { create } from 'zustand'
 import { locales, type Locale, type Strings } from '@/i18n/strings'
 
-const LOCALE_KEY = 'mexxen.locale'
+const LOCALE_KEY = 'bussen.locale'
 
 function isLocale(value: string | null): value is Locale {
   return value !== null && value in locales

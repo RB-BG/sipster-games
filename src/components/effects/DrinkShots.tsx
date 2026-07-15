@@ -51,7 +51,7 @@ export function DrinkShotLayer({ shots, hits }: { shots: Shot[]; hits: Hit[] }) 
         {hits.map((hit) => (
           <motion.span
             key={hit.key}
-            className="absolute left-0 top-0 whitespace-nowrap text-lg font-extrabold text-amber-soft drop-shadow"
+            className="absolute left-0 top-0 whitespace-nowrap text-lg font-extrabold text-cyan-soft drop-shadow"
             initial={{ x: hit.x, y: hit.y, opacity: 0, scale: 0.6 }}
             animate={{ x: hit.x, y: hit.y - 38, opacity: 1, scale: 1.1 }}
             exit={{ opacity: 0, y: hit.y - 54 }}
