@@ -57,14 +57,17 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
     case 'PLAY_CARD': {
       if (state.phase !== 'pyramid' || state.pyramid === null) return 'WRONG_PHASE'
       if (!state.players.some((p) => p.id === cmd.playerId)) return 'UNKNOWN_PLAYER'
+      const player = state.players.find((p) => p.id === cmd.playerId)
       const { currentRank, openClaim } = state.pyramid
       if (currentRank === null) return 'WRONG_PHASE'
       if (openClaim !== null) return 'CLAIM_IN_PROGRESS'
       if (cmd.card.rank !== currentRank) return 'INVALID_CARD'
-      // Zonder de bluf-regel moet de claim waar zijn: de kaart moet in de hand zitten.
-      if (!state.rules.bluffen) {
-        const player = state.players.find((p) => p.id === cmd.playerId)
-        if (!player || !player.hand.some((c) => c.rank === currentRank)) return 'INVALID_CARD'
+      // Elke claim kost een kaart uit de hand: met een lege hand kun je niet meer
+      // claimen (en dus ook niet meer bluffen).
+      if (!player || player.hand.length === 0) return 'INVALID_CARD'
+      // Zonder de bluf-regel moet de claim waar zijn: de kaart moet echt in de hand zitten.
+      if (!state.rules.bluffen && !player.hand.some((c) => c.rank === currentRank)) {
+        return 'INVALID_CARD'
       }
       return null
     }
