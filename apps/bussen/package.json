@@ -1,5 +1,5 @@
 {
-  "name": "bussen",
+  "name": "@sipster/bussen",
   "private": true,
   "version": "0.0.0",
   "type": "module",
