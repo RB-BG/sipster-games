@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
+  "ignoreCommand": "npx turbo-ignore @sipster/bussen",
   "rewrites": [{ "source": "/(.*)", "destination": "/" }]
 }
