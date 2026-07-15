@@ -1,38 +1,45 @@
 // Copyright © 2026 Bussen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
-export type Die = 1 | 2 | 3 | 4 | 5 | 6
-export type DieId = 0 | 1
+export type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades'
+/** 2..10 op waarde, 11=boer, 12=vrouw, 13=heer, 14=aas (hoog). */
+export type Rank = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14
 
-/**
- * Versheid van een vastliggende 1 of 2:
- * 'fresh' = mag nog precies één worp blijven liggen,
- * 'stale' = moet bij de volgende worp verplicht mee.
- */
-export type Versheid = 'fresh' | 'stale'
+export interface Card {
+  suit: Suit
+  rank: Rank
+}
 
-export type GamePhase = 'lobby' | 'playing' | 'tiebreak' | 'roundEnd' | 'ended'
+export type GamePhase = 'lobby' | 'questions' | 'pyramid' | 'bus' | 'ended'
+
+/** De vier vragen, op volgorde. */
+export type QuestionIndex = 0 | 1 | 2 | 3
+
+/** Alle mogelijke antwoord-keuzes over de vier vragen. */
+export type AnswerChoice =
+  | 'rood'
+  | 'zwart'
+  | 'hoger'
+  | 'lager'
+  | 'binnen'
+  | 'buiten'
+  | 'heb'
+  | 'niet'
+
+export type BusChoice = 'hoger' | 'lager'
 
 export interface RuleConfig {
+  /** Basiseenheid: elke slok-uitkomst wordt hiermee vermenigvuldigd. */
   standaardSlokken: number
-  /** Eerste bepaalt het tempo: latere spelers max evenveel worpen als speler 1. */
-  tempo: boolean
-  /** 65 mag omgedraaid worden naar mex (telt niet mee voor de drink-multiplier). */
-  omgekeerdeMex: boolean
-  ridder: boolean
-  dubbeleRidder: boolean
-  afslaan: boolean
-  /** Vooraf afgesproken: wint bij tiebreak de laagste of verliest de hoogste. */
-  tiebreakHoogsteVerliest: boolean
+  /** Liegen in de piramide: claimen zonder de kaart, met call bluff. */
+  bluffen: boolean
+  /** Aantal kaarten in de bus-rij. */
+  busLengte: number
 }
 
 export const DEFAULT_RULES: RuleConfig = {
-  standaardSlokken: 2,
-  tempo: false,
-  omgekeerdeMex: false,
-  ridder: false,
-  dubbeleRidder: false,
-  afslaan: false,
-  tiebreakHoogsteVerliest: true,
+  standaardSlokken: 1,
+  bluffen: true,
+  busLengte: 5,
 }
 
 export interface PlayerProfile {
@@ -44,64 +51,68 @@ export interface PlayerProfile {
 export interface PlayerState extends PlayerProfile {
   connected: boolean
   sipsTotal: number
-  /** Score-rang van de eindworp deze ronde (zie scoreRank), null zolang niet gespeeld. */
-  roundScore: number | null
-  hasPlayedThisRound: boolean
+  /** De kaarten die de speler nog vasthoudt (start als de 4 vraagkaarten). */
+  hand: Card[]
 }
 
-export interface DieState {
-  id: DieId
-  value: Die
-  /** Ligt vast op tafel: verse 1/2 (verplicht) of vrijwillig vastgehouden. */
-  onTable: boolean
-  /** Alleen gezet voor een vastliggende 1 of 2; null bij vrijwillige hold. */
-  vers: Versheid | null
-}
-
+/** Beurt in het vragenrondje: één speler, vier vragen op volgorde. */
 export interface TurnState {
   playerId: string
-  /** null tot de eerste worp van de beurt. */
-  dice: [DieState, DieState] | null
-  throwsUsed: number
-  maxThrows: number
-  /** 31 gegooid: eerst slokken uitdelen, dan gratis herworp. */
-  pending31: boolean
-  /** Beurt definitief voorbij (mex, worpen op, blijven staan). */
-  locked: boolean
-  /** Er ligt een afslaanbare 32: open tot de gooier een steen oppakt of doorgaat. */
-  afslaanWindow: boolean
+  /** De vraag die nu beantwoord moet worden. */
+  questionIndex: QuestionIndex
+  /** De tot nu toe opengelegde kaarten deze beurt (== de hand-in-opbouw). */
+  revealed: Card[]
 }
 
-export type AfslaanVerdict =
-  | 'terecht'
-  | 'onterecht'
-  | 'zelfAfgeklopt'
-  | 'mexAfgeklopt'
-  | 'eigenMexAfgeklopt'
+/** Een openstaande claim in de piramide (het afslaan-analoog). */
+export interface Claim {
+  claimantId: string
+  card: Card
+  /** Slokken die op het spel staan (de rij-waarde). */
+  rowValue: number
+  /** Heeft de claimant de rank echt in de hand? Verborgen voor validate. */
+  truthful: boolean
+}
 
-export type SipReason = 'verliezer' | 'gekregen31' | 'straf' | 'ridder'
+export interface PyramidState {
+  /** Van onder (index 0, 5 kaarten, 1 slok) naar boven (top, 1 kaart, 5 slokken). */
+  rows: Card[][]
+  /** Aantal reeds omgedraaide kaarten (vlakke telling, van onder naar boven). */
+  flipIndex: number
+  /** Rank van de laatst omgedraaide kaart; open om te claimen tot de volgende flip. */
+  currentRank: Rank | null
+  /** Rij-waarde (slokken) van die laatst omgedraaide kaart. */
+  currentRowValue: number
+  /** Een lopende claim die op afhandeling wacht (give of call bluff). */
+  openClaim: Claim | null
+}
+
+export interface BusState {
+  /** Wie de bus rijdt (meerdere bij gelijkspel). */
+  driverIds: string[]
+  /** De rij bus-kaarten (lengte = rules.busLengte). */
+  cards: Card[]
+  /** Hoeveel kaarten al goed geraden zijn (0 = eerste kaart ligt open). */
+  position: number
+  /** Aantal foute gokken tot nu toe; bepaalt de oplopende straf. */
+  strikes: number
+}
+
+/** Een pending slokken-uitdeling: de speler kiest nog een doelwit. */
+export interface PendingGive {
+  playerId: string
+  amount: number
+}
+
+export type SipReason = 'fout' | 'gekregen' | 'bluf' | 'bus'
 
 export interface SipEntry {
   playerId: string
   amount: number
   reason: SipReason
-  round: number
 }
 
-export interface TiebreakState {
-  playerIds: string[]
-  rolls: Record<string, Die | null>
-  multiplier: number
-}
-
-export interface RoundState {
-  number: number
-  startingPlayerId: string
-  /** Aantal echte mexxen deze ronde (omgekeerde mex telt niet mee). */
-  mexCount: number
-  /** Worpenlimiet gezet door de eerste speler (alleen bij rules.tempo). */
-  tempoLimit: number | null
-}
+export type BluffVerdict = 'betrapt' | 'onterecht'
 
 export interface GameState {
   /** Monotoon oplopend, voor snapshot-ordering bij guests. */
@@ -111,13 +122,15 @@ export interface GameState {
   hostId: string
   /** Volgorde in de array = speelvolgorde. */
   players: PlayerState[]
-  round: RoundState
+  /** De geschudde deck (host-authoritative); reduce popt puur op drawIndex. */
+  deck: Card[]
+  drawIndex: number
+  /** Vragenrondje-beurt, null buiten de questions-fase. */
   turn: TurnState | null
-  ridderId: string | null
-  ridderDubbel: boolean
-  /** Laatst afgeronde beurt; nodig om een afgeklopte mex te herkennen. */
-  lastTurnSummary: { playerId: string; wasMex: boolean } | null
-  tiebreak: TiebreakState | null
+  pyramid: PyramidState | null
+  bus: BusState | null
+  /** Openstaande slokken-uitdeling (vragenrondje of piramide-claim). */
+  pendingGive: PendingGive | null
   sipsLog: SipEntry[]
 }
 
@@ -127,36 +140,27 @@ export type Command =
   | { t: 'REMOVE_PLAYER'; playerId: string }
   | { t: 'SET_RULES'; rules: RuleConfig }
   | { t: 'START_GAME' }
-  | { t: 'ROLL'; playerId: string }
-  | { t: 'HOLD_DIE'; playerId: string; dieId: DieId }
-  | { t: 'PICKUP_DIE'; playerId: string; dieId: DieId }
-  | { t: 'END_TURN'; playerId: string }
-  | { t: 'GIVE_SIPS_31'; playerId: string; targetPlayerId: string }
-  | { t: 'TIEBREAK_ROLL'; playerId: string }
-  | { t: 'NEXT_ROUND' }
+  | { t: 'ANSWER'; playerId: string; choice: AnswerChoice }
+  | { t: 'GIVE_SIPS'; playerId: string; targetPlayerId: string }
+  | { t: 'FLIP_PYRAMID'; playerId: string }
+  | { t: 'PLAY_CARD'; playerId: string; card: Card }
+  | { t: 'CALL_BLUFF'; playerId: string; targetPlayerId: string }
+  | { t: 'BUS_GUESS'; playerId: string; choice: BusChoice }
+  | { t: 'NEXT_PHASE' }
   | { t: 'SET_CONNECTED'; playerId: string; connected: boolean }
-  /** Host beëindigt de beurt van een weggevallen speler; zonder worp geen score. */
-  | { t: 'FORFEIT_TURN'; playerId: string }
-  /** Omgekeerde mex: 65 omdraaien naar 21. */
-  | { t: 'FLIP_65'; playerId: string }
-  | { t: 'AFSLAAN'; playerId: string }
-  /** Potje afsluiten na een ronde: eindstand tonen. */
+  /** Host slaat de beurt van een weggevallen speler over. */
+  | { t: 'FORFEIT_TURN' }
   | { t: 'END_GAME' }
 
 /** Transiente gebeurtenissen voor animatie, geluid en toasts; state is al bijgewerkt. */
 export type EngineEvent =
-  | { t: 'DICE_ROLLED'; playerId: string; dieIds: DieId[]; values: Die[]; animSeed: number }
-  | { t: 'MEX_ROLLED'; playerId: string }
-  | { t: 'FLIPPED_65'; playerId: string; values: [Die, Die] }
-  | { t: 'AFSLAAN'; byPlayerId: string; verdict: AfslaanVerdict }
-  | { t: 'RIDDER_GESLAGEN'; playerId: string; dubbel: boolean }
-  | { t: 'RIDDER_DRINKT'; playerId: string; amount: number }
+  | { t: 'CARD_DEALT'; playerId: string; card: Card; animSeed: number }
+  | { t: 'CARD_FLIPPED'; card: Card; rowValue: number; animSeed: number }
   | { t: 'SIPS_GIVEN'; fromPlayerId: string; toPlayerId: string; amount: number }
-  | { t: 'TURN_ENDED'; playerId: string }
-  | { t: 'TIEBREAK_STARTED'; playerIds: string[] }
-  | { t: 'TIEBREAK_ROLLED'; playerId: string; value: Die; animSeed: number }
-  | { t: 'TIEBREAK_TIED'; playerIds: string[]; multiplier: number }
-  | { t: 'ROUND_ENDED'; loserId: string; sips: number }
+  | { t: 'BLUFF_CALLED'; byPlayerId: string; targetPlayerId: string; verdict: BluffVerdict }
+  | { t: 'BUS_CARD'; card: Card; correct: boolean; animSeed: number }
+  | { t: 'BUS_RESET'; animSeed: number }
+  | { t: 'PHASE_CHANGED'; phase: GamePhase }
 
 export type ErrorCode =
   | 'WRONG_PHASE'
@@ -164,11 +168,13 @@ export type ErrorCode =
   | 'NOT_ENOUGH_PLAYERS'
   | 'ALREADY_JOINED'
   | 'UNKNOWN_PLAYER'
-  | 'PENDING_31'
-  | 'NOT_PENDING_31'
-  | 'NO_ROLLABLE_DICE'
-  | 'HAS_NOT_THROWN'
-  | 'INVALID_DIE'
+  | 'PENDING_GIVE'
+  | 'NOT_PENDING_GIVE'
+  | 'INVALID_CHOICE'
+  | 'INVALID_CARD'
   | 'INVALID_TARGET'
-  | 'ALREADY_ROLLED'
+  | 'NO_OPEN_CLAIM'
+  | 'CLAIM_IN_PROGRESS'
+  | 'NOTHING_TO_FLIP'
+  | 'NOT_A_DRIVER'
   | 'INVALID_RULES'

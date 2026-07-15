@@ -8,7 +8,7 @@ import { loadProfile, newPlayerId, saveProfile } from '@/lib/storage'
 import { useGameStore } from '@/store/gameStore'
 import { useNetStore } from '@/store/netStore'
 
-const EMOJI = ['🎲', '🍺', '😎', '🦊', '🐙', '🍀', '🌶️', '🫠']
+const EMOJI = ['🃏', '🍺', '😎', '🦊', '🐙', '🍀', '🌶️', '🫠']
 
 interface ProfileScreenProps {
   mode: 'host' | 'join'
@@ -84,7 +84,7 @@ export default function ProfileScreen({ mode, initialCode }: ProfileScreenProps)
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={strings.playerNamePlaceholder}
-            className="min-w-0 flex-1 rounded-lg border border-input bg-wood-950/40 px-3 py-2 text-ivory placeholder:text-muted-foreground"
+            className="min-w-0 flex-1 rounded-lg border border-input bg-night-950/40 px-3 py-2 text-ivory placeholder:text-muted-foreground"
           />
         </div>
 
@@ -95,7 +95,7 @@ export default function ProfileScreen({ mode, initialCode }: ProfileScreenProps)
             placeholder={strings.codePlaceholder}
             maxLength={4}
             autoCapitalize="characters"
-            className="rounded-lg border border-input bg-wood-950/40 px-3 py-2 text-center text-2xl tracking-[0.4em] text-ivory placeholder:text-base placeholder:tracking-normal placeholder:text-muted-foreground"
+            className="rounded-lg border border-input bg-night-950/40 px-3 py-2 text-center text-2xl tracking-[0.4em] text-ivory placeholder:text-base placeholder:tracking-normal placeholder:text-muted-foreground"
           />
         )}
       </Coaster>

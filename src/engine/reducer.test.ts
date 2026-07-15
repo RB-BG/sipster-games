@@ -1,448 +1,280 @@
 // Copyright © 2026 Bussen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { card, orderedDeck, scriptedDeck, type DeckSource } from './deck'
+import { PYRAMID_ROW_SIZES } from './pyramid'
 import { createGame, reduce } from './reducer'
-import { scriptedRollSource, type RollSource } from './rng'
-import { scoreRank } from './score'
-import type { Command, Die, GameState, RuleConfig } from './types'
-import { DEFAULT_RULES } from './types'
+import type { AnswerChoice, Card, Command, GameState, PlayerProfile } from './types'
 
-/** Commands die niet gooien mogen de rng nooit aanraken; deze bron gooit dan een error. */
-const noRng = scriptedRollSource([])
+const A: PlayerProfile = { id: 'a', name: 'Ann', emoji: '🅰️' }
+const B: PlayerProfile = { id: 'b', name: 'Bo', emoji: '🅱️' }
 
-function ok(state: GameState, cmd: Command, rng: RollSource = noRng): GameState {
-  const result = reduce(state, cmd, rng)
-  expect(result.error).toBeUndefined()
-  return result.state
+function step(state: GameState, cmd: Command, rng: DeckSource): GameState {
+  const r = reduce(state, cmd, rng)
+  if (r.error) throw new Error(`onverwachte fout ${r.error} bij ${cmd.t}`)
+  return r.state
 }
 
-function roll(state: GameState, playerId: string, values: Die[]): GameState {
-  return ok(state, { t: 'ROLL', playerId }, scriptedRollSource(values))
+/** Twee-speler-potje dat via de geordende deck in de questions-fase start. */
+function startedGame(rng: DeckSource): GameState {
+  let s = createGame(A, { standaardSlokken: 1, bluffen: true, busLengte: 5 })
+  s = step(s, { t: 'ADD_PLAYER', profile: B }, rng)
+  s = step(s, { t: 'START_GAME' }, rng)
+  return s
 }
 
-function setup(playerCount: number, rules?: Partial<RuleConfig>): GameState {
-  let state = createGame(
-    { id: 'p1', name: 'Speler 1', emoji: '🎲' },
-    { ...DEFAULT_RULES, ...rules },
-  )
-  for (let i = 2; i <= playerCount; i++) {
-    state = ok(state, {
-      t: 'ADD_PLAYER',
-      profile: { id: `p${i}`, name: `Speler ${i}`, emoji: '🍺' },
-    })
+describe('START_GAME', () => {
+  it('deelt een deck, gaat naar questions en zet de eerste beurt', () => {
+    const rng = scriptedDeck(orderedDeck())
+    const s = startedGame(rng)
+    expect(s.phase).toBe('questions')
+    expect(s.deck.length).toBe(52)
+    expect(s.turn).toEqual({ playerId: 'a', questionIndex: 0, revealed: [] })
+  })
+})
+
+describe('questions: goed vs fout', () => {
+  let rng: DeckSource
+  beforeEach(() => {
+    // Ann krijgt hearts 2,3,4,5 (idx 0..3): rood, oplopend.
+    rng = scriptedDeck(orderedDeck())
+  })
+
+  it('goed antwoord levert een pending give op die slokken uitdeelt', () => {
+    let s = startedGame(rng)
+    // Q0: hearts2 is rood, antwoord 'rood' is goed.
+    s = step(s, { t: 'ANSWER', playerId: 'a', choice: 'rood' }, rng)
+    expect(s.pendingGive).toEqual({ playerId: 'a', amount: 1 })
+    // Geen antwoord toegestaan zolang de give openstaat.
+    expect(reduce(s, { t: 'ANSWER', playerId: 'a', choice: 'hoger' }, rng).error).toBe('PENDING_GIVE')
+    s = step(s, { t: 'GIVE_SIPS', playerId: 'a', targetPlayerId: 'b' }, rng)
+    expect(s.players[1].sipsTotal).toBe(1)
+    expect(s.pendingGive).toBeNull()
+    expect(s.turn?.questionIndex).toBe(1)
+  })
+
+  it('fout antwoord laat de speler zelf drinken en gaat door', () => {
+    let s = startedGame(rng)
+    // Q0: hearts2 rood, antwoord 'zwart' is fout: 1 slok.
+    s = step(s, { t: 'ANSWER', playerId: 'a', choice: 'zwart' }, rng)
+    expect(s.players[0].sipsTotal).toBe(1)
+    expect(s.pendingGive).toBeNull()
+    expect(s.turn?.questionIndex).toBe(1)
+  })
+
+  it('hoger/lager telt gelijk als fout', () => {
+    // Deck zo dat kaart 2 gelijk is aan kaart 1 in rank.
+    const deck: Card[] = [card(7, 'hearts'), card(7, 'clubs'), card(3, 'spades'), card(4, 'spades')]
+    const r = scriptedDeck([...deck, ...orderedDeck()])
+    let s = startedGame(r)
+    s = step(s, { t: 'ANSWER', playerId: 'a', choice: 'rood' }, r) // Q0 goed
+    s = step(s, { t: 'GIVE_SIPS', playerId: 'a', targetPlayerId: 'b' }, r)
+    // Q1: 7 vs 7 gelijk -> altijd fout.
+    s = step(s, { t: 'ANSWER', playerId: 'a', choice: 'hoger' }, r)
+    expect(s.players[0].sipsTotal).toBe(2)
+  })
+})
+
+describe('questions -> pyramid transitie', () => {
+  it('na de laatste speler zijn Q4 wordt de piramide gelegd', () => {
+    const rng = scriptedDeck(orderedDeck())
+    let s = startedGame(rng)
+    // Beide spelers vier keer fout: geen give-stappen nodig, elk 1+2+3+4 = 10 slokken.
+    const wrong: AnswerChoice[] = ['zwart', 'lager', 'binnen', 'niet']
+    for (let p = 0; p < 2; p++) {
+      for (const choice of wrong) {
+        s = step(s, { t: 'ANSWER', playerId: s.turn!.playerId, choice }, rng)
+      }
+    }
+    expect(s.phase).toBe('pyramid')
+    expect(s.turn).toBeNull()
+    expect(s.pyramid?.rows.map((r) => r.length)).toEqual(PYRAMID_ROW_SIZES)
+    expect(s.players[0].hand.length).toBe(4)
+    expect(s.players[1].hand.length).toBe(4)
+    expect(s.players[0].sipsTotal).toBe(10)
+    expect(s.players[1].sipsTotal).toBe(10)
+  })
+})
+
+// --- Piramide: claims en bluffen ----------------------------------------
+
+function pyramidGame(
+  handA: Card[],
+  handB: Card[],
+  currentRank: number | null,
+  rowValue: number,
+  bluffen = true,
+): GameState {
+  return {
+    version: 1,
+    phase: 'pyramid',
+    rules: { standaardSlokken: 1, bluffen, busLengte: 5 },
+    hostId: 'a',
+    players: [
+      { ...A, connected: true, sipsTotal: 0, hand: handA },
+      { ...B, connected: true, sipsTotal: 0, hand: handB },
+    ],
+    deck: orderedDeck(),
+    drawIndex: 30,
+    turn: null,
+    pyramid: {
+      rows: [],
+      flipIndex: 0,
+      currentRank: currentRank as Card['rank'] | null,
+      currentRowValue: rowValue,
+      openClaim: null,
+    },
+    bus: null,
+    pendingGive: null,
+    sipsLog: [],
   }
-  return ok(state, { t: 'START_GAME' })
 }
 
-describe('lobby', () => {
-  it('start met de host als eerste speler', () => {
-    const state = createGame({ id: 'p1', name: 'Ruben', emoji: '🎲' })
-    expect(state.phase).toBe('lobby')
-    expect(state.players.map((p) => p.id)).toEqual(['p1'])
-    expect(state.hostId).toBe('p1')
+describe('piramide claims', () => {
+  const rng = scriptedDeck(orderedDeck())
+
+  it('eerlijke claim legt de kaart af en deelt de rij-slokken uit', () => {
+    let s = pyramidGame([card(10, 'clubs')], [], 10, 3)
+    s = step(s, { t: 'PLAY_CARD', playerId: 'a', card: card(10, 'clubs') }, rng)
+    expect(s.pyramid?.openClaim?.truthful).toBe(true)
+    expect(s.pendingGive).toEqual({ playerId: 'a', amount: 3 })
+    s = step(s, { t: 'GIVE_SIPS', playerId: 'a', targetPlayerId: 'b' }, rng)
+    expect(s.players[1].sipsTotal).toBe(3)
+    expect(s.players[0].hand.length).toBe(0)
+    expect(s.pyramid?.openClaim).toBeNull()
   })
 
-  it('weigert starten met minder dan twee spelers', () => {
-    const state = createGame({ id: 'p1', name: 'Ruben', emoji: '🎲' })
-    expect(reduce(state, { t: 'START_GAME' }, noRng).error).toBe('NOT_ENOUGH_PLAYERS')
+  it('betrapte leugenaar drinkt dubbel en de give vervalt', () => {
+    let s = pyramidGame([card(5, 'clubs')], [], 10, 3)
+    s = step(s, { t: 'PLAY_CARD', playerId: 'a', card: card(10, 'hearts') }, rng)
+    expect(s.pyramid?.openClaim?.truthful).toBe(false)
+    s = step(s, { t: 'CALL_BLUFF', playerId: 'b', targetPlayerId: 'a' }, rng)
+    expect(s.players[0].sipsTotal).toBe(6) // 2 * rowValue 3
+    expect(s.players[1].sipsTotal).toBe(0)
+    expect(s.pendingGive).toBeNull()
+    expect(s.pyramid?.openClaim).toBeNull()
+    expect(s.players[0].hand.length).toBe(1) // kaart blijft: had 'm niet
   })
 
-  it('weigert dubbel joinen', () => {
-    const state = createGame({ id: 'p1', name: 'Ruben', emoji: '🎲' })
-    const result = reduce(
-      state,
-      { t: 'ADD_PLAYER', profile: { id: 'p1', name: 'Kloon', emoji: '👯' } },
-      noRng,
-    )
-    expect(result.error).toBe('ALREADY_JOINED')
+  it('valse beschuldiging: aanklager drinkt dubbel, eerlijke claim staat', () => {
+    let s = pyramidGame([card(10, 'clubs')], [], 10, 3)
+    s = step(s, { t: 'PLAY_CARD', playerId: 'a', card: card(10, 'clubs') }, rng)
+    s = step(s, { t: 'CALL_BLUFF', playerId: 'b', targetPlayerId: 'a' }, rng)
+    expect(s.players[1].sipsTotal).toBe(6) // aanklager B drinkt dubbel
+    expect(s.players[0].hand.length).toBe(0) // eerlijke kaart afgelegd
+    expect(s.pendingGive).toEqual({ playerId: 'a', amount: 3 }) // give staat nog
+    s = step(s, { t: 'GIVE_SIPS', playerId: 'a', targetPlayerId: 'b' }, rng)
+    expect(s.players[1].sipsTotal).toBe(9)
   })
 
-  it('weigert joinen na de start', () => {
-    const state = setup(2)
-    const result = reduce(
-      state,
-      { t: 'ADD_PLAYER', profile: { id: 'p3', name: 'Laat', emoji: '🦊' } },
-      noRng,
-    )
-    expect(result.error).toBe('WRONG_PHASE')
-  })
-
-  it('start bij de eerste speler met een verse beurt', () => {
-    const state = setup(3)
-    expect(state.phase).toBe('playing')
-    expect(state.round.number).toBe(1)
-    expect(state.turn?.playerId).toBe('p1')
-    expect(state.turn?.dice).toBeNull()
-    expect(state.turn?.maxThrows).toBe(3)
-  })
-})
-
-describe('gooien', () => {
-  it('eerste worp gooit beide dobbelstenen', () => {
-    const state = roll(setup(2), 'p1', [6, 4])
-    expect(state.turn?.dice?.map((d) => d.value)).toEqual([6, 4])
-    expect(state.turn?.throwsUsed).toBe(1)
-  })
-
-  it('geeft een DICE_ROLLED event met waarden en animSeed', () => {
-    const result = reduce(setup(2), { t: 'ROLL', playerId: 'p1' }, scriptedRollSource([6, 4]))
-    expect(result.events[0]).toMatchObject({
-      t: 'DICE_ROLLED',
-      playerId: 'p1',
-      dieIds: [0, 1],
-      values: [6, 4],
-    })
-  })
-
-  it('een ander dan de actieve speler mag niet gooien', () => {
-    const result = reduce(setup(2), { t: 'ROLL', playerId: 'p2' }, scriptedRollSource([6, 4]))
-    expect(result.error).toBe('NOT_YOUR_TURN')
-    expect(result.state.turn?.dice).toBeNull()
-  })
-
-  it('na drie worpen is de beurt voorbij', () => {
-    let state = roll(setup(2), 'p1', [6, 4])
-    state = roll(state, 'p1', [5, 4])
-    state = roll(state, 'p1', [4, 3])
-    expect(state.players[0].roundScore).toBe(43)
-    expect(state.turn?.playerId).toBe('p2')
-  })
-
-  it('blijven staan geeft de beurt door met de huidige score', () => {
-    let state = roll(setup(2), 'p1', [6, 5])
-    state = ok(state, { t: 'END_TURN', playerId: 'p1' })
-    expect(state.players[0].roundScore).toBe(65)
-    expect(state.players[0].hasPlayedThisRound).toBe(true)
-    expect(state.turn?.playerId).toBe('p2')
-  })
-
-  it('blijven staan kan niet vóór de eerste worp', () => {
-    expect(reduce(setup(2), { t: 'END_TURN', playerId: 'p1' }, noRng).error).toBe('HAS_NOT_THROWN')
-  })
-})
-
-describe('mex', () => {
-  it('mex beëindigt de beurt direct en telt mee', () => {
-    const state = roll(setup(2), 'p1', [2, 1])
-    expect(state.players[0].roundScore).toBe(1000)
-    expect(state.round.mexCount).toBe(1)
-    expect(state.turn?.playerId).toBe('p2')
-  })
-
-  it('geeft een MEX_ROLLED event', () => {
-    const result = reduce(setup(2), { t: 'ROLL', playerId: 'p1' }, scriptedRollSource([1, 2]))
-    expect(result.events.some((e) => e.t === 'MEX_ROLLED')).toBe(true)
-  })
-})
-
-describe('verse 1 en 2', () => {
-  it('een gegooide 1 blijft verplicht liggen', () => {
-    const state = roll(setup(2), 'p1', [6, 1])
-    const die = state.turn?.dice?.[1]
-    expect(die?.onTable).toBe(true)
-    expect(die?.vers).toBe('fresh')
-  })
-
-  it('een verse 1 kan niet opgepakt worden', () => {
-    const state = roll(setup(2), 'p1', [6, 1])
-    expect(reduce(state, { t: 'PICKUP_DIE', playerId: 'p1', dieId: 1 }, noRng).error).toBe(
-      'INVALID_DIE',
+  it('zonder bluf-regel moet de claim waar zijn', () => {
+    const s = pyramidGame([card(5, 'clubs')], [], 10, 3, false)
+    expect(reduce(s, { t: 'PLAY_CARD', playerId: 'a', card: card(10, 'hearts') }, rng).error).toBe(
+      'INVALID_CARD',
     )
   })
 
-  it('de volgende worp gooit alleen de vrije steen', () => {
-    let state = roll(setup(2), 'p1', [6, 1])
-    const result = reduce(state, { t: 'ROLL', playerId: 'p1' }, scriptedRollSource([5]))
-    expect(result.error).toBeUndefined()
-    state = result.state
-    expect(state.turn?.dice?.map((d) => d.value)).toEqual([5, 1])
-  })
-
-  it('vers wordt stale na één overleefde worp en moet daarna mee', () => {
-    let state = roll(setup(2), 'p1', [6, 1])
-    state = roll(state, 'p1', [5])
-    expect(state.turn?.dice?.[1].vers).toBe('stale')
-
-    // Derde worp: de stale 1 gaat automatisch mee, beide stenen krijgen een nieuwe waarde.
-    state = roll(state, 'p1', [4, 3])
-    expect(state.players[0].roundScore).toBe(43)
-  })
-
-  it('een herworpen 1 wordt opnieuw vers', () => {
-    let state = roll(setup(2), 'p1', [6, 1])
-    state = roll(state, 'p1', [5])
-    state = roll(state, 'p1', [6, 1])
-    // Drie worpen gebruikt: beurt voorbij, score 61 met de opnieuw gegooide 1.
-    expect(state.players[0].roundScore).toBe(61)
-  })
-
-  it('bij dubbel 1 of dubbel 2 blijft er altijd een steen gooibaar', () => {
-    const state = roll(setup(2), 'p1', [2, 2])
-    // Niet allebei vast: precies één steen ligt vers, de ander blijft gooibaar.
-    expect(state.turn?.dice?.filter((d) => d.onTable).length).toBe(1)
-
-    // Doorgooien mag dus: de vrije steen krijgt een nieuwe waarde.
-    const verder = roll(state, 'p1', [5])
-    expect(verder.turn?.dice?.some((d) => d.value === 5)).toBe(true)
-
-    // Blijven staan met 200 kan ook nog steeds.
-    const einde = ok(state, { t: 'END_TURN', playerId: 'p1' })
-    expect(einde.players[0].roundScore).toBe(200)
-  })
-
-  it('de ridder mag na dubbel 1 een van de twee stenen doorgooien', () => {
-    const state = roll(setup(2, { ridder: true }), 'p1', [1, 1])
-    // Speler wordt ridder, maar houdt maar één steen vast.
-    expect(state.ridderId).toBe('p1')
-    expect(state.turn?.dice?.filter((d) => d.onTable).length).toBe(1)
-
-    // De vrije steen mag gegooid worden.
-    const verder = roll(state, 'p1', [4])
-    expect(verder.turn?.dice?.some((d) => d.value === 4)).toBe(true)
-  })
-})
-
-describe('vasthouden en oppakken', () => {
-  it('een vrije steen mag vastgehouden en weer opgepakt worden', () => {
-    let state = roll(setup(2), 'p1', [6, 3])
-    state = ok(state, { t: 'HOLD_DIE', playerId: 'p1', dieId: 0 })
-    expect(state.turn?.dice?.[0].onTable).toBe(true)
-    expect(state.turn?.dice?.[0].vers).toBeNull()
-
-    // Alleen de losse steen wordt gegooid.
-    state = roll(state, 'p1', [5])
-    expect(state.turn?.dice?.map((d) => d.value)).toEqual([6, 5])
-
-    state = ok(state, { t: 'PICKUP_DIE', playerId: 'p1', dieId: 0 })
-    expect(state.turn?.dice?.[0].onTable).toBe(false)
-  })
-
-  it('vasthouden kan niet vóór de eerste worp', () => {
-    expect(reduce(setup(2), { t: 'HOLD_DIE', playerId: 'p1', dieId: 0 }, noRng).error).toBe(
-      'HAS_NOT_THROWN',
-    )
-  })
-
-  it('een al vastgehouden steen nogmaals vasthouden is ongeldig', () => {
-    let state = roll(setup(2), 'p1', [6, 3])
-    state = ok(state, { t: 'HOLD_DIE', playerId: 'p1', dieId: 0 })
-    expect(reduce(state, { t: 'HOLD_DIE', playerId: 'p1', dieId: 0 }, noRng).error).toBe(
-      'INVALID_DIE',
+  it('je kunt je eigen claim niet aanvechten', () => {
+    let s = pyramidGame([card(10, 'clubs')], [], 10, 3)
+    s = step(s, { t: 'PLAY_CARD', playerId: 'a', card: card(10, 'clubs') }, rng)
+    expect(reduce(s, { t: 'CALL_BLUFF', playerId: 'a', targetPlayerId: 'a' }, rng).error).toBe(
+      'INVALID_TARGET',
     )
   })
 })
 
-describe('31', () => {
-  it('31 kost geen worp en vraagt eerst slokken uitdelen', () => {
-    const state = roll(setup(2), 'p1', [3, 1])
-    expect(state.turn?.throwsUsed).toBe(0)
-    expect(state.turn?.pending31).toBe(true)
-    expect(state.turn?.dice?.[1].vers).toBe('fresh')
+describe('piramide flippen en naar de bus', () => {
+  const rng = scriptedDeck(orderedDeck())
+
+  it('flipt van onder naar boven met oplopende rij-waarde', () => {
+    const s0 = pyramidGame([], [], null, 0)
+    const deck = orderedDeck()
+    let i = 0
+    s0.pyramid!.rows = PYRAMID_ROW_SIZES.map((size) => deck.slice(i, (i += size)))
+    const s = step(s0, { t: 'FLIP_PYRAMID', playerId: 'a' }, rng)
+    expect(s.pyramid?.flipIndex).toBe(1)
+    expect(s.pyramid?.currentRowValue).toBe(1)
+    expect(s.pyramid?.currentRank).toBe(deck[0].rank)
   })
 
-  it('gooien en blijven staan zijn geblokkeerd tot de slokken zijn uitgedeeld', () => {
-    const state = roll(setup(2), 'p1', [3, 1])
-    expect(reduce(state, { t: 'ROLL', playerId: 'p1' }, noRng).error).toBe('PENDING_31')
-    expect(reduce(state, { t: 'END_TURN', playerId: 'p1' }, noRng).error).toBe('PENDING_31')
-  })
-
-  it('slokken aan jezelf geven mag niet', () => {
-    const state = roll(setup(2), 'p1', [3, 1])
-    expect(
-      reduce(state, { t: 'GIVE_SIPS_31', playerId: 'p1', targetPlayerId: 'p1' }, noRng).error,
-    ).toBe('INVALID_TARGET')
-  })
-
-  it('uitgedeelde slokken komen bij de ontvanger en in de log', () => {
-    let state = roll(setup(2), 'p1', [3, 1])
-    const result = reduce(
-      state,
-      { t: 'GIVE_SIPS_31', playerId: 'p1', targetPlayerId: 'p2' },
-      noRng,
-    )
-    expect(result.error).toBeUndefined()
-    state = result.state
-    expect(state.players[1].sipsTotal).toBe(2)
-    expect(state.sipsLog).toEqual([
-      { playerId: 'p2', amount: 2, reason: 'gekregen31', round: 1 },
-    ])
-    expect(result.events).toContainEqual({
-      t: 'SIPS_GIVEN',
-      fromPlayerId: 'p1',
-      toPlayerId: 'p2',
-      amount: 2,
-    })
-  })
-
-  it('de herworp na 31 kan mex opleveren via de liggende 1', () => {
-    let state = roll(setup(2), 'p1', [3, 1])
-    state = ok(state, { t: 'GIVE_SIPS_31', playerId: 'p1', targetPlayerId: 'p2' })
-    state = roll(state, 'p1', [2])
-    expect(state.players[0].roundScore).toBe(1000)
-    expect(state.round.mexCount).toBe(1)
-  })
-
-  it('de herworp telt wel gewoon als worp en veroudert de 1', () => {
-    let state = roll(setup(2), 'p1', [3, 1])
-    state = ok(state, { t: 'GIVE_SIPS_31', playerId: 'p1', targetPlayerId: 'p2' })
-    state = roll(state, 'p1', [5])
-    expect(state.turn?.throwsUsed).toBe(1)
-    expect(state.turn?.dice?.[1].vers).toBe('stale')
-  })
-
-  it('slokken uitdelen zonder 31 is ongeldig', () => {
-    const state = roll(setup(2), 'p1', [6, 4])
-    expect(
-      reduce(state, { t: 'GIVE_SIPS_31', playerId: 'p1', targetPlayerId: 'p2' }, noRng).error,
-    ).toBe('NOT_PENDING_31')
+  it('NEXT_PHASE na de laatste flip start de bus met de meeste-kaarten-chauffeur', () => {
+    const s0 = pyramidGame([card(2, 'hearts'), card(3, 'hearts')], [card(4, 'hearts')], null, 0)
+    const deck = orderedDeck()
+    let i = 0
+    s0.pyramid!.rows = PYRAMID_ROW_SIZES.map((size) => deck.slice(i, (i += size)))
+    s0.pyramid!.flipIndex = 15
+    const s = step(s0, { t: 'NEXT_PHASE' }, rng)
+    expect(s.phase).toBe('bus')
+    expect(s.bus?.driverIds).toEqual(['a']) // A heeft 2 kaarten, B heeft er 1
+    expect(s.bus?.cards.length).toBe(5)
   })
 })
 
-describe('ronde-einde', () => {
-  it('de unieke laagste verliest en drinkt het standaard aantal', () => {
-    let state = roll(setup(2), 'p1', [6, 5])
-    state = ok(state, { t: 'END_TURN', playerId: 'p1' })
-    // 32 legt de beurt direct vast, dus de worp zelf sluit de ronde af.
-    const result = reduce(state, { t: 'ROLL', playerId: 'p2' }, scriptedRollSource([3, 2]))
-    expect(result.error).toBeUndefined()
-    state = result.state
+// --- Bus -----------------------------------------------------------------
 
-    expect(state.phase).toBe('roundEnd')
-    expect(state.players[1].sipsTotal).toBe(2)
-    expect(state.round.startingPlayerId).toBe('p2')
-    expect(result.events).toContainEqual({ t: 'ROUND_ENDED', loserId: 'p2', sips: 2 })
-  })
-
-  it('elke mex verdubbelt de inzet voor de verliezer', () => {
-    let state = roll(setup(3), 'p1', [2, 1])
-    state = roll(state, 'p2', [1, 2])
-    state = roll(state, 'p3', [3, 2])
-
-    expect(state.phase).toBe('roundEnd')
-    // Twee mexxen: 2 → 4 → 8.
-    expect(state.players[2].sipsTotal).toBe(8)
-  })
-
-  it('de verliezer begint de volgende ronde en alles staat weer klaar', () => {
-    let state = roll(setup(2), 'p1', [6, 5])
-    state = ok(state, { t: 'END_TURN', playerId: 'p1' })
-    state = roll(state, 'p2', [3, 2])
-    state = ok(state, { t: 'NEXT_ROUND' })
-
-    expect(state.phase).toBe('playing')
-    expect(state.round.number).toBe(2)
-    expect(state.round.mexCount).toBe(0)
-    expect(state.turn?.playerId).toBe('p2')
-    expect(state.players.every((p) => p.roundScore === null)).toBe(true)
-    expect(state.players.every((p) => !p.hasPlayedThisRound)).toBe(true)
-    // Slokken blijven staan over rondes heen.
-    expect(state.players[1].sipsTotal).toBe(2)
-  })
-
-  it('volgende ronde starten kan alleen na een ronde-einde', () => {
-    expect(reduce(setup(2), { t: 'NEXT_ROUND' }, noRng).error).toBe('WRONG_PHASE')
-  })
-})
-
-describe('tiebreak', () => {
-  function tiedGame(rules?: Partial<RuleConfig>): GameState {
-    let state = roll(setup(2, rules), 'p1', [6, 2])
-    state = ok(state, { t: 'END_TURN', playerId: 'p1' })
-    state = roll(state, 'p2', [2, 6])
-    return ok(state, { t: 'END_TURN', playerId: 'p2' })
+function busGame(cards: Card[], busLengte: number, deckTail: Card[]): GameState {
+  return {
+    version: 1,
+    phase: 'bus',
+    rules: { standaardSlokken: 1, bluffen: true, busLengte },
+    hostId: 'a',
+    players: [
+      { ...A, connected: true, sipsTotal: 0, hand: [] },
+      { ...B, connected: true, sipsTotal: 0, hand: [] },
+    ],
+    deck: deckTail,
+    drawIndex: 0,
+    turn: null,
+    pyramid: null,
+    bus: { driverIds: ['a'], cards, position: 0, strikes: 0 },
+    pendingGive: null,
+    sipsLog: [],
   }
+}
 
-  it('gelijke laagste scores leiden tot een tiebreak', () => {
-    const state = tiedGame()
-    expect(state.phase).toBe('tiebreak')
-    expect(state.tiebreak?.playerIds).toEqual(['p1', 'p2'])
-    expect(state.tiebreak?.multiplier).toBe(1)
+describe('bus', () => {
+  const rng = scriptedDeck(orderedDeck())
+
+  it('goede gok schuift een positie op', () => {
+    const s0 = busGame([card(5, 'hearts'), card(9, 'clubs'), card(3, 'spades')], 3, [])
+    const s = step(s0, { t: 'BUS_GUESS', playerId: 'a', choice: 'hoger' }, rng)
+    expect(s.bus?.position).toBe(1)
+    expect(s.phase).toBe('bus')
   })
 
-  it('hoogste verliest (standaardinstelling)', () => {
-    let state = tiedGame()
-    state = ok(state, { t: 'TIEBREAK_ROLL', playerId: 'p1' }, scriptedRollSource([4]))
-    state = ok(state, { t: 'TIEBREAK_ROLL', playerId: 'p2' }, scriptedRollSource([2]))
-
-    expect(state.phase).toBe('roundEnd')
-    expect(state.players[0].sipsTotal).toBe(2)
-    expect(state.players[1].sipsTotal).toBe(0)
+  it('foute gok laat de chauffeur drinken en begint opnieuw met verse kaarten', () => {
+    const tail = [card(2, 'clubs'), card(4, 'clubs'), card(6, 'clubs')]
+    const s0 = busGame([card(5, 'hearts'), card(9, 'clubs'), card(3, 'spades')], 3, tail)
+    // 9 > 5, dus 'lager' is fout.
+    const s = step(s0, { t: 'BUS_GUESS', playerId: 'a', choice: 'lager' }, rng)
+    expect(s.players[0].sipsTotal).toBe(1) // eerste misser = 1 slok
+    expect(s.bus?.strikes).toBe(1)
+    expect(s.bus?.position).toBe(0)
+    expect(s.bus?.cards[0]).toEqual(tail[0]) // verse rij
   })
 
-  it('laagste verliest als dat zo is afgesproken', () => {
-    let state = tiedGame({ tiebreakHoogsteVerliest: false })
-    state = ok(state, { t: 'TIEBREAK_ROLL', playerId: 'p1' }, scriptedRollSource([4]))
-    state = ok(state, { t: 'TIEBREAK_ROLL', playerId: 'p2' }, scriptedRollSource([2]))
-
-    expect(state.players[1].sipsTotal).toBe(2)
+  it('laatste goede gok rijdt de bus uit -> ended', () => {
+    const s0 = busGame([card(5, 'hearts'), card(9, 'clubs')], 2, [])
+    const s = step(s0, { t: 'BUS_GUESS', playerId: 'a', choice: 'hoger' }, rng)
+    expect(s.phase).toBe('ended')
   })
 
-  it('opnieuw gelijk verdubbelt de slokken', () => {
-    let state = tiedGame()
-    state = ok(state, { t: 'TIEBREAK_ROLL', playerId: 'p1' }, scriptedRollSource([4]))
-    const result = reduce(state, { t: 'TIEBREAK_ROLL', playerId: 'p2' }, scriptedRollSource([4]))
-    state = result.state
-
-    expect(state.phase).toBe('tiebreak')
-    expect(state.tiebreak?.multiplier).toBe(2)
-    expect(result.events).toContainEqual({
-      t: 'TIEBREAK_TIED',
-      playerIds: ['p1', 'p2'],
-      multiplier: 2,
-    })
-
-    state = ok(state, { t: 'TIEBREAK_ROLL', playerId: 'p1' }, scriptedRollSource([6]))
-    state = ok(state, { t: 'TIEBREAK_ROLL', playerId: 'p2' }, scriptedRollSource([3]))
-    expect(state.players[0].sipsTotal).toBe(4)
-  })
-
-  it('wie niet gebonden is doet niet mee aan de tiebreak', () => {
-    // Drie spelers, alle drie 62: iedereen gebonden; twee delen daarna de hoogste worp.
-    let state = roll(setup(3), 'p1', [6, 2])
-    state = ok(state, { t: 'END_TURN', playerId: 'p1' })
-    state = roll(state, 'p2', [6, 2])
-    state = ok(state, { t: 'END_TURN', playerId: 'p2' })
-    state = roll(state, 'p3', [6, 2])
-    state = ok(state, { t: 'END_TURN', playerId: 'p3' })
-
-    state = ok(state, { t: 'TIEBREAK_ROLL', playerId: 'p1' }, scriptedRollSource([5]))
-    state = ok(state, { t: 'TIEBREAK_ROLL', playerId: 'p2' }, scriptedRollSource([5]))
-    state = ok(state, { t: 'TIEBREAK_ROLL', playerId: 'p3' }, scriptedRollSource([2]))
-
-    // p3 is veilig; p1 en p2 gooien opnieuw met verdubbelde inzet.
-    expect(state.tiebreak?.playerIds).toEqual(['p1', 'p2'])
-    expect(state.tiebreak?.multiplier).toBe(2)
-    expect(
-      reduce(state, { t: 'TIEBREAK_ROLL', playerId: 'p3' }, scriptedRollSource([1])).error,
-    ).toBe('NOT_YOUR_TURN')
-  })
-
-  it('twee keer gooien in dezelfde tiebreak-ronde mag niet', () => {
-    let state = tiedGame()
-    state = ok(state, { t: 'TIEBREAK_ROLL', playerId: 'p1' }, scriptedRollSource([4]))
-    expect(
-      reduce(state, { t: 'TIEBREAK_ROLL', playerId: 'p1' }, scriptedRollSource([4])).error,
-    ).toBe('ALREADY_ROLLED')
+  it('alleen een chauffeur mag gokken', () => {
+    const s = busGame([card(5, 'hearts'), card(9, 'clubs')], 2, [])
+    expect(reduce(s, { t: 'BUS_GUESS', playerId: 'b', choice: 'hoger' }, rng).error).toBe(
+      'NOT_A_DRIVER',
+    )
   })
 })
 
-describe('state-integriteit', () => {
-  it('version loopt op bij elke geslaagde mutatie', () => {
-    const before = setup(2)
-    const after = roll(before, 'p1', [6, 4])
-    expect(after.version).toBe(before.version + 1)
+describe('validatie basis', () => {
+  const rng = scriptedDeck(orderedDeck())
+  it('START_GAME vereist twee spelers', () => {
+    const s = createGame(A)
+    expect(reduce(s, { t: 'START_GAME' }, rng).error).toBe('NOT_ENOUGH_PLAYERS')
   })
-
-  it('een afgewezen command laat de state exact intact', () => {
-    const before = setup(2)
-    const result = reduce(before, { t: 'ROLL', playerId: 'p2' }, scriptedRollSource([6, 4]))
-    expect(result.state).toBe(before)
-    expect(result.state.version).toBe(before.version)
-  })
-
-  it('scoreRank en roundScore zijn consistent', () => {
-    let state = roll(setup(2), 'p1', [4, 4])
-    state = ok(state, { t: 'END_TURN', playerId: 'p1' })
-    expect(state.players[0].roundScore).toBe(scoreRank(4, 4))
+  it('END_GAME kan niet vanuit de lobby', () => {
+    const s = createGame(A)
+    expect(reduce(s, { t: 'END_GAME' }, rng).error).toBe('WRONG_PHASE')
   })
 })

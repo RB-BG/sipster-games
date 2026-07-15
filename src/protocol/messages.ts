@@ -1,9 +1,10 @@
 // Copyright © 2026 Bussen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
 import type {
-  AfslaanVerdict,
-  Die,
-  DieId,
+  AnswerChoice,
+  BluffVerdict,
+  BusChoice,
+  Card,
   ErrorCode,
   GameState,
   PlayerProfile,
@@ -13,36 +14,36 @@ import type {
 /** Hoog dit op bij incompatibele wijzigingen; clients met een andere versie weigeren. */
 export const PROTOCOL_VERSION = 1
 
+/** Soort kaart-animatie; alle drie landen op de host-authoritative kaart. */
+export type CardAnimKind = 'deal' | 'flip' | 'bus'
+
 /** Guest -> host (de host stuurt zijn eigen intents door dezelfde loop, loopback). */
 export type Intent =
   | { t: 'JOIN'; profile: PlayerProfile }
   | { t: 'LEAVE' }
   | { t: 'SET_RULES'; rules: RuleConfig }
   | { t: 'START_GAME' }
-  | { t: 'ROLL' }
-  | { t: 'HOLD_DIE'; dieId: DieId }
-  | { t: 'PICKUP_DIE'; dieId: DieId }
-  | { t: 'END_TURN' }
-  | { t: 'GIVE_SIPS_31'; targetPlayerId: string }
-  | { t: 'AFSLAAN' }
-  | { t: 'FLIP_65' }
-  /** Host-only: beëindig de beurt van de (weggevallen) actieve speler. */
+  | { t: 'ANSWER'; choice: AnswerChoice }
+  | { t: 'GIVE_SIPS'; targetPlayerId: string }
+  | { t: 'FLIP_PYRAMID' }
+  | { t: 'PLAY_CARD'; card: Card }
+  | { t: 'CALL_BLUFF'; targetPlayerId: string }
+  | { t: 'BUS_GUESS'; choice: BusChoice }
+  | { t: 'NEXT_PHASE' }
+  /** Host-only: sla de beurt van de (weggevallen) actieve speler over. */
   | { t: 'FORFEIT_TURN' }
-  | { t: 'TIEBREAK_ROLL' }
-  | { t: 'NEXT_ROUND' }
   | { t: 'END_GAME' }
   | { t: 'REQUEST_SYNC' }
 
 /**
  * Host -> clients. Na elke mutatie gaat de volledige GameState mee (klein object):
- * geen delta's betekent geen desync en triviale reconnect.
- * ROLL_EVENT is transient, puur voor de gelijktijdige worp-animatie;
- * de nieuwe waarden staan ook al in de bijbehorende STATE.
+ * geen delta's betekent geen desync en triviale reconnect. De CARD_EVENT-,
+ * BLUFF_EVENT- en BUS_RESET_EVENT-berichten zijn transient (puur voor de
+ * gelijktijdige animatie); de nieuwe waarden staan ook al in de bijbehorende STATE.
  */
 export type GameEvent =
   | { t: 'STATE'; state: GameState }
-  | { t: 'ROLL_EVENT'; rollId: string; playerId: string; dieIds: DieId[]; values: Die[]; animSeed: number }
-  | { t: 'TIEBREAK_ROLL_EVENT'; playerId: string; value: Die; animSeed: number }
-  | { t: 'FLIP_EVENT'; playerId: string; values: [Die, Die] }
-  | { t: 'AFSLAAN_EVENT'; byPlayerId: string; verdict: AfslaanVerdict }
+  | { t: 'CARD_EVENT'; animId: string; kind: CardAnimKind; card: Card; animSeed: number }
+  | { t: 'BLUFF_EVENT'; byPlayerId: string; targetPlayerId: string; verdict: BluffVerdict }
+  | { t: 'BUS_RESET_EVENT'; animSeed: number }
   | { t: 'ERROR'; code: ErrorCode }

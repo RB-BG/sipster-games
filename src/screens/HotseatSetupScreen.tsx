@@ -1,7 +1,7 @@
 // Copyright © 2026 Bussen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
 import { useState } from 'react'
-import { ArrowLeft, Dices } from 'lucide-react'
+import { ArrowLeft, Spade } from 'lucide-react'
 import Coaster from '@/components/Coaster'
 import RulesEditor from '@/components/RulesEditor'
 import type { PlayerProfile, RuleConfig } from '@/engine/types'
@@ -9,7 +9,7 @@ import { useStrings } from '@/store/localeStore'
 import { loadProfile, loadRules, newPlayerId, saveProfile, saveRules } from '@/lib/storage'
 import { useGameStore } from '@/store/gameStore'
 
-const EMOJI = ['🎲', '🍺', '😎', '🦊', '🐙', '🍀', '🌶️', '🫠']
+const EMOJI = ['🃏', '🍺', '😎', '🦊', '🐙', '🍀', '🌶️', '🫠']
 
 interface Draft {
   name: string
@@ -27,9 +27,8 @@ export default function HotseatSetupScreen() {
       { name: '', emojiIndex: 1 },
     ]
   })
-  // Huisregels van het vorige potje als startpunt; afslaan heeft op één
-  // telefoon geen zin (reactie-race), dus die staat hier altijd uit.
-  const [rules, setRules] = useState<RuleConfig>(() => ({ ...loadRules(), afslaan: false }))
+  // Huisregels van het vorige potje als startpunt.
+  const [rules, setRules] = useState<RuleConfig>(() => loadRules())
 
   function updateDraft(index: number, patch: Partial<Draft>) {
     setDrafts((prev) => prev.map((d, i) => (i === index ? { ...d, ...patch } : d)))
@@ -72,7 +71,7 @@ export default function HotseatSetupScreen() {
               value={draft.name}
               onChange={(e) => updateDraft(i, { name: e.target.value })}
               placeholder={`${strings.playerNamePlaceholder} (Speler ${i + 1})`}
-              className="min-w-0 flex-1 rounded-lg border border-input bg-wood-950/40 px-3 py-2 text-ivory placeholder:text-muted-foreground"
+              className="min-w-0 flex-1 rounded-lg border border-input bg-night-950/40 px-3 py-2 text-ivory placeholder:text-muted-foreground"
             />
             {drafts.length > 2 && (
               <button
@@ -97,19 +96,14 @@ export default function HotseatSetupScreen() {
         </button>
       </Coaster>
 
-      <RulesEditor
-        rules={rules}
-        onChange={(patch) => setRules((prev) => ({ ...prev, ...patch }))}
-        hideKeys={['afslaan']}
-        note={strings.afslaanNeedsPhones}
-      />
+      <RulesEditor rules={rules} onChange={(patch) => setRules((prev) => ({ ...prev, ...patch }))} />
 
       <button
         type="button"
         onClick={start}
         className="flex items-center justify-center gap-2 rounded-lg bg-primary px-8 py-3 text-lg font-semibold text-primary-foreground shadow-lg active:scale-95"
       >
-        <Dices className="size-5" />
+        <Spade className="size-5" />
         {strings.startGame}
       </button>
     </main>

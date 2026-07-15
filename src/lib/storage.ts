@@ -3,8 +3,8 @@
 import type { PlayerProfile, RuleConfig } from '@/engine/types'
 import { DEFAULT_RULES } from '@/engine/types'
 
-const PROFILE_KEY = 'mexxen.profile'
-const RULES_KEY = 'mexxen.rules'
+const PROFILE_KEY = 'bussen.profile'
+const RULES_KEY = 'bussen.rules'
 
 export function loadProfile(): PlayerProfile | null {
   try {

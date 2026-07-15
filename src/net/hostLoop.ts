@@ -1,7 +1,7 @@
 // Copyright © 2026 Bussen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
+import { cryptoDeckSource, type DeckSource } from '@/engine/deck'
 import { createGame, reduce } from '@/engine/reducer'
-import { cryptoRollSource, type RollSource } from '@/engine/rng'
 import type { Command, EngineEvent, GameState, PlayerProfile, RuleConfig } from '@/engine/types'
 import type { GameEvent, Intent } from '@/protocol/messages'
 import type { HostTransport } from './transport'
@@ -24,8 +24,8 @@ export function createHostLoop(
   transport: HostTransport,
   hostProfile: PlayerProfile,
   onState: (state: GameState) => void,
-  rng: RollSource = cryptoRollSource(),
-  /** Ook de host-UI wil ROLL_EVENTs en eigen ERRORs zien; broadcast bereikt hemzelf niet. */
+  rng: DeckSource = cryptoDeckSource(),
+  /** Ook de host-UI wil kaart-events en eigen ERRORs zien; broadcast bereikt hemzelf niet. */
   onEvent?: (event: GameEvent) => void,
   /** Startregels, bv. de onthouden huisregels van de host. */
   initialRules?: RuleConfig,
@@ -107,7 +107,8 @@ export function createHostLoop(
     const hostOnly =
       intent.t === 'SET_RULES' ||
       intent.t === 'START_GAME' ||
-      intent.t === 'NEXT_ROUND' ||
+      intent.t === 'FLIP_PYRAMID' ||
+      intent.t === 'NEXT_PHASE' ||
       intent.t === 'END_GAME' ||
       intent.t === 'FORFEIT_TURN'
     if (hostOnly && playerId !== state.hostId) {
@@ -116,13 +117,7 @@ export function createHostLoop(
     }
 
     if (intent.t === 'FORFEIT_TURN') {
-      if (state.turn) {
-        apply({ t: 'FORFEIT_TURN', playerId: state.turn.playerId }, peerId)
-      } else if (state.tiebreak) {
-        // In de kamp: sla de eerstvolgende speler over die nog moet gooien.
-        const pending = state.tiebreak.playerIds.find((id) => state.tiebreak?.rolls[id] === null)
-        if (pending) apply({ t: 'FORFEIT_TURN', playerId: pending }, peerId)
-      }
+      apply({ t: 'FORFEIT_TURN' }, peerId)
       return
     }
 
@@ -166,26 +161,22 @@ function intentToCommand(intent: Intent, playerId: string): Command | null {
       return { t: 'SET_RULES', rules: intent.rules }
     case 'START_GAME':
       return { t: 'START_GAME' }
-    case 'ROLL':
-      return { t: 'ROLL', playerId }
-    case 'HOLD_DIE':
-      return { t: 'HOLD_DIE', playerId, dieId: intent.dieId }
-    case 'PICKUP_DIE':
-      return { t: 'PICKUP_DIE', playerId, dieId: intent.dieId }
-    case 'END_TURN':
-      return { t: 'END_TURN', playerId }
-    case 'GIVE_SIPS_31':
-      return { t: 'GIVE_SIPS_31', playerId, targetPlayerId: intent.targetPlayerId }
-    case 'TIEBREAK_ROLL':
-      return { t: 'TIEBREAK_ROLL', playerId }
-    case 'NEXT_ROUND':
-      return { t: 'NEXT_ROUND' }
+    case 'ANSWER':
+      return { t: 'ANSWER', playerId, choice: intent.choice }
+    case 'GIVE_SIPS':
+      return { t: 'GIVE_SIPS', playerId, targetPlayerId: intent.targetPlayerId }
+    case 'FLIP_PYRAMID':
+      return { t: 'FLIP_PYRAMID', playerId }
+    case 'PLAY_CARD':
+      return { t: 'PLAY_CARD', playerId, card: intent.card }
+    case 'CALL_BLUFF':
+      return { t: 'CALL_BLUFF', playerId, targetPlayerId: intent.targetPlayerId }
+    case 'BUS_GUESS':
+      return { t: 'BUS_GUESS', playerId, choice: intent.choice }
+    case 'NEXT_PHASE':
+      return { t: 'NEXT_PHASE' }
     case 'END_GAME':
       return { t: 'END_GAME' }
-    case 'FLIP_65':
-      return { t: 'FLIP_65', playerId }
-    case 'AFSLAAN':
-      return { t: 'AFSLAAN', playerId }
     default:
       return null
   }
@@ -193,26 +184,39 @@ function intentToCommand(intent: Intent, playerId: string): Command | null {
 
 function toGameEvent(event: EngineEvent, version: number): GameEvent | null {
   switch (event.t) {
-    case 'DICE_ROLLED':
+    case 'CARD_DEALT':
       return {
-        t: 'ROLL_EVENT',
-        rollId: String(version),
-        playerId: event.playerId,
-        dieIds: event.dieIds,
-        values: event.values,
+        t: 'CARD_EVENT',
+        animId: String(version),
+        kind: 'deal',
+        card: event.card,
         animSeed: event.animSeed,
       }
-    case 'TIEBREAK_ROLLED':
+    case 'CARD_FLIPPED':
       return {
-        t: 'TIEBREAK_ROLL_EVENT',
-        playerId: event.playerId,
-        value: event.value,
+        t: 'CARD_EVENT',
+        animId: String(version),
+        kind: 'flip',
+        card: event.card,
         animSeed: event.animSeed,
       }
-    case 'FLIPPED_65':
-      return { t: 'FLIP_EVENT', playerId: event.playerId, values: event.values }
-    case 'AFSLAAN':
-      return { t: 'AFSLAAN_EVENT', byPlayerId: event.byPlayerId, verdict: event.verdict }
+    case 'BUS_CARD':
+      return {
+        t: 'CARD_EVENT',
+        animId: String(version),
+        kind: 'bus',
+        card: event.card,
+        animSeed: event.animSeed,
+      }
+    case 'BLUFF_CALLED':
+      return {
+        t: 'BLUFF_EVENT',
+        byPlayerId: event.byPlayerId,
+        targetPlayerId: event.targetPlayerId,
+        verdict: event.verdict,
+      }
+    case 'BUS_RESET':
+      return { t: 'BUS_RESET_EVENT', animSeed: event.animSeed }
     default:
       // Alle overige informatie zit al in de STATE-broadcast.
       return null

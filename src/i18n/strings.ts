@@ -7,11 +7,10 @@
  * letterlijke types worden en kon geen enkele vertaling het type halen.
  */
 export const nl = {
-  appName: 'Mexxen',
-  tagline: 'Het dobbel-borrelspel, op je telefoon',
+  appName: 'Bussen',
+  tagline: 'Het kaart-borrelspel, op je telefoon',
   createTable: 'Maak een tafel',
   joinTable: 'Doe mee',
-  comingSoon: 'Binnenkort speelbaar',
   hotseat: 'Speel op één telefoon',
 
   // Setup
@@ -19,79 +18,93 @@ export const nl = {
   addPlayer: '+ speler',
   removePlayer: 'weg',
   startGame: 'Start het potje',
-  needTwoPlayers: 'Minstens twee spelers nodig',
   playerNamePlaceholder: 'Naam',
 
-  // Game HUD
-  turnOf: 'aan de beurt',
-  throwCount: (used: number, max: number) => `worp ${used} van ${max}`,
-  roll: 'Gooi',
-  stay: 'Blijf staan',
-  rolling: 'aan het rollen…',
+  // HUD
+  turnOf: 'is aan de beurt',
   passPhone: (name: string) => `Geef de telefoon aan ${name}`,
-  versLocked: 'ligt vast (vers)',
-  heldLabel: 'vast',
-  round: (n: number) => `ronde ${n}`,
-  mexCount: (n: number) => (n === 1 ? '1 mex gegooid' : `${n} mexxen gegooid`),
+  dealing: 'kaart wordt gedraaid…',
+  cardsLeft: (n: number) => (n === 1 ? '1 kaart' : `${n} kaarten`),
 
-  // 31
-  give31Title: '31! Deel slokken uit aan:',
+  // Vragenrondje
+  questionsPhase: 'Vragenrondje',
+  questionTitle: (i: number): string =>
+    ['Rood of zwart?', 'Hoger of lager?', 'Binnen of buiten?', 'Heb je deze kleur al?'][i] ?? '',
+  questionSub: (i: number): string =>
+    [
+      'raad de kleur van de kaart',
+      'hoger of lager dan de vorige kaart (gelijk = fout)',
+      'valt de kaart tussen je vorige twee in?',
+      'heb je deze kleursoort al in je hand?',
+    ][i] ?? '',
+  answerLabel: (choice: string): string =>
+    (
+      ({
+        rood: 'Rood',
+        zwart: 'Zwart',
+        hoger: 'Hoger',
+        lager: 'Lager',
+        binnen: 'Binnen',
+        buiten: 'Buiten',
+        heb: 'Heb ik',
+        niet: 'Heb ik niet',
+      }) as Record<string, string>
+    )[choice] ?? choice,
 
-  // Rulesets
-  flipToMex: 'Draai om: mex!',
-  slaAf: 'SLA AF!',
-  ridderBadge: '🛡️',
-  afslaanVerdict: (name: string, verdict: string): string => {
-    switch (verdict) {
-      case 'terecht':
-        return `${name} slaat af! De 32 ligt vast`
-      case 'onterecht':
-        return `${name} slaat onterecht af: 2 slokken`
-      case 'zelfAfgeklopt':
-        return `${name} klopt zichzelf af: 4 slokken`
-      case 'mexAfgeklopt':
-        return `${name} slaat een mex af: 4 slokken`
-      case 'eigenMexAfgeklopt':
-        return `${name} slaat zijn eigen mex af: 8 slokken`
+  // Slokken uitdelen
+  giveTitle: (n: number) => `Deel ${n} ${n === 1 ? 'slok' : 'slokken'} uit aan:`,
+  waitingForGive: (name: string) => `${name} deelt slokken uit…`,
+
+  // Piramide
+  pyramidPhase: 'De piramide',
+  flipCard: 'Draai de volgende kaart',
+  pyramidHint: 'Heb je deze rank? Claim en deel slokken uit, of bluf erop los.',
+  claimRank: (rank: string) => `Claim een ${rank}`,
+  claim: 'Claim',
+  callBluff: 'Call bluff!',
+  startBus: 'Start de bus',
+  driverIs: (names: string) => `${names} rijdt de bus`,
+  waitingForFlip: 'De host draait de kaarten om…',
+
+  // Bus
+  busPhase: 'De bus',
+  busDriver: (name: string) => `${name} rijdt de bus`,
+  higher: 'Hoger',
+  lower: 'Lager',
+  busPosition: (pos: number, total: number) => `kaart ${pos} van ${total}`,
+  busResetMsg: 'Fout! De bus begint opnieuw',
+  waitingForBus: (name: string) => `${name} rijdt de bus…`,
+
+  // Call bluff / knallen
+  bluffVerdict: (name: string, verdict: string): string =>
+    verdict === 'betrapt'
+      ? `${name} is betrapt: dubbel drinken`
+      : 'Valse beschuldiging: dubbel drinken',
+  popText: (kind: string, name: string): string => {
+    switch (kind) {
+      case 'correct':
+        return 'Goed! Deel slokken uit'
+      case 'fout':
+        return 'Fout, drinken!'
+      case 'bluf-betrapt':
+        return `${name} loog: dubbel drinken`
+      case 'bluf-mis':
+        return 'Valse beschuldiging: dubbel'
+      case 'bus-af':
+        return 'Bus af! Opnieuw beginnen'
+      case 'bus-uit':
+        return 'De bus is uit!'
       default:
-        return `${name} slaat af`
+        return ''
     }
   },
-  afslaanNeedsPhones: 'Afslaan werkt alleen met meerdere telefoons (het is een reactie-race).',
-  pop32Sub: 'au, de laagste…',
-  pop31Sub: 'deel slokken uit!',
-  ridderPop: (name: string) => `${name} is geslagen tot ridder!`,
-  ridderDubbelPop: (name: string) => `${name} is nu dubbele ridder!`,
-  ridderPopSub: 'drinkt bij elk honderdtal het aantal ogen',
-  ridderDubbelPopSub: 'drinkt voortaan dubbel bij elk honderdtal',
-  rulesExplainTitle: 'Hoe werken de regels?',
-  rulesExplain: [
-    ['Basis', 'Gooi 21 (mex) in max 3 worpen. Hoogste steen is het tiental, dubbel is een honderdtal. Een 1 of 2 blijft verplicht liggen. Gooi je 32, dan is je beurt direct voorbij. Laagste score drinkt de standaard slokken, en elke mex die ronde verdubbelt dat (2, dan 4, dan 8).'],
-    ['31', 'Gooi je 31, dan deel je slokken uit en gooi je gratis opnieuw.'],
-    ['Eerste bepaalt het tempo', 'De rest krijgt max evenveel worpen als de eerste speler van de ronde.'],
-    ['Omgekeerde mex', 'Gooi je 65, dan mag je de stenen omdraaien naar 21. Telt niet mee voor de slokken-multiplier.'],
-    ['Ridder', 'Wie 1-1 gooit is de ridder en drinkt bij elk honderdtal het aantal ogen (300 = 3 slokken).'],
-    ['Dubbele ridder', 'Gooit de ridder nóg eens 1-1, dan drinkt hij voortaan dubbel.'],
-    ['Afslaan', 'Ligt er een 32, sla af om hem vast te leggen. De gooier voorkomt dat door een steen op te pakken. Onterecht afslaan: 2 slokken; een mex afslaan: 4; je eigen mex: 8.'],
-  ] as [string, string][],
 
-  // Tiebreak
-  tiebreakTitle: 'Gelijkspel! Kamp om de laagste',
-  tiebreakExplain: (hoogsteVerliest: boolean): string =>
-    hoogsteVerliest ? 'hoogste worp verliest' : 'laagste worp verliest',
-  tiebreakRollFor: (name: string) => `${name} gooit`,
-  tiebreakMultiplier: (m: number) => `inzet ×${m}`,
-
-  // Ronde-einde
-  loserIs: (name: string) => `${name} verliest de ronde`,
-  drinks: (n: number) => (n === 1 ? 'drinkt 1 slok' : `drinkt ${n} slokken`),
-  sips: 'slokken',
-  nextRound: 'Volgende ronde',
-  stopGame: 'Stop het potje',
-  endGame: 'Sluit het potje af',
+  // Einde
   finalTitle: 'Eindstand',
   wettest: (name: string) => `${name} heeft de natste keel`,
-  roundsPlayed: (n: number) => (n === 1 ? 'na 1 ronde' : `na ${n} rondes`),
+  sips: 'slokken',
+  drinks: (n: number) => (n === 1 ? 'drinkt 1 slok' : `drinkt ${n} slokken`),
+  backHome: 'Terug naar start',
 
   // Lobby & netwerk
   lobbyTitle: 'Tafel',
@@ -103,43 +116,53 @@ export const nl = {
   leaveTable: 'Verlaat tafel',
   closeTable: 'Sluit tafel',
   waitingForPlayers: 'Wachten op spelers…',
-  connected: 'verbonden',
   reconnecting: 'opnieuw verbinden…',
   offline: 'offline',
   skipTurn: 'Sla beurt over',
   waitForHost: 'De host gaat verder…',
-  waitingFor31: (name: string) => `${name} deelt slokken uit…`,
-  waitingForTiebreak: (name: string) => `wachten op ${name}…`,
-  noLoser: 'Niemand verliest deze ronde',
   needMorePlayers: 'Wachten op minstens één medespeler…',
   connectionLost: 'Verbinding kwijt; opnieuw verbinden…',
   tableGone: 'De tafel is gesloten',
-  backHome: 'Terug naar start',
-  shakeHint: 'of schud je telefoon 📳',
   soundOn: 'geluid aan',
   soundOff: 'geluid uit',
+  stopGame: 'Stop het potje',
+  endGame: 'Sluit het potje af',
   sipsLogTitle: 'Slokken-log',
   sipReasons: {
-    verliezer: 'ronde verloren',
-    gekregen31: '31 gekregen',
-    straf: 'straf',
-    ridder: 'ridder',
+    fout: 'fout geraden',
+    gekregen: 'gekregen',
+    bluf: 'bluf',
+    bus: 'bus',
   } as Record<string, string>,
   yourName: 'Jouw naam',
   codePlaceholder: 'Code (bv. ABCD)',
   makeTable: 'Maak tafel',
   joinNow: 'Doe mee',
   connecting: 'Verbinden…',
-  startWhenReady: 'Multiplayer spelen volgt in de volgende update',
   rulesTitle: 'Regels',
+  rulesExplainTitle: 'Hoe werkt bussen?',
+  rulesExplain: [
+    [
+      'Vragenrondje',
+      'Elke speler beantwoordt vier vragen: rood of zwart, hoger of lager, binnen of buiten, en heb je de kleur al. Goed geraden: jij deelt slokken uit (1, 2, 3 of 4). Fout: jij drinkt. De vier kaarten blijven je hand voor de piramide.',
+    ],
+    [
+      'Piramide',
+      'De host draait de piramide kaart voor kaart om, van onder (1 slok) naar boven (5 slokken). Heb je die rank in je hand? Claim de kaart en deel de slokken van die rij uit.',
+    ],
+    [
+      'Liegen',
+      'Met de bluf-regel mag je claimen zonder de kaart. Betrapt iemand je met call bluff, dan drink je dubbel. Zit de beschuldiger ernaast, dan drinkt die dubbel.',
+    ],
+    [
+      'De bus',
+      'Wie na de piramide de meeste kaarten overhoudt, rijdt de bus: gok hoger of lager voor elke volgende kaart. Fout betekent drinken en opnieuw beginnen; alles goed en de bus is uitgereden.',
+    ],
+  ] as [string, string][],
   ruleLabels: {
-    standaardSlokken: 'Standaard slokken',
-    tempo: 'Eerste bepaalt het tempo',
-    omgekeerdeMex: 'Omgekeerde mex (65 → 21)',
-    ridder: 'Ridder',
-    dubbeleRidder: 'Dubbele ridder',
-    afslaan: 'Afslaan',
-    tiebreakHoogsteVerliest: 'Kamp: hoogste verliest',
+    standaardSlokken: 'Slokken-eenheid',
+    busLengte: 'Lengte van de bus',
+    bluffen: 'Liegen (bluffen) toestaan',
   },
   net: {
     hostFailed: 'Tafel maken lukt niet; check je internet en probeer opnieuw',
@@ -154,111 +177,116 @@ export const nl = {
     NOT_ENOUGH_PLAYERS: 'Minstens twee spelers nodig',
     ALREADY_JOINED: 'Die speler doet al mee',
     UNKNOWN_PLAYER: 'Onbekende speler',
-    PENDING_31: 'Eerst je 31-slokken uitdelen',
-    NOT_PENDING_31: 'Je hebt geen 31 liggen',
-    NO_ROLLABLE_DICE: 'Beide stenen liggen vast',
-    HAS_NOT_THROWN: 'Eerst gooien',
-    INVALID_DIE: 'Die steen moet blijven liggen',
+    PENDING_GIVE: 'Eerst je slokken uitdelen',
+    NOT_PENDING_GIVE: 'Je hebt geen slokken uit te delen',
+    INVALID_CHOICE: 'Ongeldige keuze',
+    INVALID_CARD: 'Die kaart kan niet',
     INVALID_TARGET: 'Kies een andere speler',
-    ALREADY_ROLLED: 'Je hebt al gegooid',
+    NO_OPEN_CLAIM: 'Er staat geen claim open',
+    CLAIM_IN_PROGRESS: 'Er loopt al een claim',
+    NOTHING_TO_FLIP: 'De piramide is helemaal omgedraaid',
+    NOT_A_DRIVER: 'Alleen de buschauffeur mag gokken',
     INVALID_RULES: 'Ongeldige instellingen',
   } as Record<string, string>,
 }
 
 /**
- * Engelse vertaling. Het jargon (mex, knight, knock, sips) is een eerste opzet
- * die door iemand die het spel kent nagelezen moet worden; de structuur en de
- * functie-signaturen kloppen (het type dwingt dat af), de toon en de gekozen
- * termen zijn het menselijke werk.
+ * Engelse vertaling. De structuur en functie-signaturen kloppen (het type
+ * dwingt dat af); de toon is een eerste opzet die een native speler mag
+ * nalezen.
  */
 const en: Strings = {
-  appName: 'Mexxen',
-  tagline: 'The dice drinking game, on your phone',
+  appName: 'Bussen',
+  tagline: 'The card drinking game, on your phone',
   createTable: 'Create a table',
   joinTable: 'Join',
-  comingSoon: 'Playable soon',
   hotseat: 'Play on one phone',
 
-  // Setup
   players: 'Players',
   addPlayer: '+ player',
   removePlayer: 'remove',
   startGame: 'Start the game',
-  needTwoPlayers: 'At least two players needed',
   playerNamePlaceholder: 'Name',
 
-  // Game HUD
-  turnOf: 'to play',
-  throwCount: (used, max) => `throw ${used} of ${max}`,
-  roll: 'Roll',
-  stay: 'Stay',
-  rolling: 'rolling…',
+  turnOf: 'is up',
   passPhone: (name) => `Pass the phone to ${name}`,
-  versLocked: 'locked (fresh)',
-  heldLabel: 'held',
-  round: (n) => `round ${n}`,
-  mexCount: (n) => (n === 1 ? '1 mex rolled' : `${n} mexes rolled`),
+  dealing: 'flipping the card…',
+  cardsLeft: (n) => (n === 1 ? '1 card' : `${n} cards`),
 
-  // 31
-  give31Title: '31! Hand out sips to:',
+  questionsPhase: 'Question round',
+  questionTitle: (i) =>
+    ['Red or black?', 'Higher or lower?', 'Inside or outside?', 'Got this suit already?'][i] ?? '',
+  questionSub: (i) =>
+    [
+      'guess the colour of the card',
+      'higher or lower than the last card (tie = wrong)',
+      'does the card fall between your last two?',
+      'do you already hold this suit?',
+    ][i] ?? '',
+  answerLabel: (choice) =>
+    (
+      ({
+        rood: 'Red',
+        zwart: 'Black',
+        hoger: 'Higher',
+        lager: 'Lower',
+        binnen: 'Inside',
+        buiten: 'Outside',
+        heb: 'I have it',
+        niet: 'I do not',
+      }) as Record<string, string>
+    )[choice] ?? choice,
 
-  // Rulesets
-  flipToMex: 'Flip it: mex!',
-  slaAf: 'KNOCK!',
-  ridderBadge: '🛡️',
-  afslaanVerdict: (name, verdict) => {
-    switch (verdict) {
-      case 'terecht':
-        return `${name} knocks! The 32 is locked`
-      case 'onterecht':
-        return `${name} knocks wrongly: 2 sips`
-      case 'zelfAfgeklopt':
-        return `${name} knocks themselves: 4 sips`
-      case 'mexAfgeklopt':
-        return `${name} knocks a mex: 4 sips`
-      case 'eigenMexAfgeklopt':
-        return `${name} knocks their own mex: 8 sips`
+  giveTitle: (n) => `Hand out ${n} ${n === 1 ? 'sip' : 'sips'} to:`,
+  waitingForGive: (name) => `${name} is handing out sips…`,
+
+  pyramidPhase: 'The pyramid',
+  flipCard: 'Flip the next card',
+  pyramidHint: 'Got this rank? Claim it and hand out sips, or bluff.',
+  claimRank: (rank) => `Claim a ${rank}`,
+  claim: 'Claim',
+  callBluff: 'Call bluff!',
+  startBus: 'Start the bus',
+  driverIs: (names) => `${names} rides the bus`,
+  waitingForFlip: 'The host is flipping the cards…',
+
+  busPhase: 'The bus',
+  busDriver: (name) => `${name} rides the bus`,
+  higher: 'Higher',
+  lower: 'Lower',
+  busPosition: (pos, total) => `card ${pos} of ${total}`,
+  busResetMsg: 'Wrong! The bus starts over',
+  waitingForBus: (name) => `${name} is riding the bus…`,
+
+  bluffVerdict: (name, verdict) =>
+    verdict === 'betrapt'
+      ? `${name} got caught: drink double`
+      : 'False accusation: drink double',
+  popText: (kind, name) => {
+    switch (kind) {
+      case 'correct':
+        return 'Correct! Hand out sips'
+      case 'fout':
+        return 'Wrong, drink!'
+      case 'bluf-betrapt':
+        return `${name} lied: drink double`
+      case 'bluf-mis':
+        return 'False accusation: double'
+      case 'bus-af':
+        return 'Bus crashed! Start over'
+      case 'bus-uit':
+        return 'The bus is home!'
       default:
-        return `${name} knocks`
+        return ''
     }
   },
-  afslaanNeedsPhones: 'Knocking only works with multiple phones (it is a reaction race).',
-  pop32Sub: 'ouch, the lowest…',
-  pop31Sub: 'hand out sips!',
-  ridderPop: (name) => `${name} has been knighted!`,
-  ridderDubbelPop: (name) => `${name} is now a double knight!`,
-  ridderPopSub: 'drinks the pip count on every hundred',
-  ridderDubbelPopSub: 'now drinks double on every hundred',
-  rulesExplainTitle: 'How do the rules work?',
-  rulesExplain: [
-    ['Basics', 'Roll 21 (mex) in max 3 throws. The higher die is the tens, a double is a hundred. A 1 or 2 must stay down. Roll 32 and your turn ends at once. The lowest score drinks the base sips, and every mex that round doubles it (2, then 4, then 8).'],
-    ['31', 'Roll 31 and you hand out sips, then roll again for free.'],
-    ['First player sets the pace', 'Everyone else gets at most as many throws as the first player of the round.'],
-    ['Reverse mex', 'Roll 65 and you may flip the dice to 21. Does not count toward the sips multiplier.'],
-    ['Knight', 'Whoever rolls 1-1 becomes the knight and drinks the pip count on every hundred (300 = 3 sips).'],
-    ['Double knight', 'If the knight rolls 1-1 again, they drink double from then on.'],
-    ['Knock', 'If a 32 is on the table, knock to lock it. The roller prevents this by picking up a die. Knocking wrongly: 2 sips; knocking a mex: 4; your own mex: 8.'],
-  ],
 
-  // Tiebreak
-  tiebreakTitle: 'Tie! Play off for the lowest',
-  tiebreakExplain: (hoogsteVerliest) =>
-    hoogsteVerliest ? 'highest roll loses' : 'lowest roll loses',
-  tiebreakRollFor: (name) => `${name} rolls`,
-  tiebreakMultiplier: (m) => `stake ×${m}`,
-
-  // Ronde-einde
-  loserIs: (name) => `${name} loses the round`,
-  drinks: (n) => (n === 1 ? 'drinks 1 sip' : `drinks ${n} sips`),
-  sips: 'sips',
-  nextRound: 'Next round',
-  stopGame: 'Stop the game',
-  endGame: 'End the game',
   finalTitle: 'Final score',
   wettest: (name) => `${name} has the wettest whistle`,
-  roundsPlayed: (n) => (n === 1 ? 'after 1 round' : `after ${n} rounds`),
+  sips: 'sips',
+  drinks: (n) => (n === 1 ? 'drinks 1 sip' : `drinks ${n} sips`),
+  backHome: 'Back to start',
 
-  // Lobby & netwerk
   lobbyTitle: 'Table',
   roomCodeLabel: 'table code',
   scanToJoin: 'Scan to join',
@@ -268,43 +296,53 @@ const en: Strings = {
   leaveTable: 'Leave table',
   closeTable: 'Close table',
   waitingForPlayers: 'Waiting for players…',
-  connected: 'connected',
   reconnecting: 'reconnecting…',
   offline: 'offline',
   skipTurn: 'Skip turn',
   waitForHost: 'The host continues…',
-  waitingFor31: (name) => `${name} is handing out sips…`,
-  waitingForTiebreak: (name) => `waiting for ${name}…`,
-  noLoser: 'No one loses this round',
   needMorePlayers: 'Waiting for at least one other player…',
   connectionLost: 'Connection lost; reconnecting…',
   tableGone: 'The table has closed',
-  backHome: 'Back to start',
-  shakeHint: 'or shake your phone 📳',
   soundOn: 'sound on',
   soundOff: 'sound off',
+  stopGame: 'Stop the game',
+  endGame: 'End the game',
   sipsLogTitle: 'Sips log',
   sipReasons: {
-    verliezer: 'lost the round',
-    gekregen31: 'got a 31',
-    straf: 'penalty',
-    ridder: 'knight',
+    fout: 'guessed wrong',
+    gekregen: 'received',
+    bluf: 'bluff',
+    bus: 'bus',
   },
   yourName: 'Your name',
   codePlaceholder: 'Code (e.g. ABCD)',
   makeTable: 'Create table',
   joinNow: 'Join',
   connecting: 'Connecting…',
-  startWhenReady: 'Multiplayer is coming in the next update',
   rulesTitle: 'Rules',
+  rulesExplainTitle: 'How does bussen work?',
+  rulesExplain: [
+    [
+      'Question round',
+      'Each player answers four questions: red or black, higher or lower, inside or outside, and do you already hold the suit. Correct: you hand out sips (1, 2, 3 or 4). Wrong: you drink. The four cards stay your hand for the pyramid.',
+    ],
+    [
+      'Pyramid',
+      'The host flips the pyramid card by card, from the bottom (1 sip) to the top (5 sips). Hold that rank? Claim the card and hand out that row of sips.',
+    ],
+    [
+      'Bluffing',
+      'With the bluff rule you may claim without the card. If someone calls your bluff, you drink double. If the accuser is wrong, they drink double.',
+    ],
+    [
+      'The bus',
+      'Whoever holds the most cards after the pyramid rides the bus: guess higher or lower for each next card. Wrong means drink and start over; all right and the bus is home.',
+    ],
+  ],
   ruleLabels: {
-    standaardSlokken: 'Base sips',
-    tempo: 'First player sets the pace',
-    omgekeerdeMex: 'Reverse mex (65 → 21)',
-    ridder: 'Knight',
-    dubbeleRidder: 'Double knight',
-    afslaan: 'Knocking',
-    tiebreakHoogsteVerliest: 'Tiebreak: highest loses',
+    standaardSlokken: 'Sip unit',
+    busLengte: 'Bus length',
+    bluffen: 'Allow bluffing',
   },
   net: {
     hostFailed: 'Could not create the table; check your internet and try again',
@@ -312,20 +350,21 @@ const en: Strings = {
     tableClosed: 'The table is closed or unreachable',
   },
 
-  // Fouten
   errors: {
     WRONG_PHASE: 'That is not possible right now',
     NOT_YOUR_TURN: 'It is not your turn',
     NOT_ENOUGH_PLAYERS: 'At least two players needed',
     ALREADY_JOINED: 'That player is already in',
     UNKNOWN_PLAYER: 'Unknown player',
-    PENDING_31: 'Hand out your 31 sips first',
-    NOT_PENDING_31: 'You have no 31 on the table',
-    NO_ROLLABLE_DICE: 'Both dice are locked',
-    HAS_NOT_THROWN: 'Roll first',
-    INVALID_DIE: 'That die must stay down',
+    PENDING_GIVE: 'Hand out your sips first',
+    NOT_PENDING_GIVE: 'You have no sips to hand out',
+    INVALID_CHOICE: 'Invalid choice',
+    INVALID_CARD: 'That card is not allowed',
     INVALID_TARGET: 'Pick another player',
-    ALREADY_ROLLED: 'You have already rolled',
+    NO_OPEN_CLAIM: 'There is no open claim',
+    CLAIM_IN_PROGRESS: 'A claim is already in progress',
+    NOTHING_TO_FLIP: 'The pyramid is fully flipped',
+    NOT_A_DRIVER: 'Only the bus driver may guess',
     INVALID_RULES: 'Invalid settings',
   },
 }

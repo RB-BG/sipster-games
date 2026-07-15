@@ -4,7 +4,7 @@
  * Gesynthetiseerde geluidjes via WebAudio: geen assets, geen laadtijd.
  * Alles faalt stil; geluid is nooit kritiek.
  */
-const MUTE_KEY = 'mexxen.muted'
+const MUTE_KEY = 'bussen.muted'
 
 let ctx: AudioContext | null = null
 let muted = readMuted()
@@ -41,8 +41,8 @@ function audio(): AudioContext | null {
   }
 }
 
-/** Kort geratel bij het gooien. */
-export function playRoll(): void {
+/** Kort geratel bij het delen of omdraaien van een kaart. */
+export function playDeal(): void {
   const ac = audio()
   if (!ac) return
   const now = ac.currentTime
@@ -64,8 +64,8 @@ export function playRoll(): void {
   }
 }
 
-/** Fanfaretje bij mex. */
-export function playMex(): void {
+/** Fanfaretje bij een goede uitkomst of het uitrijden van de bus. */
+export function playFanfare(): void {
   const ac = audio()
   if (!ac) return
   const now = ac.currentTime
@@ -85,8 +85,8 @@ export function playMex(): void {
   })
 }
 
-/** Korte hoorn-fanfare voor de ridderslag. */
-export function playRidder(): void {
+/** Korte hoorn bij een call bluff. */
+export function playBluff(): void {
   const ac = audio()
   if (!ac) return
   const now = ac.currentTime
@@ -126,7 +126,7 @@ export function playDrink(): void {
   osc.stop(now + 0.15)
 }
 
-/** Doffe klap bij afslaan. */
+/** Doffe klap bij een call bluff-inslag. */
 export function playSlap(): void {
   const ac = audio()
   if (!ac) return

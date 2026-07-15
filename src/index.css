@@ -34,7 +34,8 @@
   body {
     margin: 0;
     color: var(--ivory);
-    background: radial-gradient(120% 90% at 50% 0%, var(--wood-800) 0%, var(--wood-900) 55%, var(--wood-950) 100%);
+    /* Nachtbus: middernachtblauwe radial met een zweem cyaan van boven. */
+    background: radial-gradient(120% 90% at 50% 0%, var(--night-800) 0%, var(--night-900) 55%, var(--night-950) 100%);
     background-attachment: fixed;
     min-height: 100dvh;
   }
@@ -47,16 +48,20 @@
   --font-heading: var(--font-sans);
   --font-sans: 'Geist Variable', sans-serif;
 
-  /* Kroeg-palet */
-  --color-wood-950: var(--wood-950);
-  --color-wood-900: var(--wood-900);
-  --color-wood-800: var(--wood-800);
-  --color-wood-700: var(--wood-700);
-  --color-amber-warm: var(--amber-warm);
-  --color-amber-soft: var(--amber-soft);
+  /*
+   * Nachtbus-neon-palet. De token-namen zijn semantisch (uit de fork) maar
+   * dragen nu de neon-waarden: night = middernachtblauw, cyaan + magenta accent.
+   */
+  --color-night-950: var(--night-950);
+  --color-night-900: var(--night-900);
+  --color-night-800: var(--night-800);
+  --color-night-700: var(--night-700);
+  --color-cyan: var(--cyan);
+  --color-cyan-soft: var(--cyan-soft);
+  --color-magenta: var(--magenta);
   --color-ivory: var(--ivory);
-  --color-pip: var(--pip);
-  --color-coaster: var(--coaster);
+  --color-ink: var(--ink);
+  --color-card-face: var(--card-face);
 
   /* shadcn token bridge */
   --color-ring: var(--ring);
@@ -84,73 +89,123 @@
 }
 
 :root {
-  /* Kroeg-palet: donker hout, warm amber, ivoren dobbelstenen */
-  --wood-950: #170e07;
-  --wood-900: #241509;
-  --wood-800: #3a2410;
-  --wood-700: #57381c;
-  --amber-warm: #e8a33d;
-  --amber-soft: #f4c06a;
-  --ivory: #f3ecd9;
-  --pip: #17130e;
-  --coaster: #e9dfc6;
+  /* Nachtbus-neon: diep indigo/middernachtblauw, cyaan + magenta accenten. */
+  --night-950: #05060f;
+  --night-900: #0e1030;
+  --night-800: #1a1f4d;
+  --night-700: #2a2f66;
+  --cyan: #34e0e8;
+  --cyan-soft: #7cf3f7;
+  --magenta: #ff5ea8;
+  --ivory: #eaf0ff;
+  --ink: #0b1020;
+  --card-face: #f2f4fb;
 
-  /* shadcn tokens, afgestemd op het donkere kroeg-thema */
-  --background: var(--wood-900);
+  /* shadcn tokens, afgestemd op het neon-nachtthema */
+  --background: var(--night-900);
   --foreground: var(--ivory);
-  --card: var(--wood-800);
+  --card: var(--night-800);
   --card-foreground: var(--ivory);
-  --popover: var(--wood-800);
+  --popover: var(--night-800);
   --popover-foreground: var(--ivory);
-  --primary: var(--amber-warm);
-  --primary-foreground: var(--wood-950);
-  --secondary: var(--wood-700);
+  --primary: var(--cyan);
+  --primary-foreground: var(--night-950);
+  --secondary: var(--night-700);
   --secondary-foreground: var(--ivory);
-  --muted: var(--wood-800);
-  --muted-foreground: #b5a488;
-  --accent: var(--wood-700);
-  --accent-foreground: var(--ivory);
-  --destructive: #c8442c;
-  --border: #57381c66;
-  --input: #57381c99;
-  --ring: var(--amber-warm);
+  --muted: var(--night-800);
+  --muted-foreground: #9aa3d0;
+  --accent: var(--magenta);
+  --accent-foreground: #240a18;
+  --destructive: #ff4d6d;
+  --border: #3a408866;
+  --input: #2a2f6699;
+  --ring: var(--cyan);
   --radius: 0.625rem;
 }
 
-/* 2.5D dobbelstenen: CSS-3D-kubussen, geen WebGL. */
-.dice-stage {
-  background: radial-gradient(70% 60% at 50% 40%, #3a2410 0%, #241509 70%, #170e07 100%);
-  perspective-origin: 50% 32%;
+/* 2.5D speelkaarten: CSS-3D-flip, geen WebGL. */
+.card-stage {
+  perspective: 900px;
+  perspective-origin: 50% 40%;
+  display: inline-block;
 }
-.die-wrap {
-  perspective: 620px;
-  perspective-origin: 50% 30%;
-}
-.dice-cube {
+.card-3d {
   position: relative;
   transform-style: preserve-3d;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
 }
-.dice-face {
+.card-side {
   position: absolute;
   inset: 0;
-  border-radius: 18%;
-  background: linear-gradient(150deg, #fdf7e6 0%, #efe3c6 55%, #e2d3ac 100%);
-  box-shadow:
-    inset 0 0 0 1px #00000018,
-    inset 0 -6px 12px #00000014;
   backface-visibility: hidden;
 }
-.dice-pip {
+.card-side-back {
+  transform: rotateY(180deg);
+}
+.card-static {
+  display: inline-block;
+}
+.card-dim {
+  opacity: 0.45;
+  filter: saturate(0.7);
+}
+
+/* De ivoren voorkant met grote, contrastrijke rank + suit. */
+.card-face-front {
+  position: relative;
+  border-radius: 14%;
+  background: linear-gradient(155deg, #ffffff 0%, var(--card-face) 60%, #dfe4f5 100%);
+  box-shadow:
+    inset 0 0 0 1px #0b102022,
+    0 6px 16px #00000055;
+  overflow: hidden;
+}
+.card-red {
+  color: #e5306f;
+}
+.card-black {
+  color: var(--ink);
+}
+.card-corner {
   position: absolute;
-  width: 15%;
-  height: 15%;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(circle at 35% 30%, #453728, #17130e 75%);
-  box-shadow: inset 0 -1px 1px #00000066;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  font-weight: 800;
+}
+.card-corner-tl {
+  top: 8%;
+  left: 8%;
+}
+.card-corner-br {
+  bottom: 8%;
+  right: 8%;
+  transform: rotate(180deg);
+}
+.card-corner-rank {
+  font-size: 22%;
+}
+.card-corner-suit {
+  font-size: 18%;
+}
+.card-center-suit {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 52%;
+}
+
+/* De neon achterkant van een dichte kaart. */
+.card-back {
+  border-radius: 14%;
+  background:
+    repeating-linear-gradient(45deg, #ff5ea822 0 8px, transparent 8px 16px),
+    repeating-linear-gradient(-45deg, #34e0e822 0 8px, transparent 8px 16px),
+    linear-gradient(160deg, var(--night-700) 0%, var(--night-800) 60%, var(--night-950) 100%);
+  box-shadow:
+    inset 0 0 0 2px #34e0e855,
+    inset 0 0 0 4px #0b102088,
+    0 6px 16px #00000055;
 }
