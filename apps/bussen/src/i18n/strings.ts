@@ -106,6 +106,11 @@ export const nl = {
   drinks: (n: number) => (n === 1 ? 'drinkt 1 slok' : `drinkt ${n} slokken`),
   backHome: 'Terug naar start',
 
+  // Kaarten van een speler bekijken (tik op de chip)
+  handTitle: (name: string) => `Kaarten van ${name}`,
+  handEmpty: 'Geen kaarten meer',
+  close: 'Sluit',
+
   // Lobby & netwerk
   lobbyTitle: 'Tafel',
   roomCodeLabel: 'tafelcode',
@@ -286,6 +291,10 @@ const en: Strings = {
   sips: 'sips',
   drinks: (n) => (n === 1 ? 'drinks 1 sip' : `drinks ${n} sips`),
   backHome: 'Back to start',
+
+  handTitle: (name) => `${name}'s cards`,
+  handEmpty: 'No cards left',
+  close: 'Close',
 
   lobbyTitle: 'Table',
   roomCodeLabel: 'table code',
