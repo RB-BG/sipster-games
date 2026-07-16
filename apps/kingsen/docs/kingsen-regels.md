@@ -27,19 +27,19 @@ cup-meter). Die zijn hieronder gemarkeerd.
 | **2** | Jij | Wijs iemand aan; die drinkt. |
 | **3** | Ik | Je drinkt zelf. |
 | **4** | Vrouwen | Alle vrouwen drinken. |
-| **5** | Maatje | Kies een drinkmaatje; die drinkt met je mee tot de volgende 5. |
+| **5** | Nieuwe regel | *(engine-stateful)* Verzin een regel die de rest van het potje geldt. Blijft zichtbaar op tafel. |
 | **6** | Mannen | Alle mannen drinken. |
 | **7** | Hemel | Iedereen steekt zijn hand omhoog; de laatste drinkt. |
-| **8** | Categorie | Noem een categorie (landen, automerken, ...). Om de beurt een voorbeeld noemen; wie faalt of herhaalt, drinkt. |
+| **8** | Maatje | Kies een drinkmaatje; die drinkt met je mee tot de volgende 8. |
 | **9** | Rijmen | Zeg een woord. Om de beurt een rijmwoord; wie faalt, drinkt. |
-| **10** | Nieuwe regel | *(engine-stateful)* Verzin een regel die de rest van het potje geldt. Blijft zichtbaar op tafel. |
+| **10** | Categorie | Noem een categorie (landen, automerken, ...). Om de beurt een voorbeeld noemen; wie faalt of herhaalt, drinkt. |
 | **J** (boer) | Duimmeester | *(engine-stateful)* Leg ongemerkt je duim op tafel; de laatste die volgt, drinkt. Je bent duimmeester tot het einde van het potje. |
 | **Q** (vrouw) | Vraagmeester | *(engine-stateful)* Stel spelers vragen; wie antwoordt (of terugvraagt), drinkt. Je bent vraagmeester tot het einde van het potje. |
 | **K** (koning) | King's Cup | *(engine-stateful)* Schenk een aantal slokken in het centrale glas (vul de meter). Bij de **4e** koning drink jij het volle glas leeg en eindigt het potje. |
 
 ## Engine-stateful details
 
-- **Nieuwe regel (10)**: de speler typt een vrije tekst; die komt in de lijst met actieve
+- **Nieuwe regel (5)**: de speler typt een vrije tekst; die komt in de lijst met actieve
   regels en blijft staan tot het einde van het potje.
 - **Duimmeester (J) / Vraagmeester (Q)**: de rol wordt aan de speler die de kaart trok
   gekoppeld en blijft als actieve regel op tafel staan. Trekt iemand anders later dezelfde

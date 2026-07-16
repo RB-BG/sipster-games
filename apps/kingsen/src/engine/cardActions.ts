@@ -6,7 +6,7 @@ import type { Rank } from './types'
  * Het spel-effect van een kaart-rang. De meeste kaarten voer je in het echt uit
  * (`none`): de engine onthult alleen de kaart en de UI toont de instructie. De
  * engine-stateful kaarten veranderen de spelstand:
- * - `newRule`  (10): de speler typt een vrije regel die blijft staan.
+ * - `newRule`  (5): de speler typt een vrije regel die blijft staan.
  * - `roleThumb` (J): duimmeester; de rol blijft aan de speler gekoppeld.
  * - `roleQuestion` (Q): vraagmeester; idem.
  * - `king` (K): vult de cup-meter; de 4e koning eindigt het potje.
@@ -18,7 +18,7 @@ export type CardEffect = 'none' | 'newRule' | 'roleThumb' | 'roleQuestion' | 'ki
 
 export function cardEffect(rank: Rank): CardEffect {
   switch (rank) {
-    case 10:
+    case 5:
       return 'newRule'
     case 11:
       return 'roleThumb'

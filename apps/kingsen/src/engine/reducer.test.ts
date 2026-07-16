@@ -143,21 +143,21 @@ describe('King\'s Cup', () => {
   })
 })
 
-describe('nieuwe regel (10)', () => {
+describe('nieuwe regel (5)', () => {
   it('opent de regel-invoer en legt de regel vast', () => {
-    const { state, rng } = started([card(10, 'clubs'), card(3, 'hearts')])
+    const { state, rng } = started([card(5, 'clubs'), card(3, 'hearts')])
     const flipped = flip(state, rng)
     expect(flipped.state.pending).toEqual({ kind: 'rule', playerId: 'p1' })
 
     const ruled = apply(flipped.state, { t: 'SET_RULE', playerId: 'p1', text: '  geen namen  ' }, rng)
     expect(ruled.state.activeRules).toHaveLength(1)
-    expect(ruled.state.activeRules[0]).toMatchObject({ rank: 10, byPlayerId: 'p1', text: 'geen namen' })
+    expect(ruled.state.activeRules[0]).toMatchObject({ rank: 5, byPlayerId: 'p1', text: 'geen namen' })
     expect(ruled.state.pending).toBeNull()
     expect(ruled.state.turn?.playerId).toBe('p2')
   })
 
   it('weigert een lege regel', () => {
-    const { state, rng } = started([card(10, 'clubs')])
+    const { state, rng } = started([card(5, 'clubs')])
     const flipped = flip(state, rng)
     expect(reduce(flipped.state, { t: 'SET_RULE', playerId: 'p1', text: '   ' }, rng).error).toBe(
       'INVALID_TEXT',
