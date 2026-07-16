@@ -25,12 +25,10 @@ export function CardFace({ card, size = 120 }: { card: CardValue; size?: number 
     <div className={`card-face-front ${isRed ? 'card-red' : 'card-black'}`} style={faceSize(size)}>
       <span className="card-corner card-corner-tl">
         <span className="card-corner-rank">{rank}</span>
-        <span className="card-corner-suit">{suit}</span>
       </span>
       <span className="card-center-suit">{suit}</span>
       <span className="card-corner card-corner-br">
         <span className="card-corner-rank">{rank}</span>
-        <span className="card-corner-suit">{suit}</span>
       </span>
     </div>
   )
