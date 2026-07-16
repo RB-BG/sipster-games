@@ -167,10 +167,12 @@ function ActiveRules({ state, strings }: { state: State; strings: Strings }) {
       <ul className="flex flex-col gap-1 text-sm text-ivory">
         {state.activeRules.map((rule) => {
           const by = state.players.find((p) => p.id === rule.byPlayerId)
-          const label = rule.rank === 10 ? rule.text : strings.cardName(rule.rank)
+          // Vrije regel = eigen tekst; een rol (boer/vrouw) heeft geen tekst.
+          const isFreeRule = rule.text.length > 0
+          const label = isFreeRule ? rule.text : strings.cardName(rule.rank)
           return (
             <li key={rule.id} className="flex items-start gap-1.5">
-              <span aria-hidden>{rule.rank === 10 ? '📜' : strings.roleBadge(rule.rank)}</span>
+              <span aria-hidden>{isFreeRule ? '📜' : strings.roleBadge(rule.rank)}</span>
               <span>
                 {label}
                 {by && <span className="text-muted-foreground"> ({by.emoji})</span>}

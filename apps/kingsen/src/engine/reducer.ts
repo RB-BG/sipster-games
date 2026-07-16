@@ -186,8 +186,9 @@ function applySetRule(
   text: string,
 ): void {
   draft.activeRules.push({
+    // De rang van de zojuist gedraaide "nieuwe regel"-kaart.
     id: draft.nextRuleId++,
-    rank: 10,
+    rank: draft.currentCard?.rank ?? 5,
     byPlayerId: playerId,
     text: text.trim(),
   })
