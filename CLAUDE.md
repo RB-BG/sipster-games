@@ -38,16 +38,22 @@ Core levert de spel-agnostische bouwstenen; apps gebruiken **dunne re-export-ada
 
 In core: `utils` (`cn`), `seededRng` (`mulberry32`), `sound` (WebAudio-synth via
 `configureSound(muteKey)` + neutrale toon-namen), `haptics`, `storage` (`createStorage`),
-`useWakeLock`, `Coaster`, `effects/DrinkShots`, en `localeStore` (`createLocaleStore`-factory).
+`useWakeLock`, `Coaster`, `effects/DrinkShots`, `localeStore` (`createLocaleStore`-factory),
+en de geparameteriseerde componenten `QrShare` (QR-kleuren/kader via props), `LocaleSwitch`
+(actieve-tab-accent via prop) en `RulesExplainer` ([titel, tekst]-paren via props).
+Daarnaast `cards/*` (types, rng, deck, display, dealAnim, `Card`): de spel-agnostische
+kaartlaag die bussen en kingsen delen; beide apps hebben dunne re-export-adapters in
+`engine/` en `cards/`.
 
 **Bewust per app gebleven** (niet naar core forceren):
 - `protocol/messages.ts`, `net/transport.ts`, `net/peerTransport.ts`, de stores,
-  `useGameAdapter`, en de UI met thema/strings (`LocaleSwitch`, `QrShare`, `RulesEditor`,
-  `RulesExplainer`, screens): die zijn gekoppeld aan de per-app protocol-typen, thema-tokens of
-  i18n-shape. De transport-laag generiek maken (`HostTransport<TEvent>` e.d.) is de
-  uitgestelde "fase 3" uit `apps/bussen/docs/monorepo-migratie.md`: hoger risico en alleen op
-  twee echte toestellen te verifiëren, dus niet blind doen.
-- Heel `engine/` en `dice/`/`cards/`: spel-specifiek.
+  `useGameAdapter`, `RulesEditor` en de screens: die zijn gekoppeld aan de per-app
+  protocol-typen, thema-tokens of i18n-shape. De transport-laag generiek maken
+  (`HostTransport<TEvent>` e.d.) is de uitgestelde "fase 3" uit
+  `apps/bussen/docs/monorepo-migratie.md`: hoger risico en alleen op twee echte
+  toestellen te verifiëren, dus niet blind doen.
+- De spelregels: heel `engine/` op de gedeelde kaart-primitieven na, en `dice/`
+  (mexxen): spel-specifiek.
 
 Kortom: de veilig deelbare laag zit al in core. Zet er alleen iets bij als het echt
 spel-agnostisch is én zonder per-app koppeling (of na expliciete parameterisatie), en verifieer
