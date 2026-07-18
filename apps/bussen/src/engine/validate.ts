@@ -1,5 +1,6 @@
 // Copyright © 2026 Bussen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
+import { maxPlayers } from './deck'
 import { pyramidTotal } from './pyramid'
 import type { AnswerChoice, Command, ErrorCode, GameState, QuestionIndex } from './types'
 
@@ -13,6 +14,7 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
     case 'ADD_PLAYER':
       if (state.phase !== 'lobby') return 'WRONG_PHASE'
       if (state.players.some((p) => p.id === cmd.profile.id)) return 'ALREADY_JOINED'
+      if (state.players.length >= maxPlayers(state.rules)) return 'GAME_FULL'
       return null
 
     case 'REMOVE_PLAYER':
@@ -24,6 +26,8 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
       if (state.phase !== 'lobby') return 'WRONG_PHASE'
       if (cmd.rules.standaardSlokken < 1) return 'INVALID_RULES'
       if (cmd.rules.busLengte < 1 || cmd.rules.busLengte > 10) return 'INVALID_RULES'
+      // Een langere bus mag de al aanwezige spelers niet buiten het deck-budget duwen.
+      if (state.players.length > maxPlayers(cmd.rules)) return 'INVALID_RULES'
       return null
 
     case 'START_GAME':
@@ -50,6 +54,7 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
     case 'FLIP_PYRAMID': {
       if (state.phase !== 'pyramid' || state.pyramid === null) return 'WRONG_PHASE'
       if (state.pyramid.openClaim !== null) return 'CLAIM_IN_PROGRESS'
+      if (state.pendingGive !== null) return 'PENDING_GIVE'
       if (state.pyramid.flipIndex >= pyramidTotal(state.pyramid)) return 'NOTHING_TO_FLIP'
       return null
     }
@@ -61,6 +66,9 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
       const { currentRank, openClaim } = state.pyramid
       if (currentRank === null) return 'WRONG_PHASE'
       if (openClaim !== null) return 'CLAIM_IN_PROGRESS'
+      // Na een onterechte call bluff staat de give van de eerdere claimant nog
+      // open; een nieuwe claim zou die anders geruisloos overschrijven.
+      if (state.pendingGive !== null) return 'PENDING_GIVE'
       if (cmd.card.rank !== currentRank) return 'INVALID_CARD'
       // Elke claim kost een kaart uit de hand: met een lege hand kun je niet meer
       // claimen (en dus ook niet meer bluffen).
@@ -87,12 +95,16 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
       if (state.phase !== 'bus' || state.bus === null) return 'WRONG_PHASE'
       if (!state.bus.driverIds.includes(cmd.playerId)) return 'NOT_A_DRIVER'
       if (cmd.choice !== 'hoger' && cmd.choice !== 'lager') return 'INVALID_CHOICE'
+      // Twee chauffeurs kunnen tegelijk gokken; de tweede gok hoort bij een
+      // kaart die inmiddels al omgedraaid is en telt niet.
+      if (cmd.position !== state.bus.position) return 'STALE_GUESS'
       return null
     }
 
     case 'NEXT_PHASE': {
       if (state.phase !== 'pyramid' || state.pyramid === null) return 'WRONG_PHASE'
       if (state.pyramid.openClaim !== null) return 'CLAIM_IN_PROGRESS'
+      if (state.pendingGive !== null) return 'PENDING_GIVE'
       if (state.pyramid.flipIndex < pyramidTotal(state.pyramid)) return 'WRONG_PHASE'
       return null
     }
@@ -101,9 +113,24 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
       if (!state.players.some((p) => p.id === cmd.playerId)) return 'UNKNOWN_PLAYER'
       return null
 
-    case 'FORFEIT_TURN':
-      if (state.phase !== 'questions' || state.turn === null) return 'WRONG_PHASE'
-      return null
+    case 'FORFEIT_TURN': {
+      // Vragenrondje: de beurt overslaan. Piramide: een openstaande claim of
+      // give annuleren. Bus: weggevallen chauffeurs uit de bus halen.
+      if (state.phase === 'questions') {
+        return state.turn === null ? 'WRONG_PHASE' : null
+      }
+      if (state.phase === 'pyramid') {
+        if (state.pendingGive !== null || state.pyramid?.openClaim) return null
+        return 'WRONG_PHASE'
+      }
+      if (state.phase === 'bus' && state.bus !== null) {
+        const disconnected = state.bus.driverIds.some(
+          (id) => state.players.find((p) => p.id === id)?.connected === false,
+        )
+        return disconnected ? null : 'WRONG_PHASE'
+      }
+      return 'WRONG_PHASE'
+    }
 
     case 'END_GAME':
       if (state.phase === 'lobby') return 'WRONG_PHASE'

@@ -203,3 +203,63 @@ describe('hostLoop in-game', () => {
     expect(loop.state.phase).toBe('roundEnd')
   })
 })
+
+describe('hostLoop hardening (review-fixes)', () => {
+  it('een malformed intent (bv. dieId buiten bereik) crasht de loop niet: MALFORMED', () => {
+    const { transport, loop } = setup()
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
+    loop.dispatchLocal({ t: 'START_GAME' })
+
+    loop.handleIntent('peer-a', { t: 'HOLD_DIE', dieId: 2 } as never)
+    loop.handleIntent('peer-a', { t: 'PICKUP_DIE', dieId: -1 } as never)
+    loop.handleIntent('peer-a', { t: 'GIVE_SIPS_31', targetPlayerId: 7 } as never)
+    loop.handleIntent('peer-a', { t: 'HACK_THE_PLANET' } as never)
+
+    const errors = transport.sent.filter((m) => m.event.t === 'ERROR').map((m) => m.event)
+    expect(errors).toHaveLength(4)
+    for (const e of errors) expect(e).toEqual({ t: 'ERROR', code: 'MALFORMED' })
+    expect(loop.state.phase).toBe('playing')
+  })
+
+  it('een mid-game joiner wordt niet gemapt: geen sync, geen spook-disconnect', () => {
+    const { transport, loop } = setup()
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
+    loop.dispatchLocal({ t: 'START_GAME' })
+
+    loop.handleIntent('peer-late', { t: 'JOIN', profile: { id: 'late-1', name: 'Laat', emoji: '🐌' } })
+    expect(transport.sent.at(-1)).toEqual({
+      to: 'peer-late',
+      event: { t: 'ERROR', code: 'WRONG_PHASE' },
+    })
+    loop.handleIntent('peer-late', { t: 'REQUEST_SYNC' })
+    expect(transport.sent.at(-1)).toEqual({
+      to: 'peer-late',
+      event: { t: 'ERROR', code: 'UNKNOWN_PLAYER' },
+    })
+    const before = transport.broadcasts.length
+    loop.handleDisconnect('peer-late')
+    expect(transport.broadcasts.length).toBe(before)
+  })
+
+  it('één stoel per peer: een tweede JOIN met een andere id wordt geweigerd', () => {
+    const { transport, loop } = setup()
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: { id: 'nep-2', name: 'Nep', emoji: '👻' } })
+
+    expect(transport.sent.at(-1)).toEqual({
+      to: 'peer-a',
+      event: { t: 'ERROR', code: 'ALREADY_JOINED' },
+    })
+    expect(loop.state.players).toHaveLength(2)
+  })
+
+  it('profielvelden worden gesaneerd: lange namen worden afgekapt', () => {
+    const { loop } = setup()
+    loop.handleIntent('peer-a', {
+      t: 'JOIN',
+      profile: { id: 'guest-2', name: `  ${'x'.repeat(500)}`, emoji: '🍺' },
+    })
+    const joined = loop.state.players.find((p) => p.id === 'guest-2')
+    expect(joined?.name.length).toBe(24)
+  })
+})

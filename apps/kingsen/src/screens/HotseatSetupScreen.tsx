@@ -5,6 +5,7 @@ import { ArrowLeft, Spade } from 'lucide-react'
 import Coaster from '@/components/Coaster'
 import RulesEditor from '@/components/RulesEditor'
 import type { PlayerProfile, RuleConfig } from '@/engine/types'
+import { MAX_PLAYERS } from '@/engine/validate'
 import { useStrings } from '@/store/localeStore'
 import { loadProfile, loadRules, newPlayerId, saveProfile, saveRules } from '@/lib/storage'
 import { useGameStore } from '@/store/gameStore'
@@ -85,15 +86,17 @@ export default function HotseatSetupScreen() {
           </div>
         ))}
 
-        <button
-          type="button"
-          onClick={() =>
-            setDrafts((prev) => [...prev, { name: '', emojiIndex: prev.length % EMOJI.length }])
-          }
-          className="self-start rounded-lg bg-secondary px-3 py-1.5 text-sm text-secondary-foreground"
-        >
-          {strings.addPlayer}
-        </button>
+        {drafts.length < MAX_PLAYERS && (
+          <button
+            type="button"
+            onClick={() =>
+              setDrafts((prev) => [...prev, { name: '', emojiIndex: prev.length % EMOJI.length }])
+            }
+            className="self-start rounded-lg bg-secondary px-3 py-1.5 text-sm text-secondary-foreground"
+          >
+            {strings.addPlayer}
+          </button>
+        )}
       </Coaster>
 
       <RulesEditor rules={rules} onChange={(patch) => setRules((prev) => ({ ...prev, ...patch }))} />

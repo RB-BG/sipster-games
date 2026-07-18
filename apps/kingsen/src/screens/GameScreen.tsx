@@ -6,6 +6,7 @@ import Coaster from '@/components/Coaster'
 import CupMeter from '@/components/CupMeter'
 import PlayerChip from '@/components/PlayerChip'
 import Card from '@/cards/Card'
+import { MAX_CUP_AMOUNT } from '@/engine/validate'
 import { useGameAdapter } from '@/hooks/useGameAdapter'
 import { useWakeLock } from '@/hooks/useWakeLock'
 import { useStrings } from '@/store/localeStore'
@@ -128,9 +129,21 @@ export default function GameScreen() {
         <section className="flex flex-col gap-2 p-4">
           {lastError && <p className="text-center text-sm text-destructive">{strings.errors[lastError]}</p>}
           {state.pending?.kind === 'cup' ? (
-            <CupPour state={state} actorId={actorId} canAct={canAct} dispatch={dispatch} />
+            <CupPour
+              state={state}
+              actorId={actorId}
+              canAct={canAct}
+              hostControls={isHost || myPlayerId === null}
+              dispatch={dispatch}
+            />
           ) : state.pending?.kind === 'rule' ? (
-            <RuleInput state={state} actorId={actorId} canAct={canAct} dispatch={dispatch} />
+            <RuleInput
+              state={state}
+              actorId={actorId}
+              canAct={canAct}
+              hostControls={isHost || myPlayerId === null}
+              dispatch={dispatch}
+            />
           ) : (
             <FlipBar
               state={state}
@@ -230,16 +243,35 @@ function FlipBar({
   )
 }
 
+/**
+ * Host-noodrem bij een openstaande invoer: valt de pending speler weg, dan
+ * kon niemand meer verder (FORFEIT_TURN was alleen via de FlipBar bereikbaar).
+ */
+function SkipPending({ dispatch }: { dispatch: Dispatch }) {
+  const strings = useStrings()
+  return (
+    <button
+      type="button"
+      onClick={() => dispatch({ t: 'FORFEIT_TURN' })}
+      className="self-center text-xs text-muted-foreground active:text-ivory"
+    >
+      {strings.skipTurn}
+    </button>
+  )
+}
+
 /** Koning: schenk slokken in het glas. */
 function CupPour({
   state,
   actorId,
   canAct,
+  hostControls,
   dispatch,
 }: {
   state: State
   actorId: string | null
   canAct: (id: string) => boolean
+  hostControls: boolean
   dispatch: Dispatch
 }) {
   const strings = useStrings()
@@ -248,9 +280,12 @@ function CupPour({
   if (actorId === null) return null
   if (!canAct(actorId)) {
     return (
-      <p className="text-center text-sm text-muted-foreground">
-        {strings.waitingForFlip(playerName(state, actorId))}
-      </p>
+      <>
+        <p className="text-center text-sm text-muted-foreground">
+          {strings.waitingForFlip(playerName(state, actorId))}
+        </p>
+        {hostControls && <SkipPending dispatch={dispatch} />}
+      </>
     )
   }
   return (
@@ -268,8 +303,9 @@ function CupPour({
         <span className="w-10 text-center text-2xl font-bold text-ivory">{amount}</span>
         <button
           type="button"
-          onClick={() => setAmount((a) => a + step)}
-          className="size-10 rounded-lg bg-secondary text-xl text-secondary-foreground"
+          onClick={() => setAmount((a) => Math.min(MAX_CUP_AMOUNT, a + step))}
+          className="size-10 rounded-lg bg-secondary text-xl text-secondary-foreground disabled:opacity-40"
+          disabled={amount + step > MAX_CUP_AMOUNT}
         >
           +
         </button>
@@ -285,16 +321,18 @@ function CupPour({
   )
 }
 
-/** Rang 10: leg een nieuwe regel vast. */
+/** Rang 5: leg een nieuwe regel vast. */
 function RuleInput({
   state,
   actorId,
   canAct,
+  hostControls,
   dispatch,
 }: {
   state: State
   actorId: string | null
   canAct: (id: string) => boolean
+  hostControls: boolean
   dispatch: Dispatch
 }) {
   const strings = useStrings()
@@ -302,9 +340,12 @@ function RuleInput({
   if (actorId === null) return null
   if (!canAct(actorId)) {
     return (
-      <p className="text-center text-sm text-muted-foreground">
-        {strings.waitingForFlip(playerName(state, actorId))}
-      </p>
+      <>
+        <p className="text-center text-sm text-muted-foreground">
+          {strings.waitingForFlip(playerName(state, actorId))}
+        </p>
+        {hostControls && <SkipPending dispatch={dispatch} />}
+      </>
     )
   }
   return (

@@ -262,7 +262,7 @@ describe('bus', () => {
 
   it('goede gok schuift een positie op', () => {
     const s0 = busGame([card(5, 'hearts'), card(9, 'clubs'), card(3, 'spades')], 3, [])
-    const s = step(s0, { t: 'BUS_GUESS', playerId: 'a', choice: 'hoger' }, rng)
+    const s = step(s0, { t: 'BUS_GUESS', playerId: 'a', choice: 'hoger', position: 0 }, rng)
     expect(s.bus?.position).toBe(1)
     expect(s.phase).toBe('bus')
   })
@@ -271,7 +271,7 @@ describe('bus', () => {
     const tail = [card(2, 'clubs'), card(4, 'clubs'), card(6, 'clubs')]
     const s0 = busGame([card(5, 'hearts'), card(9, 'clubs'), card(3, 'spades')], 3, tail)
     // 9 > 5, dus 'lager' is fout.
-    const s = step(s0, { t: 'BUS_GUESS', playerId: 'a', choice: 'lager' }, rng)
+    const s = step(s0, { t: 'BUS_GUESS', playerId: 'a', choice: 'lager', position: 0 }, rng)
     expect(s.players[0].sipsTotal).toBe(1) // fout op kaart 1 = 1 slok
     expect(s.bus?.strikes).toBe(1)
     expect(s.bus?.position).toBe(0)
@@ -282,23 +282,23 @@ describe('bus', () => {
     const tail = [card(2, 'clubs'), card(4, 'clubs'), card(6, 'clubs')]
     const s0 = busGame([card(5, 'hearts'), card(9, 'clubs'), card(4, 'spades')], 3, tail)
     // 9 > 5, dus 'hoger' is goed: door naar kaart 2.
-    let s = step(s0, { t: 'BUS_GUESS', playerId: 'a', choice: 'hoger' }, rng)
+    let s = step(s0, { t: 'BUS_GUESS', playerId: 'a', choice: 'hoger', position: 0 }, rng)
     expect(s.bus?.position).toBe(1)
     // 4 < 9, dus 'hoger' is fout op kaart 2: 2 slokken.
-    s = step(s, { t: 'BUS_GUESS', playerId: 'a', choice: 'hoger' }, rng)
+    s = step(s, { t: 'BUS_GUESS', playerId: 'a', choice: 'hoger', position: 1 }, rng)
     expect(s.players[0].sipsTotal).toBe(2)
     expect(s.bus?.position).toBe(0) // terug naar kaart 1
   })
 
   it('laatste goede gok rijdt de bus uit -> ended', () => {
     const s0 = busGame([card(5, 'hearts'), card(9, 'clubs')], 2, [])
-    const s = step(s0, { t: 'BUS_GUESS', playerId: 'a', choice: 'hoger' }, rng)
+    const s = step(s0, { t: 'BUS_GUESS', playerId: 'a', choice: 'hoger', position: 0 }, rng)
     expect(s.phase).toBe('ended')
   })
 
   it('alleen een chauffeur mag gokken', () => {
     const s = busGame([card(5, 'hearts'), card(9, 'clubs')], 2, [])
-    expect(reduce(s, { t: 'BUS_GUESS', playerId: 'b', choice: 'hoger' }, rng).error).toBe(
+    expect(reduce(s, { t: 'BUS_GUESS', playerId: 'b', choice: 'hoger', position: 0 }, rng).error).toBe(
       'NOT_A_DRIVER',
     )
   })
@@ -313,5 +313,120 @@ describe('validatie basis', () => {
   it('END_GAME kan niet vanuit de lobby', () => {
     const s = createGame(A)
     expect(reduce(s, { t: 'END_GAME' }, rng).error).toBe('WRONG_PHASE')
+  })
+})
+
+// --- Review-fixes: forfeit, pending give, spelers-cap en stale gokken ------
+
+describe('forfeit', () => {
+  it('questions: deelt de overgeslagen speler alsnog een kaart; latere antwoorden crashen niet', () => {
+    const rng = scriptedDeck(orderedDeck())
+    let s = startedGame(rng)
+    // A fout op Q0 (hearts2 is rood) -> beurt naar B.
+    s = step(s, { t: 'ANSWER', playerId: 'a', choice: 'zwart' }, rng)
+    // B is weggevallen: host slaat zijn Q0-beurt over.
+    s = step(s, { t: 'FORFEIT_TURN' }, rng)
+    expect(s.players[1].hand.length).toBe(1)
+    expect(s.turn).toEqual({ playerId: 'a', questionIndex: 1 })
+    // A beantwoordt Q1; daarna heeft B's Q1-antwoord gewoon een referentiekaart.
+    s = step(s, { t: 'ANSWER', playerId: 'a', choice: 'lager' }, rng)
+    if (s.pendingGive) s = step(s, { t: 'GIVE_SIPS', playerId: 'a', targetPlayerId: 'b' }, rng)
+    s = step(s, { t: 'ANSWER', playerId: 'b', choice: 'hoger' }, rng)
+    expect(s.players[1].hand.length).toBe(2)
+  })
+
+  it('questions: forfeit met openstaande give wist de give en dealt niet dubbel', () => {
+    const rng = scriptedDeck(orderedDeck())
+    let s = startedGame(rng)
+    s = step(s, { t: 'ANSWER', playerId: 'a', choice: 'rood' }, rng)
+    expect(s.pendingGive).not.toBeNull()
+    s = step(s, { t: 'FORFEIT_TURN' }, rng)
+    expect(s.pendingGive).toBeNull()
+    expect(s.players[0].hand.length).toBe(1) // de kaart was al gedeeld bij het antwoord
+    expect(s.turn?.playerId).toBe('b')
+  })
+
+  it('piramide: forfeit annuleert een openstaande claim en give', () => {
+    const rng = scriptedDeck(orderedDeck())
+    let s = pyramidGame([card(10, 'clubs')], [], 10, 3)
+    s = step(s, { t: 'PLAY_CARD', playerId: 'a', card: card(10, 'clubs') }, rng)
+    s = step(s, { t: 'FORFEIT_TURN' }, rng)
+    expect(s.pyramid?.openClaim).toBeNull()
+    expect(s.pendingGive).toBeNull()
+  })
+
+  it('bus: forfeit haalt weggevallen chauffeurs uit de bus; zonder chauffeurs eindigt het potje', () => {
+    const rng = scriptedDeck(orderedDeck())
+    const s0 = busGame([card(5, 'hearts'), card(9, 'clubs')], 2, [])
+    s0.players[0].connected = false
+    const s = step(s0, { t: 'FORFEIT_TURN' }, rng)
+    expect(s.phase).toBe('ended')
+  })
+
+  it('bus: forfeit met alle chauffeurs online is niet geldig', () => {
+    const rng = scriptedDeck(orderedDeck())
+    const s = busGame([card(5, 'hearts'), card(9, 'clubs')], 2, [])
+    expect(reduce(s, { t: 'FORFEIT_TURN' }, rng).error).toBe('WRONG_PHASE')
+  })
+})
+
+describe('pending give blokkeert nieuwe piramide-acties', () => {
+  const rng = scriptedDeck(orderedDeck())
+
+  it('na een onterechte call bluff blijft de give staan; PLAY_CARD en FLIP_PYRAMID wachten', () => {
+    let s = pyramidGame([card(10, 'clubs')], [card(10, 'spades')], 10, 3)
+    s = step(s, { t: 'PLAY_CARD', playerId: 'a', card: card(10, 'clubs') }, rng)
+    s = step(s, { t: 'CALL_BLUFF', playerId: 'b', targetPlayerId: 'a' }, rng)
+    expect(s.pendingGive).toEqual({ playerId: 'a', amount: 3 })
+    expect(reduce(s, { t: 'PLAY_CARD', playerId: 'b', card: card(10, 'spades') }, rng).error).toBe(
+      'PENDING_GIVE',
+    )
+    expect(reduce(s, { t: 'FLIP_PYRAMID', playerId: 'a' }, rng).error).toBe('PENDING_GIVE')
+    expect(reduce(s, { t: 'NEXT_PHASE' }, rng).error).toBe('PENDING_GIVE')
+    // Na de give gaat het spel gewoon verder.
+    s = step(s, { t: 'GIVE_SIPS', playerId: 'a', targetPlayerId: 'b' }, rng)
+    expect(s.pendingGive).toBeNull()
+  })
+})
+
+describe('spelers-cap', () => {
+  const rng = scriptedDeck(orderedDeck())
+
+  function fullLobby(): GameState {
+    let s = createGame(A, { standaardSlokken: 1, bluffen: true, busLengte: 5 })
+    for (let i = 2; i <= 8; i++) {
+      s = step(s, { t: 'ADD_PLAYER', profile: { id: `p${i}`, name: `P${i}`, emoji: '🍺' } }, rng)
+    }
+    return s
+  }
+
+  it('ADD_PLAYER weigert boven het deck-budget (8 spelers bij busLengte 5)', () => {
+    const s = fullLobby()
+    expect(s.players.length).toBe(8)
+    expect(
+      reduce(s, { t: 'ADD_PLAYER', profile: { id: 'p9', name: 'P9', emoji: '🍺' } }, rng).error,
+    ).toBe('GAME_FULL')
+  })
+
+  it('SET_RULES weigert een buslengte die de aanwezige spelers buiten het budget duwt', () => {
+    const s = fullLobby()
+    expect(
+      reduce(s, { t: 'SET_RULES', rules: { standaardSlokken: 1, bluffen: true, busLengte: 6 } }, rng)
+        .error,
+    ).toBe('INVALID_RULES')
+  })
+})
+
+describe('stale bus-gok', () => {
+  const rng = scriptedDeck(orderedDeck())
+
+  it('een gok voor een al gepasseerde positie wordt geweigerd', () => {
+    const s0 = busGame([card(5, 'hearts'), card(9, 'clubs'), card(3, 'spades')], 3, [])
+    s0.bus!.driverIds = ['a', 'b']
+    const s = step(s0, { t: 'BUS_GUESS', playerId: 'a', choice: 'hoger', position: 0 }, rng)
+    expect(s.bus?.position).toBe(1)
+    expect(
+      reduce(s, { t: 'BUS_GUESS', playerId: 'b', choice: 'hoger', position: 0 }, rng).error,
+    ).toBe('STALE_GUESS')
   })
 })

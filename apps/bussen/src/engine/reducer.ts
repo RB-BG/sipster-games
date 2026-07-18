@@ -108,9 +108,7 @@ export function reduce(state: GameState, cmd: Command, rng: DeckSource): ReduceR
       break
 
     case 'FORFEIT_TURN':
-      // Weggevallen speler in het vragenrondje: sla zijn beurt over.
-      draft.pendingGive = null
-      advanceQuestion(draft, events, rng)
+      applyForfeit(draft, events, rng)
       break
 
     case 'END_GAME':
@@ -197,6 +195,9 @@ function evaluateAnswer(
   card: Card,
   choice: AnswerChoice,
 ): boolean {
+  // Vangnet: mist de referentiekaart (hoort niet te kunnen), dan telt het
+  // antwoord als fout in plaats van dat de host crasht op een lege hand.
+  if (revealed.length < Math.min(index, 2)) return false
   switch (index) {
     case 0:
       return color(card) === (choice === 'rood' ? 'red' : 'black')
@@ -213,6 +214,35 @@ function evaluateAnswer(
       return (choice === 'heb') === has
     }
   }
+}
+
+/**
+ * Host-ingreep bij een weggevallen speler. Vragenrondje: de beurt overslaan,
+ * maar de speler krijgt zijn kaart wél (latere vragen en de piramide rekenen
+ * op één kaart per gespeelde vraag). Piramide: de openstaande claim/give
+ * vervalt zonder uitdeling. Bus: weggevallen chauffeurs stappen uit.
+ */
+function applyForfeit(draft: GameState, events: EngineEvent[], rng: DeckSource): void {
+  if (draft.phase === 'questions') {
+    const turn = draft.turn!
+    draft.pendingGive = null
+    const player = playerById(draft, turn.playerId)
+    if (player.hand.length === turn.questionIndex) {
+      const card = drawCard(draft, rng)
+      player.hand.push(card)
+      events.push({ t: 'CARD_DEALT', playerId: turn.playerId, card, animSeed: rng.seed() })
+    }
+    advanceQuestion(draft, events, rng)
+    return
+  }
+  if (draft.phase === 'pyramid') {
+    draft.pyramid!.openClaim = null
+    draft.pendingGive = null
+    return
+  }
+  const bus = draft.bus!
+  bus.driverIds = bus.driverIds.filter((id) => playerById(draft, id).connected)
+  if (bus.driverIds.length === 0) endGame(draft, events)
 }
 
 /**

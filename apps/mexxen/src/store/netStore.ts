@@ -35,6 +35,9 @@ let lastAfslaanAt = 0
 // Rejoin na een page-reload: de host kan de oude verbinding nog open hebben.
 let joinProfile: PlayerProfile | null = null
 let joinRetries = 0
+// Annulering: terug tikken tijdens 'connecting' verhoogt de teller, waarna een
+// laat resolvend transport meteen wordt gesloten in plaats van de lobby te openen.
+let connectGeneration = 0
 const FLIP_SETTLE_MS = 450
 let flipTimer: number | null = null
 
@@ -157,12 +160,18 @@ export const useNetStore = create<NetStore>((set, get) => {
     afslaanToast: null,
 
     hostLobby: async (profile) => {
+      const gen = ++connectGeneration
       set({ status: 'connecting', netError: null })
       try {
         const transport = await createHostTransport({
           onIntent: (peerId, intent) => hostLoop?.handleIntent(peerId, intent),
           onGuestDisconnect: (peerId) => hostLoop?.handleDisconnect(peerId),
         })
+        if (gen !== connectGeneration) {
+          // Geannuleerd (terug getikt): roomcode weer vrijgeven.
+          transport.close()
+          return
+        }
         hostLoop = createHostLoop(
           transport,
           profile,
@@ -178,17 +187,19 @@ export const useNetStore = create<NetStore>((set, get) => {
         )
         set({ role: 'host', status: 'open', roomCode: transport.roomCode, myPlayerId: profile.id })
       } catch {
+        if (gen !== connectGeneration) return
         set({ status: 'idle', netError: useLocaleStore.getState().strings.net.hostFailed })
       }
     },
 
     joinLobby: async (roomCode, profile) => {
+      const gen = ++connectGeneration
       set({ status: 'connecting', netError: null })
       try {
         const code = roomCode.trim().toUpperCase()
         joinProfile = profile
         joinRetries = 0
-        guestTransport = await createGuestTransport(code, {
+        const transport = await createGuestTransport(code, {
           onOpen: () => guestTransport?.sendIntent({ t: 'JOIN', profile }),
           onEvent: handleGameEvent,
           onStatus: (status) => {
@@ -196,6 +207,12 @@ export const useNetStore = create<NetStore>((set, get) => {
             if (status === 'closed') set({ netError: useLocaleStore.getState().strings.net.tableClosed })
           },
         })
+        if (gen !== connectGeneration) {
+          // Geannuleerd (terug getikt): de verbinding niet alsnog aannemen.
+          transport.close()
+          return
+        }
+        guestTransport = transport
         // Terug uit de achtergrond (scherm uit, tab-wissel): altijd even resyncen.
         visibilityHandler = () => {
           if (document.visibilityState === 'visible') {
@@ -208,6 +225,7 @@ export const useNetStore = create<NetStore>((set, get) => {
         stripRoomParam()
         set({ role: 'guest', roomCode: code, myPlayerId: profile.id })
       } catch {
+        if (gen !== connectGeneration) return
         set({ status: 'idle', netError: useLocaleStore.getState().strings.net.joinFailed })
       }
     },
@@ -260,6 +278,7 @@ export const useNetStore = create<NetStore>((set, get) => {
     onRollSettled: () => set({ animating: false, viewState: get().netState }),
 
     leave: () => {
+      connectGeneration++
       clearPendingRoll()
       if (flipTimer !== null) {
         window.clearTimeout(flipTimer)

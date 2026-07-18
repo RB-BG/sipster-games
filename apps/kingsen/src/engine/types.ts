@@ -1,13 +1,8 @@
 // Copyright © 2026 Kingsen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
-export type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades'
-/** 2..10 op waarde, 11=boer, 12=vrouw, 13=heer/koning, 14=aas (hoog). */
-export type Rank = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14
+import type { Card, Rank } from '@sipster/core/cards/types'
 
-export interface Card {
-  suit: Suit
-  rank: Rank
-}
+export type { Card, Rank, Suit } from '@sipster/core/cards/types'
 
 export type GamePhase = 'lobby' | 'playing' | 'ended'
 
@@ -32,8 +27,8 @@ export interface PlayerState extends PlayerProfile {
 
 /**
  * Een blijvende regel of rol die op tafel zichtbaar blijft tot het einde van het
- * potje. `rank` zegt welke kaart het veroorzaakte (10 = vrije regel; J = duimmeester;
- * Q = vraagmeester). Bij een regel (rank 10) staat de door de speler getypte tekst in
+ * potje. `rank` zegt welke kaart het veroorzaakte (5 = vrije regel; J = duimmeester;
+ * Q = vraagmeester). Bij een regel (rank 5) staat de door de speler getypte tekst in
  * `text`; bij een rol is `text` leeg en leidt de UI de rolnaam af uit de rank (taal-neutraal).
  */
 export interface ActiveRule {
@@ -45,7 +40,7 @@ export interface ActiveRule {
 
 /**
  * Invoer die de actieve speler nog moet afhandelen voordat de volgende speler mag
- * draaien: een koning vult de cup-meter, een 10 typt een nieuwe regel.
+ * draaien: een koning vult de cup-meter, een 5 typt een nieuwe regel.
  */
 export type Pending = { kind: 'cup'; playerId: string } | { kind: 'rule'; playerId: string } | null
 
@@ -89,7 +84,7 @@ export type Command =
   | { t: 'FLIP_CARD'; playerId: string }
   /** Koning: schenk `amount` slokken in het centrale glas. */
   | { t: 'ADD_TO_CUP'; playerId: string; amount: number }
-  /** Rang 10: leg een nieuwe regel vast. */
+  /** Rang 5: leg een nieuwe regel vast. */
   | { t: 'SET_RULE'; playerId: string; text: string }
   | { t: 'SET_CONNECTED'; playerId: string; connected: boolean }
   /** Host slaat de (weggevallen) actieve speler over. */
@@ -114,3 +109,6 @@ export type ErrorCode =
   | 'INVALID_RULES'
   | 'INVALID_AMOUNT'
   | 'INVALID_TEXT'
+  | 'GAME_FULL'
+  /** Bericht van buiten met een onverwachte vorm; komt nooit uit de engine zelf. */
+  | 'MALFORMED'

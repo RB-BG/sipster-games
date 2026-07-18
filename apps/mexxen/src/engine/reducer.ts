@@ -145,8 +145,9 @@ export function reduce(state: GameState, cmd: Command, rng: RollSource): ReduceR
         applyRoundLoss(draft, events, cmd.playerId, (draft.tiebreak as TiebreakState).multiplier)
       } else {
         const turn = draft.turn as TurnState
-        if (turn.pending31) {
-          // Een liggende 31 is nooit een eindscore (rank 31 zou onder 32 duiken).
+        // Een liggende 31 is nooit een eindscore (rank 31 zou onder 32 duiken),
+        // ook niet als de slokken al uitgedeeld waren (pending31 al gewist).
+        if (turn.pending31 || (turn.dice !== null && is31(turn.dice[0].value, turn.dice[1].value))) {
           turn.pending31 = false
           turn.dice = null
         }

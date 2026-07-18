@@ -120,8 +120,8 @@ export default function DebugScreen() {
 
         {state.phase === 'bus' && bus && (
           <>
-            <DebugButton label="hoger" onClick={() => dispatch({ t: 'BUS_GUESS', playerId: bus.driverIds[0], choice: 'hoger' })} />
-            <DebugButton label="lager" onClick={() => dispatch({ t: 'BUS_GUESS', playerId: bus.driverIds[0], choice: 'lager' })} />
+            <DebugButton label="hoger" onClick={() => dispatch({ t: 'BUS_GUESS', playerId: bus.driverIds[0], choice: 'hoger', position: bus.position })} />
+            <DebugButton label="lager" onClick={() => dispatch({ t: 'BUS_GUESS', playerId: bus.driverIds[0], choice: 'lager', position: bus.position })} />
           </>
         )}
       </section>

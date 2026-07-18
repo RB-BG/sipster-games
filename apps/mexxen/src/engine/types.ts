@@ -172,3 +172,8 @@ export type ErrorCode =
   | 'INVALID_TARGET'
   | 'ALREADY_ROLLED'
   | 'INVALID_RULES'
+  /** Na een afgehandelde 31 is een herworp verplicht; 31 is nooit een eindscore. */
+  | 'MUST_REROLL'
+  | 'GAME_FULL'
+  /** Bericht van buiten met een onverwachte vorm; komt nooit uit de engine zelf. */
+  | 'MALFORMED'

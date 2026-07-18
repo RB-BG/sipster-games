@@ -23,6 +23,7 @@ export default function ProfileScreen({ mode, initialCode }: ProfileScreenProps)
   const joinLobby = useNetStore((s) => s.joinLobby)
   const status = useNetStore((s) => s.status)
   const netError = useNetStore((s) => s.netError)
+  const leave = useNetStore((s) => s.leave)
 
   const stored = loadProfile()
   const [name, setName] = useState(stored?.name ?? '')
@@ -58,6 +59,9 @@ export default function ProfileScreen({ mode, initialCode }: ProfileScreenProps)
               url.searchParams.delete('room')
               window.history.replaceState(null, '', url)
             }
+            // Een lopende host/join-poging annuleren, anders opent een traag
+            // resolvend transport later alsnog de lobby (met zombie-peer).
+            leave()
             setScreen('home')
           }}
           aria-label="terug"
@@ -84,6 +88,7 @@ export default function ProfileScreen({ mode, initialCode }: ProfileScreenProps)
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={strings.playerNamePlaceholder}
+            maxLength={24}
             className="min-w-0 flex-1 rounded-lg border border-input bg-night-950/40 px-3 py-2 text-ivory placeholder:text-muted-foreground"
           />
         </div>

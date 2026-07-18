@@ -123,7 +123,7 @@ export const nl = {
   waitingForPlayers: 'Wachten op spelers…',
   reconnecting: 'opnieuw verbinden…',
   offline: 'offline',
-  skipTurn: 'Sla beurt over',
+  skipTurn: (name: string) => `Sla ${name} over`,
   waitForHost: 'De host gaat verder…',
   needMorePlayers: 'Wachten op minstens één medespeler…',
   connectionLost: 'Verbinding kwijt; opnieuw verbinden…',
@@ -192,6 +192,9 @@ export const nl = {
     NOTHING_TO_FLIP: 'De piramide is helemaal omgedraaid',
     NOT_A_DRIVER: 'Alleen de buschauffeur mag gokken',
     INVALID_RULES: 'Ongeldige instellingen',
+    GAME_FULL: 'De tafel zit vol',
+    STALE_GUESS: 'Iemand anders was je voor',
+    MALFORMED: 'Onbegrijpelijk bericht ontvangen',
   } as Record<string, string>,
 }
 
@@ -307,7 +310,7 @@ const en: Strings = {
   waitingForPlayers: 'Waiting for players…',
   reconnecting: 'reconnecting…',
   offline: 'offline',
-  skipTurn: 'Skip turn',
+  skipTurn: (name: string) => `Skip ${name}`,
   waitForHost: 'The host continues…',
   needMorePlayers: 'Waiting for at least one other player…',
   connectionLost: 'Connection lost; reconnecting…',
@@ -375,6 +378,9 @@ const en: Strings = {
     NOTHING_TO_FLIP: 'The pyramid is fully flipped',
     NOT_A_DRIVER: 'Only the bus driver may guess',
     INVALID_RULES: 'Invalid settings',
+    GAME_FULL: 'The table is full',
+    STALE_GUESS: 'Someone else beat you to it',
+    MALFORMED: 'Received an unreadable message',
   },
 }
 

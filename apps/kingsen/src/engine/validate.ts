@@ -6,6 +6,8 @@ import type { Command, ErrorCode, GameState } from './types'
 export const MAX_CUP_AMOUNT = 50
 /** Maximale lengte van een zelfgeschreven regel. */
 export const MAX_RULE_LENGTH = 80
+/** Meer stoelen dan dit is geen kringetje meer; weert ook lobby-flooding. */
+export const MAX_PLAYERS = 12
 
 /**
  * Controleert of een command nu geldig is. Puur: geen state-mutatie.
@@ -17,6 +19,7 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
     case 'ADD_PLAYER':
       if (state.phase !== 'lobby') return 'WRONG_PHASE'
       if (state.players.some((p) => p.id === cmd.profile.id)) return 'ALREADY_JOINED'
+      if (state.players.length >= MAX_PLAYERS) return 'GAME_FULL'
       return null
 
     case 'REMOVE_PLAYER':

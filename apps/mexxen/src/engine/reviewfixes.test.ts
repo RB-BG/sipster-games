@@ -154,3 +154,41 @@ describe('potje afsluiten', () => {
     expect(reduce(state, { t: 'ROLL', playerId: 'p1' }, noRng).error).toBe('WRONG_PHASE')
   })
 })
+
+describe('31 is nooit een eindscore (na de give)', () => {
+  function na31metGive(): GameState {
+    let state = roll(setup(2), 'p1', [3, 1])
+    expect(state.turn?.pending31).toBe(true)
+    state = ok(state, { t: 'GIVE_SIPS_31', playerId: 'p1', targetPlayerId: 'p2' })
+    expect(state.turn?.pending31).toBe(false)
+    return state
+  }
+
+  it('END_TURN met een liggende 31 wordt geweigerd: herworp verplicht', () => {
+    const state = na31metGive()
+    expect(reduce(state, { t: 'END_TURN', playerId: 'p1' }, noRng).error).toBe('MUST_REROLL')
+  })
+
+  it('de vrije steen vastzetten kan niet: dat zou END_TURN de enige uitweg maken', () => {
+    const state = na31metGive()
+    // De 1 ligt al vast (vers); alleen de 3 (steen 0 of 1) is nog vrij.
+    const vrij = state.turn!.dice!.find((d) => !d.onTable)!
+    expect(reduce(state, { t: 'HOLD_DIE', playerId: 'p1', dieId: vrij.id }, noRng).error).toBe(
+      'MUST_REROLL',
+    )
+  })
+
+  it('na de verplichte herworp eindigt de beurt gewoon met de nieuwe score', () => {
+    let state = na31metGive()
+    state = roll(state, 'p1', [6, 4]) // herworp van de vrije steen -> 61 met de liggende 1
+    state = ok(state, { t: 'END_TURN', playerId: 'p1' })
+    expect(state.players[0].roundScore).not.toBe(31)
+    expect(state.players[0].roundScore).not.toBeNull()
+  })
+
+  it('forfeit ná de give geeft ook geen eindscore 31', () => {
+    let state = na31metGive()
+    state = ok(state, { t: 'FORFEIT_TURN', playerId: 'p1' })
+    expect(state.players[0].roundScore).toBeNull()
+  })
+})

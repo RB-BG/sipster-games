@@ -44,28 +44,31 @@ export function createHostTransport(callbacks: HostCallbacks): Promise<HostTrans
       const peer = new Peer(PEER_PREFIX + roomCode)
       const connections = new Map<string, DataConnection>()
 
-      peer.on('open', () => {
-        peer.on('connection', (conn) => {
-          conn.on('open', () => connections.set(conn.peer, conn))
-          conn.on('data', (data) => {
-            const msg = unwrap(data)
-            if (msg) callbacks.onIntent(conn.peer, msg as Intent)
-          })
-          conn.on('close', () => {
-            // Een reconnect vervangt de map-entry; de trage close van de OUDE
-            // verbinding mag de nieuwe niet weggooien.
-            if (connections.get(conn.peer) !== conn) return
-            connections.delete(conn.peer)
-            callbacks.onGuestDisconnect(conn.peer)
-          })
+      // Eénmalig registreren, buiten 'open': na een signaling-reconnect emit
+      // PeerJS opnieuw 'open', en listeners dáárbinnen zouden dan stapelen
+      // waardoor elke intent dubbel wordt afgeleverd.
+      peer.on('connection', (conn) => {
+        conn.on('open', () => connections.set(conn.peer, conn))
+        conn.on('data', (data) => {
+          const msg = unwrap(data)
+          if (msg) callbacks.onIntent(conn.peer, msg as Intent)
         })
-
-        // Valt de signaling-verbinding weg (wifi-blip), claim de roomcode
-        // opnieuw; anders kan geen enkele gast ooit nog (her)verbinden.
-        peer.on('disconnected', () => {
-          if (!peer.destroyed) peer.reconnect()
+        conn.on('close', () => {
+          // Een reconnect vervangt de map-entry; de trage close van de OUDE
+          // verbinding mag de nieuwe niet weggooien.
+          if (connections.get(conn.peer) !== conn) return
+          connections.delete(conn.peer)
+          callbacks.onGuestDisconnect(conn.peer)
         })
+      })
 
+      // Valt de signaling-verbinding weg (wifi-blip), claim de roomcode
+      // opnieuw; anders kan geen enkele gast ooit nog (her)verbinden.
+      peer.on('disconnected', () => {
+        if (!peer.destroyed) peer.reconnect()
+      })
+
+      peer.once('open', () => {
         resolve({
           roomCode,
           send: (peerId, event) => connections.get(peerId)?.send(wrap(event)),
@@ -148,7 +151,9 @@ export function createGuestTransport(
       }, Math.min(8000, 500 * 2 ** reconnectAttempts))
     }
 
-    peer.on('open', () => {
+    // once: na een signaling-reconnect vuurt 'open' opnieuw, maar de
+    // herverbinding loopt dan al via scheduleReconnect -> connect().
+    peer.once('open', () => {
       connect()
       resolve({
         sendIntent: (intent) => {
