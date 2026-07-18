@@ -1,7 +1,10 @@
 // Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
-import { scoreRank } from './score'
+import { is31, scoreRank } from './score'
 import type { Command, ErrorCode, GameState, TurnState } from './types'
+
+/** Meer stoelen dan dit is geen tafeltje meer; weert ook lobby-flooding. */
+export const MAX_PLAYERS = 12
 
 /**
  * Controleert of een command nu geldig is. Puur: geen state-mutatie.
@@ -13,6 +16,7 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
     case 'ADD_PLAYER':
       if (state.phase !== 'lobby') return 'WRONG_PHASE'
       if (state.players.some((p) => p.id === cmd.profile.id)) return 'ALREADY_JOINED'
+      if (state.players.length >= MAX_PLAYERS) return 'GAME_FULL'
       return null
 
     case 'REMOVE_PLAYER':
@@ -51,6 +55,11 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
       const turn = state.turn as TurnState
       if (turn.pending31) return 'PENDING_31'
       if (turn.dice === null) return 'HAS_NOT_THROWN'
+      // Na een afgehandelde 31 is de herworp verplicht: de vrije steen vastzetten
+      // zou END_TURN de enige uitweg maken en 31 als eindscore forceren.
+      if (cmd.t === 'HOLD_DIE' && is31(turn.dice[0].value, turn.dice[1].value)) {
+        return 'MUST_REROLL'
+      }
       const die = turn.dice[cmd.dieId]
       // Verse en stale 1/2 zijn onaanraakbaar: liggen verplicht, of moeten verplicht mee.
       if (die.vers !== null) return 'INVALID_DIE'
@@ -66,6 +75,9 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
       const turn = state.turn as TurnState
       if (turn.pending31) return 'PENDING_31'
       if (turn.dice === null) return 'HAS_NOT_THROWN'
+      // 31 is nooit een eindscore (rank 31 zou onder 32 duiken): na het
+      // uitdelen van de slokken volgt verplicht een herworp.
+      if (is31(turn.dice[0].value, turn.dice[1].value)) return 'MUST_REROLL'
       return null
     }
 
