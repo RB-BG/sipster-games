@@ -11,6 +11,9 @@
     "./storage": "./src/lib/storage.ts",
     "./useWakeLock": "./src/hooks/useWakeLock.ts",
     "./Coaster": "./src/components/Coaster.tsx",
+    "./QrShare": "./src/components/QrShare.tsx",
+    "./LocaleSwitch": "./src/components/LocaleSwitch.tsx",
+    "./RulesExplainer": "./src/components/RulesExplainer.tsx",
     "./effects/DrinkShots": "./src/components/effects/DrinkShots.tsx",
     "./localeStore": "./src/store/localeStore.ts"
   },
@@ -20,6 +23,8 @@
     "@capacitor/haptics": "^8.0.2",
     "clsx": "^2.1.1",
     "framer-motion": "^12.40.0",
+    "lucide-react": "^1.14.0",
+    "qrcode.react": "^4.2.0",
     "tailwind-merge": "^3.5.0",
     "zustand": "^5.0.14"
   },
