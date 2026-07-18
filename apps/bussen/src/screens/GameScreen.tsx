@@ -278,7 +278,8 @@ export default function GameScreen() {
       {!animating && phase !== 'ended' && (
         <section className="flex flex-col gap-2 p-4">
           {lastError && <p className="text-center text-sm text-destructive">{strings.errors[lastError]}</p>}
-          {state.pendingGive ? (
+          <SkipBar state={state} isHost={isHost} dispatch={dispatch} />
+          {state.pendingGive && !state.pyramid?.openClaim ? (
             <GiveBar state={state} canAct={canAct} dispatch={dispatch} />
           ) : phase === 'questions' ? (
             <QuestionsActions state={state} canAct={canAct} dispatch={dispatch} />
@@ -366,6 +367,38 @@ function HandInspector({ player, onClose }: { player: PlayerState | null; onClos
         </Coaster>
       </div>
     </div>
+  )
+}
+
+/**
+ * Host-noodrem: is de speler op wie iedereen wacht (beurt, give of bus)
+ * weggevallen, dan kan de host zijn actie overslaan in plaats van de hele
+ * tafel te moeten sluiten. In hotseat is iedereen "connected" en rendert
+ * dit dus nooit.
+ */
+function SkipBar({ state, isHost, dispatch }: { state: State; isHost: boolean; dispatch: Dispatch }) {
+  const strings = useStrings()
+  if (!isHost) return null
+  const stuckId =
+    state.phase === 'questions'
+      ? (state.pendingGive?.playerId ?? state.turn?.playerId)
+      : state.phase === 'pyramid'
+        ? (state.pyramid?.openClaim?.claimantId ?? state.pendingGive?.playerId)
+        : state.phase === 'bus'
+          ? state.bus?.driverIds.find(
+              (id) => state.players.find((p) => p.id === id)?.connected === false,
+            )
+          : undefined
+  const stuck = state.players.find((p) => p.id === stuckId)
+  if (!stuck || stuck.connected) return null
+  return (
+    <button
+      type="button"
+      onClick={() => dispatch({ t: 'FORFEIT_TURN' })}
+      className="self-center rounded-lg bg-secondary px-4 py-2 text-sm font-semibold text-secondary-foreground active:scale-95"
+    >
+      {strings.skipTurn(stuck.name)}
+    </button>
   )
 }
 
@@ -522,26 +555,29 @@ function PyramidActions({
   const total = flatFlipOrder(pyramid.rows).length
   const claimant = pyramid.openClaim?.claimantId ?? null
 
-  // Een lopende claim: bied call bluff aan (behalve aan de claimant zelf).
+  // Een lopende claim: de claimant deelt zijn slokken uit (GiveBar), en zolang
+  // het claim-venster open is mag elke andere speler call bluff roepen.
   if (claimant !== null) {
     const callers = state.players.filter((p) => p.id !== claimant && canAct(p.id))
-    if (!state.rules.bluffen || callers.length === 0) {
-      return <p className="text-center text-sm text-muted-foreground">{strings.pyramidHint}</p>
-    }
     return (
-      <div className="flex flex-wrap justify-center gap-2">
-        {callers.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => dispatch({ t: 'CALL_BLUFF', playerId: p.id, targetPlayerId: claimant })}
-            className="rounded-full bg-destructive px-5 py-3 font-bold text-ivory active:scale-90"
-          >
-            {myPlayerId === null ? `${p.emoji} ` : ''}
-            {strings.callBluff}
-          </button>
-        ))}
-      </div>
+      <>
+        {state.pendingGive && <GiveBar state={state} canAct={canAct} dispatch={dispatch} />}
+        {state.rules.bluffen && callers.length > 0 && (
+          <div className="flex flex-wrap justify-center gap-2">
+            {callers.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => dispatch({ t: 'CALL_BLUFF', playerId: p.id, targetPlayerId: claimant })}
+                className="rounded-full bg-destructive px-5 py-3 font-bold text-ivory active:scale-90"
+              >
+                {myPlayerId === null ? `${p.emoji} ` : ''}
+                {strings.callBluff}
+              </button>
+            ))}
+          </div>
+        )}
+      </>
     )
   }
 
@@ -665,14 +701,14 @@ function BusActions({
     <div className="flex gap-2">
       <button
         type="button"
-        onClick={() => dispatch({ t: 'BUS_GUESS', playerId: actor, choice: 'hoger' })}
+        onClick={() => dispatch({ t: 'BUS_GUESS', playerId: actor, choice: 'hoger', position: bus.position })}
         className="flex-1 rounded-lg bg-primary px-4 py-3 text-lg font-semibold text-primary-foreground active:scale-95"
       >
         {strings.higher}
       </button>
       <button
         type="button"
-        onClick={() => dispatch({ t: 'BUS_GUESS', playerId: actor, choice: 'lager' })}
+        onClick={() => dispatch({ t: 'BUS_GUESS', playerId: actor, choice: 'lager', position: bus.position })}
         className="flex-1 rounded-lg bg-accent px-4 py-3 text-lg font-semibold text-accent-foreground active:scale-95"
       >
         {strings.lower}

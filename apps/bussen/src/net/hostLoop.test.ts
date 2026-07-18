@@ -231,3 +231,98 @@ describe('hostLoop in-game', () => {
     expect(loop.state.turn?.playerId).toBe('guest-1')
   })
 })
+
+describe('hostLoop hardening (review-fixes)', () => {
+  it('een malformed intent crasht de loop niet en krijgt MALFORMED terug', () => {
+    const { transport, loop } = setup()
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
+    loop.dispatchLocal({ t: 'START_GAME' })
+
+    // Ontbrekende/verkeerde velden en een onbekend berichttype.
+    loop.handleIntent('peer-a', { t: 'ANSWER', choice: 42 } as never)
+    loop.handleIntent('peer-a', { t: 'PLAY_CARD', card: { suit: 'joker', rank: 99 } } as never)
+    loop.handleIntent('peer-a', { t: 'HACK_THE_PLANET' } as never)
+    loop.handleIntent('peer-a', { t: 'BUS_GUESS', choice: 'hoger', position: 'nul' } as never)
+
+    const errors = transport.sent.filter((m) => m.event.t === 'ERROR').map((m) => m.event)
+    expect(errors).toHaveLength(4)
+    for (const e of errors) expect(e).toEqual({ t: 'ERROR', code: 'MALFORMED' })
+    expect(loop.state.phase).toBe('questions') // state onaangetast
+  })
+
+  it('een mid-game joiner wordt niet gemapt: geen sync, geen spook-disconnect', () => {
+    const { transport, loop } = setup()
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
+    loop.dispatchLocal({ t: 'START_GAME' })
+
+    loop.handleIntent('peer-late', { t: 'JOIN', profile: { id: 'late-1', name: 'Laat', emoji: '🐌' } })
+    expect(transport.sent.at(-1)).toEqual({
+      to: 'peer-late',
+      event: { t: 'ERROR', code: 'WRONG_PHASE' },
+    })
+    // Niet gemapt: state opvragen kan niet.
+    loop.handleIntent('peer-late', { t: 'REQUEST_SYNC' })
+    expect(transport.sent.at(-1)).toEqual({
+      to: 'peer-late',
+      event: { t: 'ERROR', code: 'UNKNOWN_PLAYER' },
+    })
+    // En zijn disconnect vuurt geen spook-SET_CONNECTED voor een onbekende speler.
+    const before = transport.broadcasts.length
+    loop.handleDisconnect('peer-late')
+    expect(transport.broadcasts.length).toBe(before)
+  })
+
+  it('één stoel per peer: een tweede JOIN met een andere id wordt geweigerd', () => {
+    const { transport, loop } = setup()
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: { id: 'nep-2', name: 'Nep', emoji: '👻' } })
+
+    expect(transport.sent.at(-1)).toEqual({
+      to: 'peer-a',
+      event: { t: 'ERROR', code: 'ALREADY_JOINED' },
+    })
+    expect(loop.state.players).toHaveLength(2)
+  })
+
+  it('profielvelden worden gesaneerd: lange namen worden afgekapt', () => {
+    const { loop } = setup()
+    loop.handleIntent('peer-a', {
+      t: 'JOIN',
+      profile: { id: 'guest-2', name: `  ${'x'.repeat(500)}`, emoji: '🍺' },
+    })
+    const joined = loop.state.players.find((p) => p.id === 'guest-2')
+    expect(joined?.name.length).toBe(24)
+  })
+
+  it('de gebroadcaste state lekt deck, drawIndex en bluf-oordeel niet', () => {
+    const { transport, loop } = setup()
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
+    loop.dispatchLocal({ t: 'START_GAME' })
+
+    const lastState = [...transport.broadcasts].reverse().find((e) => e.t === 'STATE')
+    expect(lastState?.t).toBe('STATE')
+    if (lastState?.t === 'STATE') {
+      expect(lastState.state.deck).toHaveLength(0)
+      expect(lastState.state.drawIndex).toBe(0)
+    }
+    // De host zelf houdt de volledige deck.
+    expect(loop.state.deck.length).toBeGreaterThan(0)
+
+    driveToPyramid(loop)
+    loop.dispatchLocal({ t: 'FLIP_PYRAMID' })
+    const rank = loop.state.pyramid!.currentRank!
+    const claimer = loop.state.players.find((p) => p.hand.some((c) => c.rank === rank))
+    if (claimer) {
+      const card = claimer.hand.find((c) => c.rank === rank)!
+      const intent = { t: 'PLAY_CARD', card } as const
+      if (claimer.id === HOST.id) loop.dispatchLocal(intent)
+      else loop.handleIntent('peer-a', intent)
+      const claimState = [...transport.broadcasts].reverse().find((e) => e.t === 'STATE')
+      if (claimState?.t === 'STATE' && claimState.state.pyramid?.openClaim) {
+        // Eerlijke claim, maar de broadcast verklapt dat niet.
+        expect(claimState.state.pyramid.openClaim.truthful).toBe(false)
+        expect(loop.state.pyramid?.openClaim?.truthful).toBe(true)
+      }
+    }
+  })
+})

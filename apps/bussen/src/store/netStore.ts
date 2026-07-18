@@ -284,7 +284,7 @@ function commandToIntent(cmd: Command): Intent | null {
     case 'CALL_BLUFF':
       return { t: 'CALL_BLUFF', targetPlayerId: cmd.targetPlayerId }
     case 'BUS_GUESS':
-      return { t: 'BUS_GUESS', choice: cmd.choice }
+      return { t: 'BUS_GUESS', choice: cmd.choice, position: cmd.position }
     case 'NEXT_PHASE':
       return { t: 'NEXT_PHASE' }
     case 'FORFEIT_TURN':

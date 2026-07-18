@@ -148,10 +148,15 @@ export type Command =
   | { t: 'FLIP_PYRAMID'; playerId: string }
   | { t: 'PLAY_CARD'; playerId: string; card: Card }
   | { t: 'CALL_BLUFF'; playerId: string; targetPlayerId: string }
-  | { t: 'BUS_GUESS'; playerId: string; choice: BusChoice }
+  /** `position` is de buspositie waarop de gok gebaseerd is; een verouderde gok wordt geweigerd. */
+  | { t: 'BUS_GUESS'; playerId: string; choice: BusChoice; position: number }
   | { t: 'NEXT_PHASE' }
   | { t: 'SET_CONNECTED'; playerId: string; connected: boolean }
-  /** Host slaat de beurt van een weggevallen speler over. */
+  /**
+   * Host slaat de actie van een weggevallen speler over: de beurt in het
+   * vragenrondje, een openstaande claim/give in de piramide, of weggevallen
+   * chauffeurs in de bus.
+   */
   | { t: 'FORFEIT_TURN' }
   | { t: 'END_GAME' }
 
@@ -181,3 +186,7 @@ export type ErrorCode =
   | 'NOTHING_TO_FLIP'
   | 'NOT_A_DRIVER'
   | 'INVALID_RULES'
+  | 'GAME_FULL'
+  | 'STALE_GUESS'
+  /** Bericht van buiten met een onverwachte vorm; komt nooit uit de engine zelf. */
+  | 'MALFORMED'

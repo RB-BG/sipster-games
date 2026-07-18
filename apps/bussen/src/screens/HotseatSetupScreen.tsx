@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ArrowLeft, Spade } from 'lucide-react'
 import Coaster from '@/components/Coaster'
 import RulesEditor from '@/components/RulesEditor'
+import { maxPlayers } from '@/engine/deck'
 import type { PlayerProfile, RuleConfig } from '@/engine/types'
 import { useStrings } from '@/store/localeStore'
 import { loadProfile, loadRules, newPlayerId, saveProfile, saveRules } from '@/lib/storage'
@@ -85,18 +86,29 @@ export default function HotseatSetupScreen() {
           </div>
         ))}
 
-        <button
-          type="button"
-          onClick={() =>
-            setDrafts((prev) => [...prev, { name: '', emojiIndex: prev.length % EMOJI.length }])
-          }
-          className="self-start rounded-lg bg-secondary px-3 py-1.5 text-sm text-secondary-foreground"
-        >
-          {strings.addPlayer}
-        </button>
+        {/* Boven het deck-budget zou drawCard herschudden en kwamen kaarten dubbel in het spel. */}
+        {drafts.length < maxPlayers(rules) && (
+          <button
+            type="button"
+            onClick={() =>
+              setDrafts((prev) => [...prev, { name: '', emojiIndex: prev.length % EMOJI.length }])
+            }
+            className="self-start rounded-lg bg-secondary px-3 py-1.5 text-sm text-secondary-foreground"
+          >
+            {strings.addPlayer}
+          </button>
+        )}
       </Coaster>
 
-      <RulesEditor rules={rules} onChange={(patch) => setRules((prev) => ({ ...prev, ...patch }))} />
+      <RulesEditor
+        rules={rules}
+        onChange={(patch) => {
+          const next = { ...rules, ...patch }
+          setRules(next)
+          // Een langere bus verkleint het deck-budget; te veel rijen vallen af.
+          setDrafts((prev) => prev.slice(0, maxPlayers(next)))
+        }}
+      />
 
       <button
         type="button"

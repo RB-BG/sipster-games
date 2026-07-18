@@ -12,7 +12,7 @@ import type {
 } from '@/engine/types'
 
 /** Hoog dit op bij incompatibele wijzigingen; clients met een andere versie weigeren. */
-export const PROTOCOL_VERSION = 1
+export const PROTOCOL_VERSION = 2
 
 /** Soort kaart-animatie; alle drie landen op de host-authoritative kaart. */
 export type CardAnimKind = 'deal' | 'flip' | 'bus'
@@ -28,7 +28,8 @@ export type Intent =
   | { t: 'FLIP_PYRAMID' }
   | { t: 'PLAY_CARD'; card: Card }
   | { t: 'CALL_BLUFF'; targetPlayerId: string }
-  | { t: 'BUS_GUESS'; choice: BusChoice }
+  /** `position`: de buspositie die de gokker zag; een verouderde gok wordt geweigerd. */
+  | { t: 'BUS_GUESS'; choice: BusChoice; position: number }
   | { t: 'NEXT_PHASE' }
   /** Host-only: sla de beurt van de (weggevallen) actieve speler over. */
   | { t: 'FORFEIT_TURN' }

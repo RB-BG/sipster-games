@@ -1,7 +1,8 @@
 // Copyright © 2026 Bussen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
+import { PYRAMID_ROW_SIZES } from './pyramid'
 import { randomInt, randomSeed } from './rng'
-import type { Card, Rank, Suit } from './types'
+import type { Card, Rank, RuleConfig, Suit } from './types'
 
 /**
  * Bron van een geschudde deck en animatie-seeds. Injecteerbaar zodat de
@@ -17,6 +18,16 @@ export interface DeckSource {
 
 export const SUITS: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades']
 export const RANKS: Rank[] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+
+/**
+ * Hoeveel spelers er maximaal passen zonder dat het deck tijdens het potje
+ * uitgeput raakt: 4 vraagkaarten per speler naast de piramide en de bus.
+ * Boven die grens zou drawCard herschudden en komen kaarten dubbel in het spel.
+ */
+export function maxPlayers(rules: RuleConfig): number {
+  const reserved = PYRAMID_ROW_SIZES.reduce((sum, n) => sum + n, 0) + rules.busLengte
+  return Math.floor((SUITS.length * RANKS.length - reserved) / 4)
+}
 
 /** De 52 kaarten in vaste volgorde (ongeschud). */
 export function orderedDeck(): Card[] {
