@@ -197,3 +197,97 @@ describe('hostLoop in-game', () => {
     expect(loop.state.turn?.playerId).toBe('guest-1')
   })
 })
+
+describe('hostLoop hardening (review-fixes)', () => {
+  it('een malformed intent crasht de loop niet en krijgt MALFORMED terug', () => {
+    const { transport, loop } = setup()
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
+    loop.dispatchLocal({ t: 'START_GAME' })
+
+    loop.handleIntent('peer-a', { t: 'ADD_TO_CUP', amount: 'veel' } as never)
+    loop.handleIntent('peer-a', { t: 'SET_RULE', text: 42 } as never)
+    loop.handleIntent('peer-a', { t: 'HACK_THE_PLANET' } as never)
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: { id: 7 } } as never)
+
+    const errors = transport.sent.filter((m) => m.event.t === 'ERROR').map((m) => m.event)
+    expect(errors).toHaveLength(4)
+    for (const e of errors) expect(e).toEqual({ t: 'ERROR', code: 'MALFORMED' })
+    expect(loop.state.phase).toBe('playing')
+  })
+
+  it('een mid-game joiner wordt niet gemapt: geen sync, geen spook-disconnect', () => {
+    const { transport, loop } = setup()
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
+    loop.dispatchLocal({ t: 'START_GAME' })
+
+    loop.handleIntent('peer-late', { t: 'JOIN', profile: { id: 'late-1', name: 'Laat', emoji: '🐌' } })
+    expect(transport.sent.at(-1)).toEqual({
+      to: 'peer-late',
+      event: { t: 'ERROR', code: 'WRONG_PHASE' },
+    })
+    loop.handleIntent('peer-late', { t: 'REQUEST_SYNC' })
+    expect(transport.sent.at(-1)).toEqual({
+      to: 'peer-late',
+      event: { t: 'ERROR', code: 'UNKNOWN_PLAYER' },
+    })
+    const before = transport.broadcasts.length
+    loop.handleDisconnect('peer-late')
+    expect(transport.broadcasts.length).toBe(before)
+  })
+
+  it('één stoel per peer: een tweede JOIN met een andere id wordt geweigerd', () => {
+    const { transport, loop } = setup()
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: { id: 'nep-2', name: 'Nep', emoji: '👻' } })
+
+    expect(transport.sent.at(-1)).toEqual({
+      to: 'peer-a',
+      event: { t: 'ERROR', code: 'ALREADY_JOINED' },
+    })
+    expect(loop.state.players).toHaveLength(2)
+  })
+
+  it('profielvelden worden gesaneerd: lange namen worden afgekapt', () => {
+    const { loop } = setup()
+    loop.handleIntent('peer-a', {
+      t: 'JOIN',
+      profile: { id: 'guest-2', name: `  ${'x'.repeat(500)}`, emoji: '🍺' },
+    })
+    const joined = loop.state.players.find((p) => p.id === 'guest-2')
+    expect(joined?.name.length).toBe(24)
+  })
+
+  it('de gebroadcaste state lekt de nog te trekken kaarten niet', () => {
+    const { transport, loop } = setup()
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
+    loop.dispatchLocal({ t: 'START_GAME' })
+
+    const lastState = [...transport.broadcasts].reverse().find((e) => e.t === 'STATE')
+    expect(lastState?.t).toBe('STATE')
+    if (lastState?.t === 'STATE') {
+      expect(lastState.state.deck).toHaveLength(0)
+      expect(lastState.state.drawIndex).toBe(0)
+    }
+    // De host zelf houdt de volledige deck.
+    expect(loop.state.deck.length).toBeGreaterThan(0)
+  })
+
+  it('pending speler valt weg: host-forfeit maakt de tafel weer speelbaar', () => {
+    const rng = scriptedDeck([card(3, 'hearts'), card(13, 'spades'), card(4, 'clubs'), card(6, 'clubs')])
+    const { loop } = setup(rng)
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
+    loop.dispatchLocal({ t: 'START_GAME' })
+
+    loop.dispatchLocal({ t: 'FLIP_CARD' }) // host: 3, beurt naar guest
+    loop.handleIntent('peer-a', { t: 'FLIP_CARD' }) // guest: koning -> pending cup
+    expect(loop.state.pending).toEqual({ kind: 'cup', playerId: 'guest-1' })
+
+    loop.handleIntent('peer-a', { t: 'LEAVE' })
+    expect(loop.state.players[1].connected).toBe(false)
+    expect(loop.state.pending).not.toBeNull()
+
+    loop.dispatchLocal({ t: 'FORFEIT_TURN' })
+    expect(loop.state.pending).toBeNull()
+    expect(loop.state.turn?.playerId).toBe('host-1')
+  })
+})

@@ -166,6 +166,8 @@ export const nl = {
     INVALID_RULES: 'Ongeldige instellingen',
     INVALID_AMOUNT: 'Ongeldig aantal slokken',
     INVALID_TEXT: 'Vul een regel in',
+    GAME_FULL: 'De tafel zit vol',
+    MALFORMED: 'Onbegrijpelijk bericht ontvangen',
   } as Record<string, string>,
 }
 
@@ -275,6 +277,8 @@ const en: Strings = {
     INVALID_RULES: 'Invalid settings',
     INVALID_AMOUNT: 'Invalid number of sips',
     INVALID_TEXT: 'Enter a rule',
+    GAME_FULL: 'The table is full',
+    MALFORMED: 'Received an unreadable message',
   },
 }
 

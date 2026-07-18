@@ -213,3 +213,53 @@ describe('verbindingen', () => {
     expect(s.turn?.playerId).toBe('p3')
   })
 })
+
+// --- Review-fixes: cap, verkeerde speler, laatste kaart, ended -------------
+
+describe('review-fixes', () => {
+  it('ADD_TO_CUP door de verkeerde speler is NOT_YOUR_TURN', () => {
+    const { state, rng } = started([card(13, 'spades'), card(3, 'hearts')])
+    const s = flip(state, rng).state // p1 trekt koning -> pending cup
+    expect(apply(s, { t: 'ADD_TO_CUP', playerId: 'p2', amount: 2 }, rng).error).toBe(
+      'NOT_YOUR_TURN',
+    )
+  })
+
+  it('SET_RULE door de verkeerde speler is NOT_YOUR_TURN', () => {
+    const { state, rng } = started([card(5, 'spades'), card(3, 'hearts')])
+    const s = flip(state, rng).state // p1 trekt de regel-kaart -> pending rule
+    expect(apply(s, { t: 'SET_RULE', playerId: 'p2', text: 'nee' }, rng).error).toBe(
+      'NOT_YOUR_TURN',
+    )
+  })
+
+  it('pending op de allerlaatste kaart: afhandelen eindigt het potje netjes', () => {
+    const { state, rng } = started([card(5, 'spades')])
+    let s = flip(state, rng).state
+    expect(s.pending?.kind).toBe('rule')
+    s = apply(s, { t: 'SET_RULE', playerId: 'p1', text: 'proost' }, rng).state
+    expect(s.phase).toBe('ended')
+    expect(s.pending).toBeNull()
+  })
+
+  it('intents in de ended-fase worden geweigerd', () => {
+    const { state, rng } = started([card(3, 'hearts')])
+    const s = flip(state, rng).state // laatste kaart -> ended
+    expect(s.phase).toBe('ended')
+    expect(apply(s, { t: 'FLIP_CARD', playerId: 'p1' }, rng).error).toBe('WRONG_PHASE')
+    expect(apply(s, { t: 'ADD_PLAYER', profile: P3 }, rng).error).toBe('WRONG_PHASE')
+  })
+
+  it('ADD_PLAYER weigert boven MAX_PLAYERS', () => {
+    const rng = scriptedDeck([card(3, 'hearts')])
+    let s = createGame(P1)
+    for (let i = 2; i <= 12; i++) {
+      s = reduce(s, { t: 'ADD_PLAYER', profile: { id: `x${i}`, name: `X${i}`, emoji: '🍺' } }, rng)
+        .state
+    }
+    expect(s.players.length).toBe(12)
+    expect(
+      reduce(s, { t: 'ADD_PLAYER', profile: { id: 'x13', name: 'X13', emoji: '🍺' } }, rng).error,
+    ).toBe('GAME_FULL')
+  })
+})

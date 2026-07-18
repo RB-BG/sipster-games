@@ -33,7 +33,7 @@ Kingsen kent één speelronde: de cirkel van 52 kaarten wordt kloksgewijs afgega
 ## Patronen & valkuilen
 
 - **viewState-freeze**: beide stores exposen naast de echte state een `viewState` die één animatie achterloopt; de UI rendert altijd viewState zodat chips/overlays de kaart-uitslag niet verklappen. Effecten hangen aan viewState-wissels en vuren daardoor precies op het reveal-moment, in hotseat én multiplayer.
-- **Pending-input** (koning: cup vullen; rang 10: nieuwe regel typen) blokkeert de volgende flip tot de actieve speler het afhandelt, exact zoals `pendingGive` de piramide in bussen blokkeert.
+- **Pending-input** (koning: cup vullen; rang 5: nieuwe regel typen) blokkeert de volgende flip tot de actieve speler het afhandelt, exact zoals `pendingGive` de piramide in bussen blokkeert.
 - **Claude-preview-beperking**: de preview-browser draait in een verborgen tab waar requestAnimationFrame 0 frames vuurt. Framer-motion-animaties en screenshots werken daar niet; het spelverloop hangt bewust op setTimeout en is er wél testbaar. Animaties alleen op een echt device beoordelen.
 - Dev-speeltuinen: `/?debug` (engine bespelen zonder UI) en `/?cards` (kaart-animatie met instelbare uitkomst).
 

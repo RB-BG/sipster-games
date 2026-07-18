@@ -17,6 +17,7 @@ export default function LobbyScreen() {
   const roomCode = useNetStore((s) => s.roomCode)
   const netState = useNetStore((s) => s.netState)
   const netError = useNetStore((s) => s.netError)
+  const lastError = useNetStore((s) => s.lastError)
   const setRules = useNetStore((s) => s.setRules)
   const sendIntent = useNetStore((s) => s.sendIntent)
   const leave = useNetStore((s) => s.leave)
@@ -59,6 +60,11 @@ export default function LobbyScreen() {
         </p>
       )}
       {netError && <p className="text-sm text-destructive">{netError}</p>}
+      {/* Ook afgewezen game-acties tonen: een mid-game joiner bleef anders
+          zonder enige melding op een lege lobby wachten. */}
+      {!netError && lastError && (
+        <p className="text-sm text-destructive">{strings.errors[lastError]}</p>
+      )}
 
       <Coaster className="flex flex-col gap-2">
         <h2 className="text-sm text-muted-foreground">{strings.players}</h2>
