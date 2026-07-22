@@ -5,6 +5,7 @@ import { ArrowLeft, Dices } from 'lucide-react'
 import Coaster from '@/components/Coaster'
 import RulesEditor from '@/components/RulesEditor'
 import type { PlayerProfile, RuleConfig } from '@/engine/types'
+import { MAX_PLAYERS } from '@/engine/validate'
 import { useStrings } from '@/store/localeStore'
 import { loadProfile, loadRules, newPlayerId, saveProfile, saveRules } from '@/lib/storage'
 import { useGameStore } from '@/store/gameStore'
@@ -72,6 +73,8 @@ export default function HotseatSetupScreen() {
               value={draft.name}
               onChange={(e) => updateDraft(i, { name: e.target.value })}
               placeholder={`${strings.playerNamePlaceholder} (Speler ${i + 1})`}
+              // Kort houden zodat de spelerchips op tafel strak blijven passen.
+              maxLength={16}
               className="min-w-0 flex-1 rounded-lg border border-input bg-wood-950/40 px-3 py-2 text-ivory placeholder:text-muted-foreground"
             />
             {drafts.length > 2 && (
@@ -86,15 +89,17 @@ export default function HotseatSetupScreen() {
           </div>
         ))}
 
-        <button
-          type="button"
-          onClick={() =>
-            setDrafts((prev) => [...prev, { name: '', emojiIndex: prev.length % EMOJI.length }])
-          }
-          className="self-start rounded-lg bg-secondary px-3 py-1.5 text-sm text-secondary-foreground"
-        >
-          {strings.addPlayer}
-        </button>
+        {drafts.length < MAX_PLAYERS && (
+          <button
+            type="button"
+            onClick={() =>
+              setDrafts((prev) => [...prev, { name: '', emojiIndex: prev.length % EMOJI.length }])
+            }
+            className="self-start rounded-lg bg-secondary px-3 py-1.5 text-sm text-secondary-foreground"
+          >
+            {strings.addPlayer}
+          </button>
+        )}
       </Coaster>
 
       <RulesEditor

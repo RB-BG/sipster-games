@@ -73,7 +73,7 @@ export default function GameScreen() {
         </div>
       </header>
 
-      <div className="flex gap-2 overflow-x-auto px-4 pb-2">
+      <div className="flex flex-wrap justify-center gap-2 px-4 pb-2">
         {state.players.map((player) => (
           <PlayerChip
             key={player.id}
