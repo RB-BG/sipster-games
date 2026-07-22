@@ -115,6 +115,7 @@ export const nl = {
   reconnecting: 'opnieuw verbinden…',
   offline: 'offline',
   skipTurn: 'Sla beurt over',
+  round: (n: number) => `ronde ${n}`,
   // Slokken-scorebord op de chips.
   scoreLegend: 'deze ronde / totaal 🍺',
   assignHint: 'tik een speler om slokken uit te delen',
@@ -232,6 +233,7 @@ const en: Strings = {
   reconnecting: 'reconnecting…',
   offline: 'offline',
   skipTurn: 'Skip turn',
+  round: (n: number) => `round ${n}`,
   scoreLegend: 'this round / total 🍺',
   assignHint: 'tap a player to hand out sips',
   assignGive: (n: number) => `give +${n} 🍺`,

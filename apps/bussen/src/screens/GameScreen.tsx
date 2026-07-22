@@ -198,13 +198,25 @@ export default function GameScreen() {
 
   return (
     <main ref={mainRef} className="relative flex h-dvh flex-col px-safe pt-safe pb-safe">
-      <header className="flex items-center justify-between px-4 py-2 text-sm text-muted-foreground">
-        <span>{phaseName(phase, strings)}</span>
-        <div className="flex items-center gap-3">
-          <button type="button" onClick={toggleMuted} aria-label={muted ? strings.soundOn : strings.soundOff}>
+      <header className="flex items-center justify-between px-4 py-2">
+        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-ivory">
+          {phaseName(phase, strings)}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleMuted}
+            aria-label={muted ? strings.soundOn : strings.soundOff}
+            className="rounded-full bg-white/10 p-2 text-muted-foreground active:scale-90"
+          >
             {muted ? <VolumeX className="size-5" /> : <Volume2 className="size-5" />}
           </button>
-          <button type="button" onClick={leave} aria-label={strings.stopGame}>
+          <button
+            type="button"
+            onClick={leave}
+            aria-label={strings.stopGame}
+            className="rounded-full bg-white/10 p-2 text-muted-foreground active:scale-90"
+          >
             <X className="size-5" />
           </button>
         </div>

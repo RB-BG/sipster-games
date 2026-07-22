@@ -276,20 +276,26 @@ export default function GameScreen() {
 
   return (
     <main ref={mainRef} className="relative flex h-dvh flex-col px-safe pt-safe pb-safe">
-      <header className="flex items-center justify-between px-4 py-2 text-sm text-muted-foreground">
-        <span>
+      <header className="flex items-center justify-between px-4 py-2">
+        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-ivory">
           {strings.round(state.round.number)}
           {state.round.mexCount > 0 && ` · ${strings.mexCount(state.round.mexCount)}`}
         </span>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={toggleMuted}
             aria-label={muted ? strings.soundOn : strings.soundOff}
+            className="rounded-full bg-white/10 p-2 text-muted-foreground active:scale-90"
           >
             {muted ? <VolumeX className="size-5" /> : <Volume2 className="size-5" />}
           </button>
-          <button type="button" onClick={leave} aria-label={strings.stopGame}>
+          <button
+            type="button"
+            onClick={leave}
+            aria-label={strings.stopGame}
+            className="rounded-full bg-white/10 p-2 text-muted-foreground active:scale-90"
+          >
             <X className="size-5" />
           </button>
         </div>
@@ -556,15 +562,15 @@ export default function GameScreen() {
 
       {phase === 'playing' && turn && activePlayer && (
         <section className="flex flex-col gap-2 p-4">
-          <div className="flex items-baseline justify-between text-sm">
-            <span className="font-semibold text-ivory">
+          <div className="flex items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-base font-semibold text-ivory">
               {activePlayer.emoji} {activePlayer.name}{' '}
-              <span className="font-normal text-muted-foreground">
+              <span className="text-sm font-normal text-muted-foreground">
                 {strings.turnOf}
                 {!activePlayer.connected && ` · ${strings.offline}`}
               </span>
             </span>
-            <span className="text-muted-foreground">
+            <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-ivory">
               {strings.throwCount(turn.throwsUsed, turn.maxThrows)}
             </span>
           </div>
