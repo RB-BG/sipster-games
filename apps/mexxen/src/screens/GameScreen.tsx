@@ -234,6 +234,12 @@ export default function GameScreen() {
     )
   }
 
+  // Slokken die een speler deze ronde binnenkreeg (som over alle redenen).
+  const roundSips = (playerId: string) =>
+    state.sipsLog
+      .filter((e) => e.round === state.round.number && e.playerId === playerId)
+      .reduce((sum, e) => sum + e.amount, 0)
+
   const lastLoss = [...state.sipsLog]
     .reverse()
     .find((e) => e.reason === 'verliezer' && e.round === state.round.number)
@@ -289,7 +295,7 @@ export default function GameScreen() {
         </div>
       </header>
 
-      <div className="flex flex-wrap justify-center gap-2 px-4 pb-2">
+      <div className="flex flex-wrap justify-center gap-2 px-4 pb-1">
         {state.players.map((player) => {
           const hitKey = hits.find((h) => h.playerId === player.id)?.key
           return (
@@ -305,6 +311,7 @@ export default function GameScreen() {
               <PlayerChip
                 player={player}
                 active={player.id === turn?.playerId}
+                roundSips={roundSips(player.id)}
                 ridder={
                   state.ridderId === player.id ? (state.ridderDubbel ? 'dubbel' : 'ridder') : null
                 }
@@ -313,6 +320,7 @@ export default function GameScreen() {
           )
         })}
       </div>
+      <p className="pb-2 text-center text-[10px] text-muted-foreground">{strings.scoreLegend}</p>
 
       <div ref={stageRef} className="relative min-h-0 flex-1">
         <Dice
@@ -467,7 +475,8 @@ export default function GameScreen() {
                 {state.players.map((p) => (
                   <li key={p.id}>
                     {p.emoji} {p.name}: {p.roundScore !== null ? rankLabel(p.roundScore) : '–'} ·{' '}
-                    {p.sipsTotal} {strings.sips}
+                    <span className="font-bold text-amber-soft">+{roundSips(p.id)}</span> / {p.sipsTotal}{' '}
+                    {strings.sips}
                   </li>
                 ))}
               </ul>

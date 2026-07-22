@@ -86,6 +86,8 @@ export const nl = {
   loserIs: (name: string) => `${name} verliest de ronde`,
   drinks: (n: number) => (n === 1 ? 'drinkt 1 slok' : `drinkt ${n} slokken`),
   sips: 'slokken',
+  // Bijschrift onder de spelerchips: legt de twee getallen "ronde / totaal" uit.
+  scoreLegend: 'deze ronde / totaal 🍺',
   nextRound: 'Volgende ronde',
   stopGame: 'Stop het potje',
   endGame: 'Sluit het potje af',
@@ -254,6 +256,7 @@ const en: Strings = {
   loserIs: (name) => `${name} loses the round`,
   drinks: (n) => (n === 1 ? 'drinks 1 sip' : `drinks ${n} sips`),
   sips: 'sips',
+  scoreLegend: 'this round / total 🍺',
   nextRound: 'Next round',
   stopGame: 'Stop the game',
   endGame: 'End the game',

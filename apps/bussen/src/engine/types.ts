@@ -108,6 +108,8 @@ export interface SipEntry {
   playerId: string
   amount: number
   reason: SipReason
+  /** In welke fase de slok viel; de UI telt hiermee "deze fase" per speler. */
+  phase: GamePhase
 }
 
 export type BluffVerdict = 'betrapt' | 'onterecht'

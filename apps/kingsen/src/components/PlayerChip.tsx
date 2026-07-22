@@ -6,11 +6,13 @@ import { cn } from '@/lib/utils'
 interface PlayerChipProps {
   player: PlayerState
   active: boolean
+  /** Slokken deze ronde; getoond naast het totaal als "ronde/totaal". */
+  roundSips: number
   /** Optioneel roltekentje (bv. 👍 duimmeester, ❓ vraagmeester). */
   badge?: string
 }
 
-export default function PlayerChip({ player, active, badge }: PlayerChipProps) {
+export default function PlayerChip({ player, active, roundSips, badge }: PlayerChipProps) {
   return (
     <div
       className={cn(
@@ -24,6 +26,10 @@ export default function PlayerChip({ player, active, badge }: PlayerChipProps) {
         {badge && <span className="text-sm">{badge}</span>}
       </span>
       <span className="max-w-20 truncate font-semibold">{player.name}</span>
+      <span className={active ? 'opacity-80' : 'text-muted-foreground'}>
+        {/* ronde/totaal: het ronde-getal vet zodat "wie drinkt nu hoeveel" opvalt. */}
+        <span className="font-bold">{roundSips}</span>/{player.sipsTotal}🍺
+      </span>
     </div>
   )
 }

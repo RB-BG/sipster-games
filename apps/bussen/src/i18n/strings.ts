@@ -103,6 +103,8 @@ export const nl = {
   finalTitle: 'Eindstand',
   wettest: (name: string) => `${name} heeft de natste keel`,
   sips: 'slokken',
+  // Bijschrift onder de spelerchips: legt de twee getallen "fase / totaal" uit.
+  scoreLegend: 'deze fase / totaal 🍺',
   drinks: (n: number) => (n === 1 ? 'drinkt 1 slok' : `drinkt ${n} slokken`),
   backHome: 'Terug naar start',
 
@@ -292,6 +294,7 @@ const en: Strings = {
   finalTitle: 'Final score',
   wettest: (name) => `${name} has the wettest whistle`,
   sips: 'sips',
+  scoreLegend: 'this phase / total 🍺',
   drinks: (n) => (n === 1 ? 'drinks 1 sip' : `drinks ${n} sips`),
   backHome: 'Back to start',
 

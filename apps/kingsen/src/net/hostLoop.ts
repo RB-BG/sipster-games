@@ -36,6 +36,8 @@ function wellFormed(intent: Intent): boolean {
       return Number.isInteger(intent.amount)
     case 'SET_RULE':
       return typeof intent.text === 'string'
+    case 'ADD_SIPS':
+      return typeof intent.targetPlayerId === 'string' && Number.isInteger(intent.amount)
     case 'LEAVE':
     case 'START_GAME':
     case 'FLIP_CARD':
@@ -209,6 +211,17 @@ export function createHostLoop(
       return
     }
 
+    // Slokken uitdelen mag alleen de actieve speler (de draaier) of de host,
+    // zodat een willekeurige guest niet stiekem andermans totaal opdrijft.
+    if (
+      intent.t === 'ADD_SIPS' &&
+      playerId !== state.hostId &&
+      playerId !== state.turn?.playerId
+    ) {
+      if (peerId) transport.send(peerId, { t: 'ERROR', code: 'NOT_YOUR_TURN' })
+      return
+    }
+
     const cmd = intentToCommand(intent, playerId)
     if (cmd) apply(cmd, peerId)
   }
@@ -255,6 +268,8 @@ function intentToCommand(intent: Intent, playerId: string): Command | null {
       return { t: 'ADD_TO_CUP', playerId, amount: intent.amount }
     case 'SET_RULE':
       return { t: 'SET_RULE', playerId, text: intent.text }
+    case 'ADD_SIPS':
+      return { t: 'ADD_SIPS', targetPlayerId: intent.targetPlayerId, amount: intent.amount }
     case 'END_GAME':
       return { t: 'END_GAME' }
     default:

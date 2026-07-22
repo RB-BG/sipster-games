@@ -46,9 +46,20 @@ export default function GameScreen() {
     setMutedState(!muted)
   }
 
+  // Slokken uitdelen: tik-modus (geven vs corrigeren) van de actieve speler/host.
+  const [correctMode, setCorrectMode] = useState(false)
+
   if (!state) return null
   const canAct = (playerId: string) => myPlayerId === null || myPlayerId === playerId
   const actorId = state.pending?.playerId ?? state.turn?.playerId ?? null
+
+  // Wie mag slokken uitdelen: de draaier (actieve speler) of de host.
+  const step = state.rules.standaardSlokken
+  const canAssign =
+    state.phase === 'playing' &&
+    (myPlayerId === null || isHost || myPlayerId === state.turn?.playerId)
+  const assignSips = (targetId: string) =>
+    dispatch({ t: 'ADD_SIPS', targetPlayerId: targetId, amount: correctMode ? -step : step })
   const heroFlip = cardAnim
     ? { id: cardAnim.id, card: cardAnim.card, animSeed: cardAnim.animSeed }
     : null
@@ -73,15 +84,46 @@ export default function GameScreen() {
         </div>
       </header>
 
-      <div className="flex flex-wrap justify-center gap-2 px-4 pb-2">
-        {state.players.map((player) => (
-          <PlayerChip
-            key={player.id}
-            player={player}
-            active={player.id === state.turn?.playerId}
-            badge={roleBadge(player.id)}
-          />
-        ))}
+      <div className="flex flex-wrap justify-center gap-2 px-4 pb-1">
+        {state.players.map((player) => {
+          const chip = (
+            <PlayerChip
+              player={player}
+              active={player.id === state.turn?.playerId}
+              roundSips={player.roundSips}
+              badge={roleBadge(player.id)}
+            />
+          )
+          // Tikbaar zolang de actieve speler/host slokken mag uitdelen.
+          return canAssign ? (
+            <button
+              key={player.id}
+              type="button"
+              onClick={() => assignSips(player.id)}
+              className="block rounded-xl active:scale-95"
+              aria-label={strings.assignHint}
+            >
+              {chip}
+            </button>
+          ) : (
+            <div key={player.id}>{chip}</div>
+          )
+        })}
+      </div>
+      <div className="flex items-center justify-center gap-2 pb-1 text-[10px] text-muted-foreground">
+        <span>{strings.scoreLegend}</span>
+        {canAssign && (
+          <button
+            type="button"
+            onClick={() => setCorrectMode((c) => !c)}
+            className={
+              'rounded-full px-2 py-0.5 font-semibold ' +
+              (correctMode ? 'bg-destructive/80 text-ivory' : 'bg-secondary text-secondary-foreground')
+            }
+          >
+            {correctMode ? strings.assignTake(step) : strings.assignGive(step)}
+          </button>
+        )}
       </div>
 
       <div className="relative flex min-h-0 flex-1 flex-col items-center justify-start gap-3 overflow-y-auto px-4 py-2">

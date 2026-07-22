@@ -263,3 +263,57 @@ describe('review-fixes', () => {
     ).toBe('GAME_FULL')
   })
 })
+
+describe('ADD_SIPS: slokken uitdelen', () => {
+  it('telt op bij totaal én deze ronde', () => {
+    const { state, rng } = started([card(3, 'hearts'), card(4, 'spades'), card(6, 'clubs')])
+    const s = apply(state, { t: 'ADD_SIPS', targetPlayerId: 'p2', amount: 2 }, rng).state
+    const p2 = s.players.find((p) => p.id === 'p2')!
+    expect(p2.sipsTotal).toBe(2)
+    expect(p2.roundSips).toBe(2)
+  })
+
+  it('een negatief bedrag corrigeert maar zakt nooit onder nul', () => {
+    const { state, rng } = started([card(3, 'hearts'), card(4, 'spades'), card(6, 'clubs')])
+    let s = apply(state, { t: 'ADD_SIPS', targetPlayerId: 'p1', amount: 3 }, rng).state
+    s = apply(s, { t: 'ADD_SIPS', targetPlayerId: 'p1', amount: -5 }, rng).state
+    const p1 = s.players.find((p) => p.id === 'p1')!
+    expect(p1.sipsTotal).toBe(0)
+    expect(p1.roundSips).toBe(0)
+  })
+
+  it('weigert een onbekende speler, nul, en de verkeerde fase', () => {
+    const { state, rng } = started([card(3, 'hearts'), card(4, 'spades')])
+    expect(apply(state, { t: 'ADD_SIPS', targetPlayerId: 'weg', amount: 1 }, rng).error).toBe(
+      'UNKNOWN_PLAYER',
+    )
+    expect(apply(state, { t: 'ADD_SIPS', targetPlayerId: 'p1', amount: 0 }, rng).error).toBe(
+      'INVALID_AMOUNT',
+    )
+    const lobby = createGame(P1)
+    expect(apply(lobby, { t: 'ADD_SIPS', targetPlayerId: 'p1', amount: 1 }, rng).error).toBe(
+      'WRONG_PHASE',
+    )
+  })
+})
+
+describe('ronde-teller', () => {
+  it('begint op 1 en hoogt op zodra de beurt de tafel rond is', () => {
+    const { state, rng } = started([card(3, 'hearts'), card(4, 'spades'), card(6, 'clubs'), card(7, 'diamonds')])
+    expect(state.round).toBe(1)
+    let s = flip(state, rng).state // p1 -> p2, nog ronde 1
+    expect(s.round).toBe(1)
+    s = flip(s, rng).state // p2 -> terug naar p1: nieuwe ronde
+    expect(s.round).toBe(2)
+  })
+
+  it('reset de ronde-slokken van iedereen bij een nieuwe ronde', () => {
+    const { state, rng } = started([card(3, 'hearts'), card(4, 'spades'), card(6, 'clubs'), card(7, 'diamonds')])
+    let s = apply(state, { t: 'ADD_SIPS', targetPlayerId: 'p1', amount: 4 }, rng).state
+    s = flip(s, rng).state // ronde 1 nog
+    s = flip(s, rng).state // ronde 2: roundSips terug naar 0
+    const p1 = s.players.find((p) => p.id === 'p1')!
+    expect(p1.roundSips).toBe(0)
+    expect(p1.sipsTotal).toBe(4) // totaal blijft staan
+  })
+})

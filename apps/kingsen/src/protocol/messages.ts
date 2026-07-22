@@ -17,6 +17,8 @@ export type Intent =
   | { t: 'FLIP_CARD' }
   | { t: 'ADD_TO_CUP'; amount: number }
   | { t: 'SET_RULE'; text: string }
+  /** Deel slokken uit aan een speler (negatief bedrag corrigeert). */
+  | { t: 'ADD_SIPS'; targetPlayerId: string; amount: number }
   /** Host-only: sla de beurt van de (weggevallen) actieve speler over. */
   | { t: 'FORFEIT_TURN' }
   | { t: 'END_GAME' }
