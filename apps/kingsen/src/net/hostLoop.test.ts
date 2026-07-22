@@ -155,6 +155,28 @@ describe('hostLoop in-game', () => {
     expect(loop.state.turn?.playerId).toBe('guest-1')
   })
 
+  it('slokken uitdelen mag alleen de actieve speler of de host', () => {
+    const deck = [card(3, 'hearts'), card(6, 'clubs'), card(9, 'spades')]
+    const { transport, loop } = setup(scriptedDeck(deck))
+    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
+    loop.dispatchLocal({ t: 'START_GAME' }) // beurt: host-1
+
+    // Guest is niet aan de beurt: weigeren.
+    transport.sent.length = 0
+    loop.handleIntent('peer-a', { t: 'ADD_SIPS', targetPlayerId: 'host-1', amount: 2 })
+    expect(transport.sent.at(-1)?.event).toEqual({ t: 'ERROR', code: 'NOT_YOUR_TURN' })
+
+    // De host mag altijd uitdelen.
+    loop.dispatchLocal({ t: 'ADD_SIPS', targetPlayerId: 'guest-1', amount: 2 })
+    expect(loop.state.players.find((p) => p.id === 'guest-1')?.sipsTotal).toBe(2)
+
+    // Na de flip is de guest aan de beurt en mag hij zelf uitdelen.
+    loop.dispatchLocal({ t: 'FLIP_CARD' })
+    expect(loop.state.turn?.playerId).toBe('guest-1')
+    loop.handleIntent('peer-a', { t: 'ADD_SIPS', targetPlayerId: 'host-1', amount: 1 })
+    expect(loop.state.players.find((p) => p.id === 'host-1')?.sipsTotal).toBe(1)
+  })
+
   it('de host-stoel is niet via JOIN te kapen', () => {
     const { transport, loop } = setup()
     loop.handleIntent('peer-x', { t: 'JOIN', profile: { ...HOST } })

@@ -61,6 +61,13 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
       if (cmd.text.trim().length > MAX_RULE_LENGTH) return 'INVALID_TEXT'
       return null
 
+    case 'ADD_SIPS':
+      if (state.phase !== 'playing') return 'WRONG_PHASE'
+      if (!state.players.some((p) => p.id === cmd.targetPlayerId)) return 'UNKNOWN_PLAYER'
+      if (!Number.isInteger(cmd.amount) || cmd.amount === 0) return 'INVALID_AMOUNT'
+      if (Math.abs(cmd.amount) > MAX_CUP_AMOUNT) return 'INVALID_AMOUNT'
+      return null
+
     case 'SET_CONNECTED':
       if (!state.players.some((p) => p.id === cmd.playerId)) return 'UNKNOWN_PLAYER'
       return null

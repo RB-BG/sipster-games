@@ -30,6 +30,7 @@ export function createGame(
     rules,
     hostId: host.id,
     players: [newPlayer(host)],
+    round: 0,
     deck: [],
     drawIndex: 0,
     turn: null,
@@ -84,6 +85,10 @@ export function reduce(state: GameState, cmd: Command, rng: DeckSource): ReduceR
       applySetRule(draft, events, cmd.playerId, cmd.text)
       break
 
+    case 'ADD_SIPS':
+      applyAddSips(draft, cmd.targetPlayerId, cmd.amount)
+      break
+
     case 'SET_CONNECTED':
       playerById(draft, cmd.playerId).connected = cmd.connected
       break
@@ -103,7 +108,14 @@ export function reduce(state: GameState, cmd: Command, rng: DeckSource): ReduceR
 }
 
 function newPlayer(profile: PlayerProfile): PlayerState {
-  return { ...profile, connected: true }
+  return { ...profile, connected: true, sipsTotal: 0, roundSips: 0 }
+}
+
+/** Deelt slokken uit (of corrigeert met een negatief bedrag); nooit onder nul. */
+function applyAddSips(draft: GameState, targetId: string, amount: number): void {
+  const player = playerById(draft, targetId)
+  player.sipsTotal = Math.max(0, player.sipsTotal + amount)
+  player.roundSips = Math.max(0, player.roundSips + amount)
 }
 
 /** Trekt de volgende kaart uit de geschudde deck. */
@@ -121,6 +133,11 @@ function startGame(draft: GameState, events: EngineEvent[], rng: DeckSource): vo
   draft.cup = 0
   draft.pending = null
   draft.phase = 'playing'
+  draft.round = 1
+  for (const player of draft.players) {
+    player.sipsTotal = 0
+    player.roundSips = 0
+  }
   draft.turn = { playerId: draft.players[0].id }
   events.push({ t: 'PHASE_CHANGED', phase: 'playing' })
 }
@@ -213,11 +230,19 @@ function advanceTurn(draft: GameState): void {
   for (let step = 1; step <= n; step++) {
     const cand = players[(idx + step) % n]
     if (cand.connected) {
+      // Voorbij het einde van de tafel gewrapt = een nieuwe ronde (lap).
+      if (idx + step >= n) startNewRound(draft)
       draft.turn = { playerId: cand.id }
       return
     }
   }
   // Niemand verbonden: laat de beurt staan (host lost dit op).
+}
+
+/** Nieuwe ronde: teller omhoog, elke speler begint weer op 0 slokken deze ronde. */
+function startNewRound(draft: GameState): void {
+  draft.round++
+  for (const player of draft.players) player.roundSips = 0
 }
 
 function endGame(draft: GameState, events: EngineEvent[]): void {

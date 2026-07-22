@@ -23,6 +23,10 @@ export interface PlayerProfile {
 
 export interface PlayerState extends PlayerProfile {
   connected: boolean
+  /** Slokken die deze speler dit hele potje binnenkreeg (cumulatief). */
+  sipsTotal: number
+  /** Slokken deze ronde (lap); reset zodra de beurt de tafel weer rond is. */
+  roundSips: number
 }
 
 /**
@@ -55,6 +59,8 @@ export interface GameState {
   hostId: string
   /** Volgorde in de array = speelvolgorde (met de klok mee). */
   players: PlayerState[]
+  /** Huidige ronde = aantal keren dat de beurt de tafel rond is (1-gebaseerd). */
+  round: number
   /** De geschudde deck (host-authoritative); reduce popt puur op drawIndex. */
   deck: Card[]
   drawIndex: number
@@ -86,6 +92,8 @@ export type Command =
   | { t: 'ADD_TO_CUP'; playerId: string; amount: number }
   /** Rang 5: leg een nieuwe regel vast. */
   | { t: 'SET_RULE'; playerId: string; text: string }
+  /** Deel handmatig slokken uit aan een speler (negatief bedrag corrigeert). */
+  | { t: 'ADD_SIPS'; targetPlayerId: string; amount: number }
   | { t: 'SET_CONNECTED'; playerId: string; connected: boolean }
   /** Host slaat de (weggevallen) actieve speler over. */
   | { t: 'FORFEIT_TURN' }

@@ -274,6 +274,8 @@ function commandToIntent(cmd: Command): Intent | null {
       return { t: 'ADD_TO_CUP', amount: cmd.amount }
     case 'SET_RULE':
       return { t: 'SET_RULE', text: cmd.text }
+    case 'ADD_SIPS':
+      return { t: 'ADD_SIPS', targetPlayerId: cmd.targetPlayerId, amount: cmd.amount }
     case 'FORFEIT_TURN':
       return { t: 'FORFEIT_TURN' }
     case 'END_GAME':
