@@ -7,11 +7,13 @@ import { cn } from '@/lib/utils'
 interface PlayerChipProps {
   player: PlayerState
   active: boolean
+  /** Slokken deze ronde; getoond naast het totaal als "ronde/totaal". */
+  roundSips: number
   /** 'ridder' of 'dubbel' toont het schildje. */
   ridder?: 'ridder' | 'dubbel' | null
 }
 
-export default function PlayerChip({ player, active, ridder }: PlayerChipProps) {
+export default function PlayerChip({ player, active, roundSips, ridder }: PlayerChipProps) {
   return (
     <div
       className={cn(
@@ -28,7 +30,8 @@ export default function PlayerChip({ player, active, ridder }: PlayerChipProps) 
       <span className={active ? 'opacity-80' : 'text-muted-foreground'}>
         {player.roundScore !== null ? rankLabel(player.roundScore) : '·'}
         {' · '}
-        {player.sipsTotal}🍺
+        {/* ronde/totaal: het ronde-getal vet zodat "wie drinkt nu hoeveel" opvalt. */}
+        <span className="font-bold">{roundSips}</span>/{player.sipsTotal}🍺
       </span>
     </div>
   )
