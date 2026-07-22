@@ -186,6 +186,12 @@ export default function GameScreen() {
   const { phase } = state
   const canAct = (playerId: string) => myPlayerId === null || myPlayerId === playerId
 
+  // Slokken die een speler in de huidige fase binnenkreeg (bussen kent geen rondes).
+  const phaseSips = (playerId: string) =>
+    state.sipsLog
+      .filter((e) => e.phase === phase && e.playerId === playerId)
+      .reduce((sum, e) => sum + e.amount, 0)
+
   const heroFlip = cardAnim
     ? { id: cardAnim.id, card: cardAnim.card, animSeed: cardAnim.animSeed }
     : null
@@ -224,12 +230,14 @@ export default function GameScreen() {
               <PlayerChip
                 player={player}
                 active={player.id === state.turn?.playerId}
+                roundSips={phaseSips(player.id)}
                 driver={state.bus?.driverIds.includes(player.id) ?? false}
               />
             </button>
           </motion.div>
         ))}
       </div>
+      <p className="pb-1 text-center text-[10px] text-muted-foreground">{strings.scoreLegend}</p>
 
       <div
         ref={stageRef}

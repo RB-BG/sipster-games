@@ -6,11 +6,13 @@ import { cn } from '@/lib/utils'
 interface PlayerChipProps {
   player: PlayerState
   active: boolean
+  /** Slokken deze fase; getoond naast het totaal als "fase/totaal". */
+  roundSips: number
   /** Toont het bus-icoon als deze speler de bus rijdt. */
   driver?: boolean
 }
 
-export default function PlayerChip({ player, active, driver }: PlayerChipProps) {
+export default function PlayerChip({ player, active, roundSips, driver }: PlayerChipProps) {
   return (
     <div
       className={cn(
@@ -25,7 +27,8 @@ export default function PlayerChip({ player, active, driver }: PlayerChipProps) 
       </span>
       <span className="max-w-20 truncate font-semibold">{player.name}</span>
       <span className={active ? 'opacity-80' : 'text-muted-foreground'}>
-        {player.hand.length}🃏 · {player.sipsTotal}🍺
+        {/* fase/totaal: het fase-getal vet zodat "wie drinkt nu hoeveel" opvalt. */}
+        {player.hand.length}🃏 · <span className="font-bold">{roundSips}</span>/{player.sipsTotal}🍺
       </span>
     </div>
   )

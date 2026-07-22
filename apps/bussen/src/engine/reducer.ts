@@ -131,7 +131,7 @@ function newPlayer(profile: PlayerProfile): PlayerState {
 function drink(draft: GameState, playerId: string, amount: number, reason: SipReason): void {
   const player = playerById(draft, playerId)
   player.sipsTotal += amount
-  draft.sipsLog.push({ playerId, amount, reason })
+  draft.sipsLog.push({ playerId, amount, reason, phase: draft.phase })
 }
 
 /** Trekt de volgende kaart uit de geschudde deck; herschudt bij uitputting. */
