@@ -88,6 +88,8 @@ export default function ProfileScreen({ mode, initialCode }: ProfileScreenProps)
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={strings.playerNamePlaceholder}
+            // Kort houden zodat de spelerchips op tafel strak blijven passen.
+            maxLength={16}
             className="min-w-0 flex-1 rounded-lg border border-input bg-wood-950/40 px-3 py-2 text-ivory placeholder:text-muted-foreground"
           />
         </div>
