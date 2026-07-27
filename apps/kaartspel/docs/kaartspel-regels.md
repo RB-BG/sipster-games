@@ -92,4 +92,5 @@ Naast de kaarten-per-hand en de Yousef-drempel zijn deze in te stellen in de lob
 
 ## Open punten
 
-- Joker-specialeregel (naast de wildcard-rol): nog te bepalen, bewust uitgesteld.
+- Geen. De "speciale regel" voor de joker is de wildcard-rol (een gat in een set/straat vullen),
+  en die is ingebouwd (instelbaar via de huisregel "Joker als wildcard").
