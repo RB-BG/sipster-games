@@ -151,7 +151,8 @@ export const nl = {
     ],
   ] as [string, string][],
   ruleLabels: {
-    standaardSlokken: 'Slokken-eenheid',
+    handSize: 'Kaarten per hand',
+    yousefMax: 'Yousef roepen onder',
   },
   net: {
     hostFailed: 'Tafel maken lukt niet; check je internet en probeer opnieuw',
@@ -268,7 +269,8 @@ const en: Strings = {
     ],
   ],
   ruleLabels: {
-    standaardSlokken: 'Sip unit',
+    handSize: 'Cards per hand',
+    yousefMax: 'Call Yousef below',
   },
   net: {
     hostFailed: 'Could not create the table; check your internet and try again',

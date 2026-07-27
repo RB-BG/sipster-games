@@ -1,17 +1,26 @@
 // Copyright © 2026 Kaartspel. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
-import { cardEffect } from './cardActions'
 import type { DeckSource } from './deck'
 import type {
-  Card,
   Command,
   EngineEvent,
   ErrorCode,
   GameState,
+  HandCard,
   PlayerProfile,
   PlayerState,
+  RoundEntry,
+  RoundResult,
 } from './types'
-import { DEFAULT_RULES } from './types'
+import {
+  ASSAF_FACTOR,
+  ASSAF_TIE_PENALTY,
+  BAK_VALUE,
+  DEFAULT_RULES,
+  HALF_BAK_SIPS,
+  HALF_BAK_VALUE,
+} from './types'
+import { handValue, sameCard } from './values'
 import { validateCommand } from './validate'
 
 export interface ReduceResult {
@@ -20,10 +29,7 @@ export interface ReduceResult {
   error?: ErrorCode
 }
 
-export function createGame(
-  host: PlayerProfile,
-  rules = DEFAULT_RULES,
-): GameState {
+export function createGame(host: PlayerProfile, rules = DEFAULT_RULES): GameState {
   return {
     version: 0,
     phase: 'lobby',
@@ -33,20 +39,17 @@ export function createGame(
     round: 0,
     deck: [],
     drawIndex: 0,
+    discardTop: [],
+    discardBuried: [],
     turn: null,
-    currentCard: null,
-    activeRules: [],
-    nextRuleId: 1,
-    kingsDrawn: 0,
-    cup: 0,
-    pending: null,
+    roundResult: null,
   }
 }
 
 /**
- * De enige plek waar GameState verandert. Puur gegeven de DeckSource:
- * met een scripted deck is elke uitkomst deterministisch testbaar.
- * Bij een validatiefout blijft de state onaangeroerd.
+ * De enige plek waar GameState verandert. Puur gegeven de DeckSource: met een
+ * scripted deck is elke uitkomst deterministisch testbaar. Bij een validatiefout
+ * blijft de state onaangeroerd.
  */
 export function reduce(state: GameState, cmd: Command, rng: DeckSource): ReduceResult {
   const error = validateCommand(state, cmd)
@@ -70,23 +73,44 @@ export function reduce(state: GameState, cmd: Command, rng: DeckSource): ReduceR
       break
 
     case 'START_GAME':
-      startGame(draft, events, rng)
+      draft.round = 1
+      for (const p of draft.players) {
+        p.score = 0
+        p.sips = 0
+      }
+      deal(draft, rng)
+      draft.phase = 'playing'
+      events.push({ t: 'PHASE_CHANGED', phase: 'playing' })
       break
 
-    case 'FLIP_CARD':
-      flipCard(draft, events, rng)
+    case 'PLAY_TURN':
+      playTurn(draft, events, cmd.playerId, cmd.discard, cmd.drawFrom, rng)
       break
 
-    case 'ADD_TO_CUP':
-      applyAddToCup(draft, events, cmd.playerId, cmd.amount)
+    case 'CALL_YOUSEF':
+      callYousef(draft, events, cmd.playerId)
       break
 
-    case 'SET_RULE':
-      applySetRule(draft, events, cmd.playerId, cmd.text)
+    case 'DRAW_BAK': {
+      const player = playerById(draft, cmd.playerId)
+      player.score -= BAK_VALUE
+      events.push({ t: 'BAK_DRAWN', playerId: cmd.playerId })
       break
+    }
 
-    case 'ADD_SIPS':
-      applyAddSips(draft, cmd.targetPlayerId, cmd.amount)
+    case 'BUY_OFF': {
+      const player = playerById(draft, cmd.playerId)
+      player.score -= HALF_BAK_VALUE
+      player.sips += HALF_BAK_SIPS
+      break
+    }
+
+    case 'NEXT_ROUND':
+      draft.round++
+      draft.roundResult = null
+      deal(draft, rng)
+      draft.phase = 'playing'
+      events.push({ t: 'PHASE_CHANGED', phase: 'playing' })
       break
 
     case 'SET_CONNECTED':
@@ -94,13 +118,13 @@ export function reduce(state: GameState, cmd: Command, rng: DeckSource): ReduceR
       break
 
     case 'FORFEIT_TURN':
-      // Weggevallen actieve speler: laat een eventuele invoer vallen en ga door.
-      draft.pending = null
-      advanceOrEnd(draft, events)
+      advanceTurn(draft)
       break
 
     case 'END_GAME':
-      endGame(draft, events)
+      draft.phase = 'ended'
+      draft.turn = null
+      events.push({ t: 'PHASE_CHANGED', phase: 'ended' })
       break
   }
 
@@ -108,150 +132,136 @@ export function reduce(state: GameState, cmd: Command, rng: DeckSource): ReduceR
 }
 
 function newPlayer(profile: PlayerProfile): PlayerState {
-  return { ...profile, connected: true, sipsTotal: 0, roundSips: 0 }
+  return { ...profile, connected: true, hand: [], score: 0, sips: 0 }
 }
 
-/** Deelt slokken uit (of corrigeert met een negatief bedrag); nooit onder nul. */
-function applyAddSips(draft: GameState, targetId: string, amount: number): void {
-  const player = playerById(draft, targetId)
-  player.sipsTotal = Math.max(0, player.sipsTotal + amount)
-  player.roundSips = Math.max(0, player.roundSips + amount)
+function playerById(draft: GameState, id: string): PlayerState {
+  return draft.players.find((p) => p.id === id) as PlayerState
 }
 
-/** Trekt de volgende kaart uit de geschudde deck. */
-function drawCard(draft: GameState): Card {
+function firstConnected(draft: GameState): PlayerState {
+  return draft.players.find((p) => p.connected) ?? draft.players[0]
+}
+
+/** Deelt een verse ronde: schud, deel handen, en draai één startkaart op de aflegstapel. */
+function deal(draft: GameState, rng: DeckSource): void {
+  draft.deck = rng.shuffle()
+  draft.drawIndex = 0
+  draft.discardBuried = []
+  for (const p of draft.players) p.hand = []
+  for (let i = 0; i < draft.rules.handSize; i++) {
+    for (const p of draft.players) p.hand.push(draft.deck[draft.drawIndex++])
+  }
+  draft.discardTop = [draft.deck[draft.drawIndex++]]
+  draft.turn = { playerId: firstConnected(draft).id }
+}
+
+/** Trekt de volgende kaart; is de stapel op, schud dan de begraven aflegstapel opnieuw. */
+function drawFromDeck(draft: GameState, rng: DeckSource): HandCard {
+  if (draft.drawIndex >= draft.deck.length && draft.discardBuried.length > 0) {
+    draft.deck = rng.reshuffle(draft.discardBuried)
+    draft.drawIndex = 0
+    draft.discardBuried = []
+  }
   return draft.deck[draft.drawIndex++]
 }
 
-function startGame(draft: GameState, events: EngineEvent[], rng: DeckSource): void {
-  draft.deck = rng.shuffle()
-  draft.drawIndex = 0
-  draft.currentCard = null
-  draft.activeRules = []
-  draft.nextRuleId = 1
-  draft.kingsDrawn = 0
-  draft.cup = 0
-  draft.pending = null
-  draft.phase = 'playing'
-  draft.round = 1
-  for (const player of draft.players) {
-    player.sipsTotal = 0
-    player.roundSips = 0
-  }
-  draft.turn = { playerId: draft.players[0].id }
-  events.push({ t: 'PHASE_CHANGED', phase: 'playing' })
-}
-
-function flipCard(draft: GameState, events: EngineEvent[], rng: DeckSource): void {
-  const card = drawCard(draft)
-  draft.currentCard = card
-  events.push({ t: 'CARD_FLIPPED', card, animSeed: rng.seed() })
-
-  const effect = cardEffect(card.rank)
-  const flipperId = draft.turn!.playerId
-
-  switch (effect) {
-    case 'king': {
-      draft.kingsDrawn++
-      if (draft.kingsDrawn >= 4) {
-        // 4e koning: de speler drinkt het volle glas, het potje eindigt.
-        endGame(draft, events)
-        return
-      }
-      // Koning 1-3: de speler schenkt slokken in het glas (ADD_TO_CUP).
-      draft.pending = { kind: 'cup', playerId: flipperId }
-      return
-    }
-    case 'newRule':
-      // De speler typt een nieuwe regel (SET_RULE) voordat het spel doorgaat.
-      draft.pending = { kind: 'rule', playerId: flipperId }
-      return
-    case 'roleThumb':
-    case 'roleQuestion':
-      // Rol aan de speler koppelen; een eventuele vorige drager van dezelfde rol vervalt.
-      draft.activeRules = draft.activeRules.filter((r) => r.rank !== card.rank)
-      draft.activeRules.push({
-        id: draft.nextRuleId++,
-        rank: card.rank,
-        byPlayerId: flipperId,
-        text: '',
-      })
-      break
-    case 'none':
-      break
-  }
-
-  advanceOrEnd(draft, events)
-}
-
-function applyAddToCup(
+function playTurn(
   draft: GameState,
   events: EngineEvent[],
   playerId: string,
-  amount: number,
+  discard: HandCard[],
+  drawFrom: 'deck' | 'discard',
+  rng: DeckSource,
 ): void {
-  draft.cup += amount
-  draft.pending = null
-  events.push({ t: 'CUP_FILLED', playerId, amount, total: draft.cup })
-  advanceOrEnd(draft, events)
-}
+  const player = playerById(draft, playerId)
+  // Leg de opgegeven kaarten af (verwijder ze uit de hand op identiteit).
+  player.hand = player.hand.filter((h) => !discard.some((d) => sameCard(d, h)))
 
-function applySetRule(
-  draft: GameState,
-  events: EngineEvent[],
-  playerId: string,
-  text: string,
-): void {
-  draft.activeRules.push({
-    // De rang van de zojuist gedraaide "nieuwe regel"-kaart.
-    id: draft.nextRuleId++,
-    rank: draft.currentCard?.rank ?? 5,
-    byPlayerId: playerId,
-    text: text.trim(),
+  const oldTop = draft.discardTop
+  let drawn: HandCard
+  const fromDiscard = drawFrom === 'discard'
+  if (fromDiscard) {
+    // Pak de bovenste afgelegde kaart; de rest van die groep raakt begraven.
+    drawn = oldTop[oldTop.length - 1]
+    draft.discardBuried.push(...oldTop.slice(0, -1))
+  } else {
+    drawn = drawFromDeck(draft, rng)
+    draft.discardBuried.push(...oldTop)
+  }
+  player.hand.push(drawn)
+  draft.discardTop = discard.map((c) => ({ ...c }))
+
+  events.push({
+    t: 'PLAYED',
+    playerId,
+    discard: discard.map((c) => ({ ...c })),
+    drawn,
+    fromDiscard,
+    animSeed: rng.seed(),
   })
-  draft.pending = null
-  advanceOrEnd(draft, events)
+  advanceTurn(draft)
 }
 
-/** Geen kaarten meer over: einde. Anders de beurt naar de volgende speler. */
-function advanceOrEnd(draft: GameState, events: EngineEvent[]): void {
-  if (draft.drawIndex >= draft.deck.length) {
-    endGame(draft, events)
-    return
+/**
+ * Iemand roept "Yousef": de ronde stopt en wordt gescoord. De roeper wint schoon
+ * als hij strikt de laagste is; anders is het Assaf en wordt alleen de roeper gestraft.
+ */
+function callYousef(draft: GameState, events: EngineEvent[], callerId: string): void {
+  events.push({ t: 'YOUSEF_CALLED', callerId })
+  const caller = playerById(draft, callerId)
+  const callerValue = handValue(caller.hand)
+
+  const othersValues = draft.players
+    .filter((p) => p.id !== callerId)
+    .map((p) => handValue(p.hand))
+  const othersMin = Math.min(...othersValues)
+  const lowestValue = Math.min(callerValue, othersMin)
+  const assaf = othersMin <= callerValue
+
+  const gained = new Map<string, number>()
+  if (!assaf) {
+    // Schone winst: de roeper 0, elke ander het verschil tot de roeper.
+    gained.set(callerId, 0)
+    for (const p of draft.players) {
+      if (p.id === callerId) continue
+      gained.set(p.id, handValue(p.hand) - callerValue)
+    }
+  } else {
+    // Verkeerde call: alleen de roeper krijgt punten, de rest 0 (gegund).
+    const penalty =
+      othersMin < callerValue ? (callerValue - othersMin) * ASSAF_FACTOR : ASSAF_TIE_PENALTY
+    for (const p of draft.players) gained.set(p.id, p.id === callerId ? penalty : 0)
   }
-  advanceTurn(draft)
+
+  const entries: RoundEntry[] = draft.players.map((p) => ({
+    playerId: p.id,
+    hand: p.hand.map((c) => ({ ...c })),
+    handValue: handValue(p.hand),
+    gained: gained.get(p.id) ?? 0,
+  }))
+  for (const p of draft.players) p.score += gained.get(p.id) ?? 0
+
+  const result: RoundResult = { callerId, callerValue, lowestValue, assaf, entries }
+  draft.roundResult = result
+  draft.turn = null
+  draft.phase = 'roundEnd'
+  events.push({ t: 'ROUND_SCORED', result })
+  events.push({ t: 'PHASE_CHANGED', phase: 'roundEnd' })
 }
 
 /** Volgende speler met de klok mee; slaat weggevallen spelers over. */
 function advanceTurn(draft: GameState): void {
+  if (draft.turn === null) return
   const players = draft.players
   const n = players.length
   const idx = players.findIndex((p) => p.id === draft.turn!.playerId)
   for (let step = 1; step <= n; step++) {
     const cand = players[(idx + step) % n]
     if (cand.connected) {
-      // Voorbij het einde van de tafel gewrapt = een nieuwe ronde (lap).
-      if (idx + step >= n) startNewRound(draft)
       draft.turn = { playerId: cand.id }
       return
     }
   }
   // Niemand verbonden: laat de beurt staan (host lost dit op).
-}
-
-/** Nieuwe ronde: teller omhoog, elke speler begint weer op 0 slokken deze ronde. */
-function startNewRound(draft: GameState): void {
-  draft.round++
-  for (const player of draft.players) player.roundSips = 0
-}
-
-function endGame(draft: GameState, events: EngineEvent[]): void {
-  draft.phase = 'ended'
-  draft.turn = null
-  draft.pending = null
-  events.push({ t: 'PHASE_CHANGED', phase: 'ended' })
-}
-
-function playerById(draft: GameState, id: string): PlayerState {
-  return draft.players.find((p) => p.id === id) as PlayerState
 }

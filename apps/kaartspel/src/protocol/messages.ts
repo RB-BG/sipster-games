@@ -1,12 +1,12 @@
 // Copyright © 2026 Kaartspel. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
-import type { Card, ErrorCode, GameState, PlayerProfile, RuleConfig } from '@/engine/types'
+import type { ErrorCode, GameState, HandCard, PlayerProfile, RuleConfig } from '@/engine/types'
 
 /** Hoog dit op bij incompatibele wijzigingen; clients met een andere versie weigeren. */
-export const PROTOCOL_VERSION = 1
+export const PROTOCOL_VERSION = 2
 
-/** Soort kaart-animatie. In Kaartspel is er alleen de flip van de opengedraaide kaart. */
-export type CardAnimKind = 'flip'
+/** Soort kaart-animatie (voor later; de hand-UI en animaties komen in chunk 3). */
+export type CardAnimKind = 'flip' | 'deal'
 
 /** Guest -> host (de host stuurt zijn eigen intents door dezelfde loop, loopback). */
 export type Intent =
@@ -14,11 +14,16 @@ export type Intent =
   | { t: 'LEAVE' }
   | { t: 'SET_RULES'; rules: RuleConfig }
   | { t: 'START_GAME' }
-  | { t: 'FLIP_CARD' }
-  | { t: 'ADD_TO_CUP'; amount: number }
-  | { t: 'SET_RULE'; text: string }
-  /** Deel slokken uit aan een speler (negatief bedrag corrigeert). */
-  | { t: 'ADD_SIPS'; targetPlayerId: string; amount: number }
+  /** Een beurt: leg kaarten af en trek van de stapel of de aflegstapel. */
+  | { t: 'PLAY_TURN'; discard: HandCard[]; drawFrom: 'deck' | 'discard' }
+  /** "Yousef" roepen aan het begin van je beurt. */
+  | { t: 'CALL_YOUSEF' }
+  /** roundEnd: een bak trekken (score -20). */
+  | { t: 'DRAW_BAK' }
+  /** roundEnd: een halve bak afkopen (score -10, +10 slokken). */
+  | { t: 'BUY_OFF' }
+  /** roundEnd -> playing: host deelt de volgende ronde. */
+  | { t: 'NEXT_ROUND' }
   /** Host-only: sla de beurt van de (weggevallen) actieve speler over. */
   | { t: 'FORFEIT_TURN' }
   | { t: 'END_GAME' }
@@ -27,10 +32,9 @@ export type Intent =
 /**
  * Host -> clients. Na elke mutatie gaat de volledige GameState mee (klein object):
  * geen delta's betekent geen desync en triviale reconnect. Het CARD_EVENT-bericht
- * is transient (puur voor de gelijktijdige flip-animatie); de nieuwe waarden staan
- * ook al in de bijbehorende STATE.
+ * is transient (voor een latere reveal-animatie) en wordt nu nog niet uitgezonden.
  */
 export type GameEvent =
   | { t: 'STATE'; state: GameState }
-  | { t: 'CARD_EVENT'; animId: string; kind: CardAnimKind; card: Card; animSeed: number }
+  | { t: 'CARD_EVENT'; animId: string; kind: CardAnimKind; card: HandCard; animSeed: number }
   | { t: 'ERROR'; code: ErrorCode }

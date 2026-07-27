@@ -3,14 +3,14 @@
 import { create } from 'zustand'
 import { cryptoDeckSource } from '@/engine/deck'
 import { createGame, reduce } from '@/engine/reducer'
-import type { Card, Command, ErrorCode, GameState, PlayerProfile, RuleConfig } from '@/engine/types'
+import type { Command, ErrorCode, GameState, HandCard, PlayerProfile, RuleConfig } from '@/engine/types'
 import type { CardAnimKind } from '@/protocol/messages'
 
 /** Kaart-animatie voor de Card-component; landt op de host-authoritative kaart. */
 export interface CardAnim {
   id: number
   kind: CardAnimKind
-  card: Card
+  card: HandCard
   animSeed: number
 }
 
@@ -37,7 +37,6 @@ interface GameStore {
 
 // Hotseat: dit toestel is de host, dus de crypto-bron mag hier draaien.
 const rng = cryptoDeckSource()
-let animCounter = 0
 
 export const useGameStore = create<GameStore>((set, get) => ({
   state: null,
@@ -65,31 +64,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   dispatch: (cmd) => {
-    const { state, animating } = get()
-    if (!state || animating) return
+    const { state } = get()
+    if (!state) return
     const result = reduce(state, cmd, rng)
     if (result.error) {
       set({ lastError: result.error })
       return
     }
-
-    let cardAnim = get().cardAnim
-    let startsAnim = false
-    for (const event of result.events) {
-      if (event.t === 'CARD_FLIPPED') {
-        cardAnim = { id: ++animCounter, kind: 'flip', card: event.card, animSeed: event.animSeed }
-        startsAnim = true
-      }
-    }
-
-    set({
-      state: result.state,
-      // Tijdens een animatie blijft de weergave op de oude stand hangen.
-      viewState: startsAnim ? get().viewState : result.state,
-      lastError: null,
-      cardAnim,
-      animating: startsAnim,
-    })
+    // Kaart-animaties (viewState-freeze) komen terug in chunk 3 samen met de
+    // hand-UI; voor nu rendert de UI direct de nieuwe state.
+    set({ state: result.state, viewState: result.state, lastError: null })
   },
 
   onRollSettled: () => set({ animating: false, viewState: get().state }),

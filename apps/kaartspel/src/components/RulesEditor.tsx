@@ -62,12 +62,21 @@ export default function RulesEditor({ rules, disabled, onChange }: RulesEditorPr
       <h2 className="text-sm text-muted-foreground">{strings.rulesTitle}</h2>
 
       <Stepper
-        label={strings.ruleLabels.standaardSlokken}
-        value={rules.standaardSlokken}
-        min={1}
-        max={6}
+        label={strings.ruleLabels.handSize}
+        value={rules.handSize}
+        min={2}
+        max={7}
         disabled={disabled}
-        onChange={(v) => onChange({ standaardSlokken: v })}
+        onChange={(v) => onChange({ handSize: v })}
+      />
+
+      <Stepper
+        label={strings.ruleLabels.yousefMax}
+        value={rules.yousefMax}
+        min={3}
+        max={10}
+        disabled={disabled}
+        onChange={(v) => onChange({ yousefMax: v })}
       />
 
       <details className="text-sm text-muted-foreground">

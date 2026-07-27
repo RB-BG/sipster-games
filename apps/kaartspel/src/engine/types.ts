@@ -1,18 +1,31 @@
 // Copyright © 2026 Kaartspel. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
-import type { Card, Rank } from '@sipster/core/cards/types'
+import type { Rank, Suit } from '@sipster/core/cards/types'
 
-export type { Card, Rank, Suit } from '@sipster/core/cards/types'
+export type { Rank, Suit } from '@sipster/core/cards/types'
 
-export type GamePhase = 'lobby' | 'playing' | 'ended'
+/**
+ * Een kaart in een hand, de trekstapel of de aflegstapel. Yousef speelt met een
+ * standaarddeck (52) plus twee jokers. Core kent geen joker (rang 2..14), dus we
+ * modelleren de kaart hier als een discriminated union en laten core ongemoeid.
+ * Aas is rang 14 (core), maar telt in Yousef als 1 punt; zie `values.ts`.
+ */
+export type HandCard =
+  | { kind: 'card'; suit: Suit; rank: Rank }
+  | { kind: 'joker'; jid: number }
+
+export type GamePhase = 'lobby' | 'playing' | 'roundEnd' | 'ended'
 
 export interface RuleConfig {
-  /** Stapgrootte-eenheid voor de cup-meter (de +/- knoppen verhogen met dit aantal). */
-  standaardSlokken: number
+  /** Aantal kaarten per hand bij het delen. */
+  handSize: number
+  /** "Yousef" roepen mag zodra je handwaarde < dit is (klassiek: 5). */
+  yousefMax: number
 }
 
 export const DEFAULT_RULES: RuleConfig = {
-  standaardSlokken: 1,
+  handSize: 5,
+  yousefMax: 5,
 }
 
 export interface PlayerProfile {
@@ -23,33 +36,39 @@ export interface PlayerProfile {
 
 export interface PlayerState extends PlayerProfile {
   connected: boolean
-  /** Slokken die deze speler dit hele potje binnenkreeg (cumulatief). */
-  sipsTotal: number
-  /** Slokken deze ronde (lap); reset zodra de beurt de tafel weer rond is. */
-  roundSips: number
+  /** De kaarten in de hand van deze speler (host-authoritative waarheid). */
+  hand: HandCard[]
+  /** Cumulatieve strafpunten over het hele potje; de bak-meter. */
+  score: number
+  /** Cumulatief afgekochte slokken (halve bakken), puur voor het scorebord. */
+  sips: number
 }
 
-/**
- * Een blijvende regel of rol die op tafel zichtbaar blijft tot het einde van het
- * potje. `rank` zegt welke kaart het veroorzaakte (5 = vrije regel; J = duimmeester;
- * Q = vraagmeester). Bij een regel (rank 5) staat de door de speler getypte tekst in
- * `text`; bij een rol is `text` leeg en leidt de UI de rolnaam af uit de rank (taal-neutraal).
- */
-export interface ActiveRule {
-  id: number
-  rank: Rank
-  byPlayerId: string
-  text: string
-}
-
-/**
- * Invoer die de actieve speler nog moet afhandelen voordat de volgende speler mag
- * draaien: een koning vult de cup-meter, een 5 typt een nieuwe regel.
- */
-export type Pending = { kind: 'cup'; playerId: string } | { kind: 'rule'; playerId: string } | null
-
-/** Wie nu aan zet is om te draaien; null buiten de speel-fase. */
+/** Wie nu aan zet is; null buiten de speel-fase. */
 export type TurnState = { playerId: string } | null
+
+/** De open weergave van één speler bij het eind van een ronde. */
+export interface RoundEntry {
+  playerId: string
+  hand: HandCard[]
+  handValue: number
+  /** Punten die deze speler deze ronde bij zijn score kreeg. */
+  gained: number
+}
+
+/**
+ * De uitslag van een ronde, gezet zodra iemand "Yousef" roept. Blijft staan in
+ * `phase: 'roundEnd'` tot de host een nieuwe ronde start.
+ */
+export interface RoundResult {
+  callerId: string
+  callerValue: number
+  /** De laagste handwaarde aan tafel (excl. de roeper telt niet apart mee). */
+  lowestValue: number
+  /** True als de roeper niet (mede-)laagste was: verkeerde call, alleen de roeper wordt gestraft. */
+  assaf: boolean
+  entries: RoundEntry[]
+}
 
 export interface GameState {
   /** Monotoon oplopend, voor snapshot-ordering bij guests. */
@@ -59,25 +78,22 @@ export interface GameState {
   hostId: string
   /** Volgorde in de array = speelvolgorde (met de klok mee). */
   players: PlayerState[]
-  /** Huidige ronde = aantal keren dat de beurt de tafel rond is (1-gebaseerd). */
+  /** Huidige ronde, 1-gebaseerd; open einde (geen vaste winst-conditie). */
   round: number
-  /** De geschudde deck (host-authoritative); reduce popt puur op drawIndex. */
-  deck: Card[]
+  /** De geschudde trekstapel (host-authoritative); reduce popt puur op drawIndex. */
+  deck: HandCard[]
   drawIndex: number
-  /** Wie nu mag draaien; null buiten de speel-fase. */
+  /**
+   * De laatst afgelegde groep kaarten. De bovenste (laatste) daarvan is de kaart
+   * die de volgende speler eventueel mag oppakken i.p.v. van de stapel te trekken.
+   */
+  discardTop: HandCard[]
+  /** Afgelegde kaarten die niet meer oppakbaar zijn; hieruit wordt herschud bij een lege stapel. */
+  discardBuried: HandCard[]
+  /** Wie nu een beurt doet; null buiten `playing`. */
   turn: TurnState
-  /** De laatst omgedraaide kaart, tafel-breed zichtbaar tot de volgende flip. */
-  currentCard: Card | null
-  /** Blijvende regels en rollen (10, J, Q). */
-  activeRules: ActiveRule[]
-  /** Oplopende id-teller voor activeRules (uniek, ook na verwijderen). */
-  nextRuleId: number
-  /** Aantal reeds getrokken koningen (0..4). */
-  kingsDrawn: number
-  /** Slokken in het centrale glas (de King's Cup-meter). */
-  cup: number
-  /** Openstaande invoer; blokkeert de volgende flip. */
-  pending: Pending
+  /** Uitslag van de zojuist afgelopen ronde; alleen gezet in `roundEnd`. */
+  roundResult: RoundResult | null
 }
 
 /** Wat een speler wil doen; de reducer valideert en voert uit. */
@@ -86,14 +102,19 @@ export type Command =
   | { t: 'REMOVE_PLAYER'; playerId: string }
   | { t: 'SET_RULES'; rules: RuleConfig }
   | { t: 'START_GAME' }
-  /** De actieve speler draait de volgende kaart om. */
-  | { t: 'FLIP_CARD'; playerId: string }
-  /** Koning: schenk `amount` slokken in het centrale glas. */
-  | { t: 'ADD_TO_CUP'; playerId: string; amount: number }
-  /** Rang 5: leg een nieuwe regel vast. */
-  | { t: 'SET_RULE'; playerId: string; text: string }
-  /** Deel handmatig slokken uit aan een speler (negatief bedrag corrigeert). */
-  | { t: 'ADD_SIPS'; targetPlayerId: string; amount: number }
+  /**
+   * Een beurt: leg `discard` af (los, setje of straat) en trek daarna één kaart,
+   * van de stapel (`deck`) of de bovenste afgelegde kaart (`discard`).
+   */
+  | { t: 'PLAY_TURN'; playerId: string; discard: HandCard[]; drawFrom: 'deck' | 'discard' }
+  /** Aan het begin van je beurt "Yousef" roepen (mag bij handwaarde < yousefMax). */
+  | { t: 'CALL_YOUSEF'; playerId: string }
+  /** roundEnd: een speler met score >= 30 trekt een bak (-20). */
+  | { t: 'DRAW_BAK'; playerId: string }
+  /** roundEnd: een halve bak afkopen (-10 punten, +10 slokken). */
+  | { t: 'BUY_OFF'; playerId: string }
+  /** roundEnd -> playing: deel opnieuw en begin de volgende ronde. */
+  | { t: 'NEXT_ROUND' }
   | { t: 'SET_CONNECTED'; playerId: string; connected: boolean }
   /** Host slaat de (weggevallen) actieve speler over. */
   | { t: 'FORFEIT_TURN' }
@@ -101,8 +122,10 @@ export type Command =
 
 /** Transiente gebeurtenissen voor animatie, geluid en toasts; state is al bijgewerkt. */
 export type EngineEvent =
-  | { t: 'CARD_FLIPPED'; card: Card; animSeed: number }
-  | { t: 'CUP_FILLED'; playerId: string; amount: number; total: number }
+  | { t: 'PLAYED'; playerId: string; discard: HandCard[]; drawn: HandCard; fromDiscard: boolean; animSeed: number }
+  | { t: 'YOUSEF_CALLED'; callerId: string }
+  | { t: 'ROUND_SCORED'; result: RoundResult }
+  | { t: 'BAK_DRAWN'; playerId: string }
   | { t: 'PHASE_CHANGED'; phase: GamePhase }
 
 export type ErrorCode =
@@ -111,12 +134,33 @@ export type ErrorCode =
   | 'NOT_ENOUGH_PLAYERS'
   | 'ALREADY_JOINED'
   | 'UNKNOWN_PLAYER'
-  | 'PENDING_INPUT'
-  | 'NOT_PENDING'
-  | 'NOTHING_TO_FLIP'
-  | 'INVALID_RULES'
-  | 'INVALID_AMOUNT'
-  | 'INVALID_TEXT'
   | 'GAME_FULL'
+  | 'INVALID_RULES'
+  /** De opgegeven afleg-groep zit niet (helemaal) in de hand van de speler. */
+  | 'CARD_NOT_IN_HAND'
+  /** De afleg-groep is geen geldige losse kaart, set of straat. */
+  | 'INVALID_GROUP'
+  /** "Yousef" roepen mag niet: handwaarde te hoog. */
+  | 'HAND_TOO_HIGH'
+  /** Van de aflegstapel trekken kan niet: er ligt niets. */
+  | 'EMPTY_DISCARD'
+  /** Bak trekken / afkopen kan nu niet (verkeerde score of fase). */
+  | 'NO_BAK_DUE'
+  | 'CANNOT_BUY_OFF'
+  /** Er staan nog bakken open; eerst afhandelen voor de volgende ronde. */
+  | 'BAK_PENDING'
   /** Bericht van buiten met een onverwachte vorm; komt nooit uit de engine zelf. */
   | 'MALFORMED'
+
+/** Drempel waarboven een speler een bak moet trekken. */
+export const BAK_THRESHOLD = 30
+/** Puntwaarde van een hele bak (gaat er bij het trekken af). */
+export const BAK_VALUE = 20
+/** Puntwaarde van een halve bak (afkopen). */
+export const HALF_BAK_VALUE = 10
+/** Slokken die het afkopen van een halve bak kost. */
+export const HALF_BAK_SIPS = 10
+/** Strafpunten voor de roeper bij een gelijke laagste hand (Assaf-gelijkspel). */
+export const ASSAF_TIE_PENALTY = 10
+/** Vermenigvuldiger voor het verschil bij een strikt lagere hand (Assaf). */
+export const ASSAF_FACTOR = 10

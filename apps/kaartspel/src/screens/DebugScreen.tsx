@@ -4,13 +4,20 @@ import { useRef, useState } from 'react'
 import { cardLabel } from '@/engine/cards'
 import { cryptoDeckSource } from '@/engine/deck'
 import { createGame, reduce } from '@/engine/reducer'
-import type { Command, EngineEvent, ErrorCode, GameState } from '@/engine/types'
+import type { Command, EngineEvent, ErrorCode, GameState, HandCard } from '@/engine/types'
+import { handValue } from '@/engine/values'
 
 const EMOJI = ['👑', '🍺', '😎', '🦊', '🐙', '🍀', '🌶️', '🫠']
 
+/** Label van een hand-kaart, joker-bewust. */
+function label(c: HandCard): string {
+  return c.kind === 'joker' ? '🃏' : cardLabel({ suit: c.suit, rank: c.rank })
+}
+
 /**
  * Dev-only speeltuin (/?debug) om de engine zonder game-UI te bespelen.
- * Bewust kaal: knoppen + JSON, geen productie-styling.
+ * Bewust kaal: knoppen + JSON, geen productie-styling. Handen zijn hier voor
+ * iedereen zichtbaar (geen afscherming); dat is de hand-UI van chunk 3.
  */
 export default function DebugScreen() {
   const rng = useRef(cryptoDeckSource())
@@ -25,11 +32,13 @@ export default function DebugScreen() {
     setError(result.error ?? null)
     if (result.error) return
     setState(result.state)
-    setLog((prev) => [...prev.slice(-14), ...result.events.map((e) => beschrijfEvent(e))])
+    setLog((prev) => [...prev.slice(-14), ...result.events.map(beschrijfEvent)])
   }
 
-  const { turn, pending, currentCard } = state
-  const actorId = pending?.playerId ?? turn?.playerId ?? state.hostId
+  const actorId = state.turn?.playerId
+  const actor = state.players.find((p) => p.id === actorId)
+  // Simpele dev-zet: leg de eerste kaart uit de hand af.
+  const firstCard = actor?.hand[0]
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 p-4 font-mono text-sm">
@@ -52,33 +61,46 @@ export default function DebugScreen() {
           </>
         )}
 
-        {state.phase === 'playing' && pending === null && (
+        {state.phase === 'playing' && actorId && firstCard && (
           <>
             <DebugButton
-              label={`flip (${actorId})`}
-              onClick={() => dispatch({ t: 'FLIP_CARD', playerId: actorId })}
+              label={`${actorId}: leg ${label(firstCard)} af, trek stapel`}
+              onClick={() =>
+                dispatch({ t: 'PLAY_TURN', playerId: actorId, discard: [firstCard], drawFrom: 'deck' })
+              }
+            />
+            <DebugButton
+              label="idem, pak aflegstapel"
+              onClick={() =>
+                dispatch({
+                  t: 'PLAY_TURN',
+                  playerId: actorId,
+                  discard: [firstCard],
+                  drawFrom: 'discard',
+                })
+              }
+            />
+            <DebugButton
+              label={`Yousef (${actor ? handValue(actor.hand) : '?'})`}
+              onClick={() => dispatch({ t: 'CALL_YOUSEF', playerId: actorId })}
             />
             <DebugButton label="forfeit" onClick={() => dispatch({ t: 'FORFEIT_TURN' })} />
           </>
         )}
 
-        {pending?.kind === 'cup' && (
+        {state.phase === 'roundEnd' && (
           <>
-            {[1, 3, 5].map((amount) => (
+            {state.players.map((p) => (
               <DebugButton
-                key={amount}
-                label={`schenk ${amount}`}
-                onClick={() => dispatch({ t: 'ADD_TO_CUP', playerId: pending.playerId, amount })}
+                key={p.id}
+                label={p.score >= 30 ? `${p.id}: bak (${p.score})` : `${p.id}: afkopen (${p.score})`}
+                onClick={() =>
+                  dispatch(p.score >= 30 ? { t: 'DRAW_BAK', playerId: p.id } : { t: 'BUY_OFF', playerId: p.id })
+                }
               />
             ))}
+            <DebugButton label="volgende ronde" onClick={() => dispatch({ t: 'NEXT_ROUND' })} />
           </>
-        )}
-
-        {pending?.kind === 'rule' && (
-          <DebugButton
-            label="regel: geen namen"
-            onClick={() => dispatch({ t: 'SET_RULE', playerId: pending.playerId, text: 'geen namen' })}
-          />
         )}
 
         {state.phase !== 'lobby' && (
@@ -86,7 +108,18 @@ export default function DebugScreen() {
         )}
       </section>
 
-      {currentCard && <p className="text-cyan-soft">laatste kaart: {cardLabel(currentCard)}</p>}
+      {state.phase !== 'lobby' && (
+        <section className="flex flex-col gap-1 text-cyan-soft">
+          {state.players.map((p) => (
+            <div key={p.id}>
+              {p.id === actorId ? '▶ ' : '  '}
+              {p.name} [{p.score}pt] : {p.hand.map(label).join(' ')} (= {handValue(p.hand)})
+            </div>
+          ))}
+          <div className="text-muted-foreground">aflegstapel top: {state.discardTop.map(label).join(' ')}</div>
+        </section>
+      )}
+
       {error && <p className="text-destructive">⚠ {error}</p>}
 
       {log.length > 0 && (
@@ -118,10 +151,14 @@ function DebugButton({ label, onClick }: { label: string; onClick: () => void })
 
 function beschrijfEvent(e: EngineEvent): string {
   switch (e.t) {
-    case 'CARD_FLIPPED':
-      return `flip: ${cardLabel(e.card)}`
-    case 'CUP_FILLED':
-      return `${e.playerId} schenkt ${e.amount} in (totaal ${e.total})`
+    case 'PLAYED':
+      return `${e.playerId} legt ${e.discard.map(label).join(' ')} af, trekt ${label(e.drawn)}`
+    case 'YOUSEF_CALLED':
+      return `${e.callerId} roept Yousef`
+    case 'ROUND_SCORED':
+      return `ronde gescoord${e.result.assaf ? ' (Assaf!)' : ''}`
+    case 'BAK_DRAWN':
+      return `${e.playerId} trekt een bak`
     case 'PHASE_CHANGED':
       return `fase → ${e.phase}`
   }

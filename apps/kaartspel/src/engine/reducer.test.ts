@@ -1,319 +1,261 @@
 // Copyright © 2026 Kaartspel. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
 import { describe, expect, it } from 'vitest'
-import { card, scriptedDeck } from './deck'
+import { card, joker, orderedDeck, scriptedDeck } from './deck'
 import { createGame, reduce } from './reducer'
-import type { Card, Command, GameState, PlayerProfile } from './types'
+import type { GameState, HandCard, PlayerProfile } from './types'
 
-const P1: PlayerProfile = { id: 'p1', name: 'Ann', emoji: '🦊' }
-const P2: PlayerProfile = { id: 'p2', name: 'Bo', emoji: '🐼' }
-const P3: PlayerProfile = { id: 'p3', name: 'Cas', emoji: '🐸' }
+/** Bron met een volledig deck, voor commands die delen (START_GAME, NEXT_ROUND). */
+const FULL = scriptedDeck(orderedDeck())
 
-/** Start een potje met een vast kaart-script en het opgegeven aantal spelers. */
-function started(deck: Card[], players: PlayerProfile[] = [P1, P2]) {
-  const rng = scriptedDeck(deck)
-  let state = createGame(players[0])
-  for (const p of players.slice(1)) {
-    state = reduce(state, { t: 'ADD_PLAYER', profile: p }, rng).state
+function profile(id: string): PlayerProfile {
+  return { id, name: id, emoji: '🙂' }
+}
+
+function lobbyWith(ids: string[]): GameState {
+  let state = createGame(profile(ids[0]))
+  for (const id of ids.slice(1)) {
+    state = reduce(state, { t: 'ADD_PLAYER', profile: profile(id) }, FULL).state
   }
-  state = reduce(state, { t: 'START_GAME' }, rng).state
-  return { state, rng }
+  return state
 }
 
-/** Draai de volgende kaart namens de speler die aan zet is. */
-function flip(state: GameState, rng: ReturnType<typeof scriptedDeck>) {
-  return reduce(state, { t: 'FLIP_CARD', playerId: state.turn!.playerId }, rng)
+/** Bouwt direct een speel-state met vaste handen, om scoring te isoleren. */
+function makePlaying(hands: HandCard[][], overrides: Partial<GameState> = {}): GameState {
+  const players = hands.map((hand, i) => ({
+    id: `p${i}`,
+    name: `p${i}`,
+    emoji: '🙂',
+    connected: true,
+    hand,
+    score: 0,
+    sips: 0,
+  }))
+  return {
+    version: 1,
+    phase: 'playing',
+    rules: { handSize: 5, yousefMax: 5 },
+    hostId: 'p0',
+    players,
+    round: 1,
+    deck: [card(8, 'diamonds'), card(8, 'clubs')],
+    drawIndex: 0,
+    discardTop: [card(7, 'hearts')],
+    discardBuried: [],
+    turn: { playerId: 'p0' },
+    roundResult: null,
+    ...overrides,
+  }
 }
 
-function apply(state: GameState, cmd: Command, rng: ReturnType<typeof scriptedDeck>) {
-  return reduce(state, cmd, rng)
-}
-
-describe('createGame', () => {
-  it('begint in de lobby met alleen de host', () => {
-    const s = createGame(P1)
+describe('createGame + lobby', () => {
+  it('start in de lobby met de host als enige speler', () => {
+    const s = createGame(profile('p0'))
     expect(s.phase).toBe('lobby')
     expect(s.players).toHaveLength(1)
-    expect(s.hostId).toBe('p1')
-    expect(s.cup).toBe(0)
-    expect(s.kingsDrawn).toBe(0)
+    expect(s.round).toBe(0)
+  })
+  it('weigert dezelfde speler tweemaal', () => {
+    const s = lobbyWith(['p0'])
+    const r = reduce(s, { t: 'ADD_PLAYER', profile: profile('p0') }, FULL)
+    expect(r.error).toBe('ALREADY_JOINED')
+  })
+  it('START_GAME vereist minstens twee spelers', () => {
+    const r = reduce(lobbyWith(['p0']), { t: 'START_GAME' }, FULL)
+    expect(r.error).toBe('NOT_ENOUGH_PLAYERS')
   })
 })
 
 describe('START_GAME', () => {
-  it('deelt de deck, zet de eerste speler aan zet en de fase op playing', () => {
-    const { state } = started([card(3, 'hearts'), card(4, 'spades')])
-    expect(state.phase).toBe('playing')
-    expect(state.turn?.playerId).toBe('p1')
-    expect(state.deck).toHaveLength(2)
-    expect(state.drawIndex).toBe(0)
-    expect(state.currentCard).toBeNull()
-  })
-
-  it('weigert met minder dan 2 spelers', () => {
-    const rng = scriptedDeck([])
-    const res = reduce(createGame(P1), { t: 'START_GAME' }, rng)
-    expect(res.error).toBe('NOT_ENOUGH_PLAYERS')
+  it('deelt handen, draait een startkaart en zet de beurt bij de eerste speler', () => {
+    const r = reduce(lobbyWith(['p0', 'p1']), { t: 'START_GAME' }, FULL)
+    expect(r.state.phase).toBe('playing')
+    expect(r.state.round).toBe(1)
+    expect(r.state.players[0].hand).toHaveLength(5)
+    expect(r.state.players[1].hand).toHaveLength(5)
+    expect(r.state.discardTop).toHaveLength(1)
+    expect(r.state.drawIndex).toBe(2 * 5 + 1)
+    expect(r.state.turn).toEqual({ playerId: 'p0' })
+    expect(r.events).toContainEqual({ t: 'PHASE_CHANGED', phase: 'playing' })
   })
 })
 
-describe('FLIP_CARD: gewone kaart', () => {
-  it('onthult de kaart en geeft de beurt door met de klok mee', () => {
-    const { state, rng } = started([card(3, 'hearts'), card(6, 'clubs')])
-    const res = flip(state, rng)
-    expect(res.state.currentCard).toEqual(card(3, 'hearts'))
-    expect(res.state.turn?.playerId).toBe('p2')
-    expect(res.events.some((e) => e.t === 'CARD_FLIPPED')).toBe(true)
-  })
+describe('PLAY_TURN', () => {
+  const hands = () => [
+    [card(9, 'hearts'), card(9, 'diamonds'), card(3, 'clubs'), card(5, 'spades'), joker(0)],
+    [card(2, 'spades')],
+  ]
 
-  it('wrapt de beurt terug naar de eerste speler', () => {
-    const { state, rng } = started([card(3, 'hearts'), card(6, 'clubs'), card(9, 'spades')])
-    let s = flip(state, rng).state
-    expect(s.turn?.playerId).toBe('p2')
-    s = flip(s, rng).state
-    expect(s.turn?.playerId).toBe('p1') // terug bij het begin, deck nog niet op
-    expect(s.phase).toBe('playing')
-  })
-
-  it('weigert een flip als het niet jouw beurt is', () => {
-    const { state, rng } = started([card(3, 'hearts')])
-    const res = reduce(state, { t: 'FLIP_CARD', playerId: 'p2' }, rng)
-    expect(res.error).toBe('NOT_YOUR_TURN')
-  })
-
-  it('weigert een flip in de lobby', () => {
-    const rng = scriptedDeck([])
-    const res = reduce(createGame(P1), { t: 'FLIP_CARD', playerId: 'p1' }, rng)
-    expect(res.error).toBe('WRONG_PHASE')
-  })
-})
-
-describe('King\'s Cup', () => {
-  it('koning 1-3 opent de cup-invoer en telt slokken op', () => {
-    const { state, rng } = started([card(13, 'spades'), card(3, 'hearts')])
-    const flipped = flip(state, rng)
-    expect(flipped.state.kingsDrawn).toBe(1)
-    expect(flipped.state.pending).toEqual({ kind: 'cup', playerId: 'p1' })
-    expect(flipped.state.turn?.playerId).toBe('p1') // beurt nog niet door
-
-    // Zolang de cup niet gevuld is, kan niemand draaien.
-    const blocked = reduce(flipped.state, { t: 'FLIP_CARD', playerId: 'p1' }, rng)
-    expect(blocked.error).toBe('PENDING_INPUT')
-
-    const filled = apply(flipped.state, { t: 'ADD_TO_CUP', playerId: 'p1', amount: 4 }, rng)
-    expect(filled.state.cup).toBe(4)
-    expect(filled.state.pending).toBeNull()
-    expect(filled.state.turn?.playerId).toBe('p2')
-    expect(filled.events.some((e) => e.t === 'CUP_FILLED')).toBe(true)
-  })
-
-  it('weigert een ongeldig aantal slokken', () => {
-    const { state, rng } = started([card(13, 'spades')])
-    const flipped = flip(state, rng)
-    expect(reduce(flipped.state, { t: 'ADD_TO_CUP', playerId: 'p1', amount: 0 }, rng).error).toBe(
-      'INVALID_AMOUNT',
+  it('legt een setje af en trekt van de stapel', () => {
+    const s = makePlaying(hands())
+    const r = reduce(
+      s,
+      {
+        t: 'PLAY_TURN',
+        playerId: 'p0',
+        discard: [card(9, 'hearts'), card(9, 'diamonds')],
+        drawFrom: 'deck',
+      },
+      FULL,
     )
-    expect(reduce(flipped.state, { t: 'ADD_TO_CUP', playerId: 'p1', amount: 99 }, rng).error).toBe(
-      'INVALID_AMOUNT',
+    expect(r.error).toBeUndefined()
+    expect(r.state.players[0].hand).toHaveLength(4)
+    expect(r.state.players[0].hand).toContainEqual(card(8, 'diamonds')) // getrokken van de stapel
+    expect(r.state.discardTop).toEqual([card(9, 'hearts'), card(9, 'diamonds')])
+    expect(r.state.discardBuried).toContainEqual(card(7, 'hearts')) // oude top begraven
+    expect(r.state.turn).toEqual({ playerId: 'p1' })
+  })
+
+  it('kan de bovenste afgelegde kaart oppakken i.p.v. van de stapel', () => {
+    const s = makePlaying(hands())
+    const r = reduce(
+      s,
+      { t: 'PLAY_TURN', playerId: 'p0', discard: [card(5, 'spades')], drawFrom: 'discard' },
+      FULL,
     )
+    expect(r.state.players[0].hand).toContainEqual(card(7, 'hearts')) // opgepakt van de aflegstapel
+    expect(r.state.discardTop).toEqual([card(5, 'spades')])
+    expect(r.events.some((e) => e.t === 'PLAYED' && e.fromDiscard)).toBe(true)
   })
 
-  it('de 4e koning eindigt het potje; de cup blijft staan om leeg te drinken', () => {
-    const deck = [card(13, 'spades'), card(13, 'hearts'), card(13, 'clubs'), card(13, 'diamonds')]
-    const { state: initial, rng } = started(deck)
-    let state = initial
-    // koning 1
-    state = flip(state, rng).state
-    state = apply(state, { t: 'ADD_TO_CUP', playerId: 'p1', amount: 2 }, rng).state
-    // koning 2
-    state = flip(state, rng).state
-    state = apply(state, { t: 'ADD_TO_CUP', playerId: 'p2', amount: 3 }, rng).state
-    // koning 3
-    state = flip(state, rng).state
-    state = apply(state, { t: 'ADD_TO_CUP', playerId: 'p1', amount: 1 }, rng).state
-    expect(state.kingsDrawn).toBe(3)
-    expect(state.cup).toBe(6)
-    // koning 4
-    const end = flip(state, rng)
-    expect(end.state.kingsDrawn).toBe(4)
-    expect(end.state.phase).toBe('ended')
-    expect(end.state.cup).toBe(6)
-    expect(end.state.currentCard).toEqual(card(13, 'diamonds'))
-    expect(end.state.pending).toBeNull()
-  })
-})
-
-describe('nieuwe regel (5)', () => {
-  it('opent de regel-invoer en legt de regel vast', () => {
-    const { state, rng } = started([card(5, 'clubs'), card(3, 'hearts')])
-    const flipped = flip(state, rng)
-    expect(flipped.state.pending).toEqual({ kind: 'rule', playerId: 'p1' })
-
-    const ruled = apply(flipped.state, { t: 'SET_RULE', playerId: 'p1', text: '  geen namen  ' }, rng)
-    expect(ruled.state.activeRules).toHaveLength(1)
-    expect(ruled.state.activeRules[0]).toMatchObject({ rank: 5, byPlayerId: 'p1', text: 'geen namen' })
-    expect(ruled.state.pending).toBeNull()
-    expect(ruled.state.turn?.playerId).toBe('p2')
-  })
-
-  it('weigert een lege regel', () => {
-    const { state, rng } = started([card(5, 'clubs')])
-    const flipped = flip(state, rng)
-    expect(reduce(flipped.state, { t: 'SET_RULE', playerId: 'p1', text: '   ' }, rng).error).toBe(
-      'INVALID_TEXT',
+  it('weigert een ongeldige afleg-groep', () => {
+    const r = reduce(
+      makePlaying(hands()),
+      {
+        t: 'PLAY_TURN',
+        playerId: 'p0',
+        discard: [card(9, 'hearts'), card(3, 'clubs')],
+        drawFrom: 'deck',
+      },
+      FULL,
     )
-  })
-})
-
-describe('rollen (boer/vrouw)', () => {
-  it('koppelt de rol aan de speler zonder de beurt te blokkeren', () => {
-    const { state, rng } = started([card(11, 'spades'), card(12, 'hearts')])
-    const res = flip(state, rng)
-    expect(res.state.pending).toBeNull()
-    expect(res.state.activeRules).toHaveLength(1)
-    expect(res.state.activeRules[0]).toMatchObject({ rank: 11, byPlayerId: 'p1' })
-    expect(res.state.turn?.playerId).toBe('p2')
+    expect(r.error).toBe('INVALID_GROUP')
   })
 
-  it('een nieuwe drager van dezelfde rol verdringt de vorige', () => {
-    const { state, rng } = started([card(11, 'spades'), card(11, 'hearts')])
-    let s = flip(state, rng).state // p1 wordt duimmeester
-    s = flip(s, rng).state // p2 draait ook een boer
-    const thumbRules = s.activeRules.filter((r) => r.rank === 11)
-    expect(thumbRules).toHaveLength(1)
-    expect(thumbRules[0].byPlayerId).toBe('p2')
-  })
-})
-
-describe('deck-uitputting', () => {
-  it('eindigt het potje als de laatste kaart gedraaid is', () => {
-    const { state, rng } = started([card(3, 'hearts'), card(6, 'clubs')])
-    let s = flip(state, rng).state
-    s = flip(s, rng).state
-    expect(s.phase).toBe('ended')
-  })
-})
-
-describe('FORFEIT_TURN', () => {
-  it('slaat de actieve speler over en laat openstaande invoer vallen', () => {
-    const { state, rng } = started([card(13, 'spades'), card(3, 'hearts')], [P1, P2, P3])
-    const flipped = flip(state, rng) // p1 trekt koning -> pending cup
-    expect(flipped.state.pending).not.toBeNull()
-    const forfeited = reduce(flipped.state, { t: 'FORFEIT_TURN' }, rng)
-    expect(forfeited.state.pending).toBeNull()
-    expect(forfeited.state.turn?.playerId).toBe('p2')
-  })
-})
-
-describe('verbindingen', () => {
-  it('slaat weggevallen spelers over bij de beurtwissel', () => {
-    const { state, rng } = started([card(3, 'hearts'), card(4, 'spades')], [P1, P2, P3])
-    let s = reduce(state, { t: 'SET_CONNECTED', playerId: 'p2', connected: false }, rng).state
-    s = flip(s, rng).state // p1 draait; p2 is weg, dus p3 is aan de beurt
-    expect(s.turn?.playerId).toBe('p3')
-  })
-})
-
-// --- Review-fixes: cap, verkeerde speler, laatste kaart, ended -------------
-
-describe('review-fixes', () => {
-  it('ADD_TO_CUP door de verkeerde speler is NOT_YOUR_TURN', () => {
-    const { state, rng } = started([card(13, 'spades'), card(3, 'hearts')])
-    const s = flip(state, rng).state // p1 trekt koning -> pending cup
-    expect(apply(s, { t: 'ADD_TO_CUP', playerId: 'p2', amount: 2 }, rng).error).toBe(
-      'NOT_YOUR_TURN',
+  it('weigert kaarten die niet in de hand zitten', () => {
+    const r = reduce(
+      makePlaying(hands()),
+      { t: 'PLAY_TURN', playerId: 'p0', discard: [card(2, 'diamonds')], drawFrom: 'deck' },
+      FULL,
     )
+    expect(r.error).toBe('CARD_NOT_IN_HAND')
   })
 
-  it('SET_RULE door de verkeerde speler is NOT_YOUR_TURN', () => {
-    const { state, rng } = started([card(5, 'spades'), card(3, 'hearts')])
-    const s = flip(state, rng).state // p1 trekt de regel-kaart -> pending rule
-    expect(apply(s, { t: 'SET_RULE', playerId: 'p2', text: 'nee' }, rng).error).toBe(
-      'NOT_YOUR_TURN',
+  it('weigert een beurt van de verkeerde speler', () => {
+    const r = reduce(
+      makePlaying(hands()),
+      { t: 'PLAY_TURN', playerId: 'p1', discard: [card(2, 'spades')], drawFrom: 'deck' },
+      FULL,
     )
-  })
-
-  it('pending op de allerlaatste kaart: afhandelen eindigt het potje netjes', () => {
-    const { state, rng } = started([card(5, 'spades')])
-    let s = flip(state, rng).state
-    expect(s.pending?.kind).toBe('rule')
-    s = apply(s, { t: 'SET_RULE', playerId: 'p1', text: 'proost' }, rng).state
-    expect(s.phase).toBe('ended')
-    expect(s.pending).toBeNull()
-  })
-
-  it('intents in de ended-fase worden geweigerd', () => {
-    const { state, rng } = started([card(3, 'hearts')])
-    const s = flip(state, rng).state // laatste kaart -> ended
-    expect(s.phase).toBe('ended')
-    expect(apply(s, { t: 'FLIP_CARD', playerId: 'p1' }, rng).error).toBe('WRONG_PHASE')
-    expect(apply(s, { t: 'ADD_PLAYER', profile: P3 }, rng).error).toBe('WRONG_PHASE')
-  })
-
-  it('ADD_PLAYER weigert boven MAX_PLAYERS', () => {
-    const rng = scriptedDeck([card(3, 'hearts')])
-    let s = createGame(P1)
-    for (let i = 2; i <= 12; i++) {
-      s = reduce(s, { t: 'ADD_PLAYER', profile: { id: `x${i}`, name: `X${i}`, emoji: '🍺' } }, rng)
-        .state
-    }
-    expect(s.players.length).toBe(12)
-    expect(
-      reduce(s, { t: 'ADD_PLAYER', profile: { id: 'x13', name: 'X13', emoji: '🍺' } }, rng).error,
-    ).toBe('GAME_FULL')
+    expect(r.error).toBe('NOT_YOUR_TURN')
   })
 })
 
-describe('ADD_SIPS: slokken uitdelen', () => {
-  it('telt op bij totaal én deze ronde', () => {
-    const { state, rng } = started([card(3, 'hearts'), card(4, 'spades'), card(6, 'clubs')])
-    const s = apply(state, { t: 'ADD_SIPS', targetPlayerId: 'p2', amount: 2 }, rng).state
-    const p2 = s.players.find((p) => p.id === 'p2')!
-    expect(p2.sipsTotal).toBe(2)
-    expect(p2.roundSips).toBe(2)
+describe('CALL_YOUSEF', () => {
+  it('mag niet met een te hoge hand', () => {
+    const s = makePlaying([[card(9, 'hearts'), card(9, 'diamonds')], [card(2, 'spades')]])
+    const r = reduce(s, { t: 'CALL_YOUSEF', playerId: 'p0' }, FULL)
+    expect(r.error).toBe('HAND_TOO_HIGH')
   })
 
-  it('een negatief bedrag corrigeert maar zakt nooit onder nul', () => {
-    const { state, rng } = started([card(3, 'hearts'), card(4, 'spades'), card(6, 'clubs')])
-    let s = apply(state, { t: 'ADD_SIPS', targetPlayerId: 'p1', amount: 3 }, rng).state
-    s = apply(s, { t: 'ADD_SIPS', targetPlayerId: 'p1', amount: -5 }, rng).state
-    const p1 = s.players.find((p) => p.id === 'p1')!
-    expect(p1.sipsTotal).toBe(0)
-    expect(p1.roundSips).toBe(0)
+  it('schone winst: roeper 0, de rest het verschil tot de roeper', () => {
+    const s = makePlaying([[card(4, 'hearts')], [card(9, 'hearts')], [card(8, 'hearts')]])
+    const r = reduce(s, { t: 'CALL_YOUSEF', playerId: 'p0' }, FULL)
+    expect(r.error).toBeUndefined()
+    expect(r.state.phase).toBe('roundEnd')
+    expect(r.state.turn).toBeNull()
+    expect(r.state.roundResult?.assaf).toBe(false)
+    expect(r.state.players[0].score).toBe(0)
+    expect(r.state.players[1].score).toBe(9 - 4)
+    expect(r.state.players[2].score).toBe(8 - 4)
   })
 
-  it('weigert een onbekende speler, nul, en de verkeerde fase', () => {
-    const { state, rng } = started([card(3, 'hearts'), card(4, 'spades')])
-    expect(apply(state, { t: 'ADD_SIPS', targetPlayerId: 'weg', amount: 1 }, rng).error).toBe(
-      'UNKNOWN_PLAYER',
-    )
-    expect(apply(state, { t: 'ADD_SIPS', targetPlayerId: 'p1', amount: 0 }, rng).error).toBe(
-      'INVALID_AMOUNT',
-    )
-    const lobby = createGame(P1)
-    expect(apply(lobby, { t: 'ADD_SIPS', targetPlayerId: 'p1', amount: 1 }, rng).error).toBe(
-      'WRONG_PHASE',
-    )
+  it('Assaf met iemand lager: roeper krijgt verschil x10, de rest 0', () => {
+    // p0=4, p1=1 (aas), p2=8. Verkeerde call: (4-1)*10 = 30 voor p0.
+    const s = makePlaying([[card(4, 'hearts')], [card(14, 'hearts')], [card(8, 'hearts')]])
+    const r = reduce(s, { t: 'CALL_YOUSEF', playerId: 'p0' }, FULL)
+    expect(r.state.roundResult?.assaf).toBe(true)
+    expect(r.state.players[0].score).toBe(30)
+    expect(r.state.players[1].score).toBe(0)
+    expect(r.state.players[2].score).toBe(0)
+    expect(r.state.roundResult?.lowestValue).toBe(1)
+  })
+
+  it('Assaf bij gelijkspel: roeper +10, de rest 0', () => {
+    const s = makePlaying([[card(3, 'hearts')], [card(3, 'diamonds')], [card(8, 'hearts')]])
+    const r = reduce(s, { t: 'CALL_YOUSEF', playerId: 'p0' }, FULL)
+    expect(r.state.roundResult?.assaf).toBe(true)
+    expect(r.state.players[0].score).toBe(10)
+    expect(r.state.players[1].score).toBe(0)
+    expect(r.state.players[2].score).toBe(0)
   })
 })
 
-describe('ronde-teller', () => {
-  it('begint op 1 en hoogt op zodra de beurt de tafel rond is', () => {
-    const { state, rng } = started([card(3, 'hearts'), card(4, 'spades'), card(6, 'clubs'), card(7, 'diamonds')])
-    expect(state.round).toBe(1)
-    let s = flip(state, rng).state // p1 -> p2, nog ronde 1
-    expect(s.round).toBe(1)
-    s = flip(s, rng).state // p2 -> terug naar p1: nieuwe ronde
-    expect(s.round).toBe(2)
+describe('roundEnd: bakken, afkopen en de volgende ronde', () => {
+  function assafState(): GameState {
+    const s = makePlaying([[card(4, 'hearts')], [card(14, 'hearts')], [card(8, 'hearts')]])
+    return reduce(s, { t: 'CALL_YOUSEF', playerId: 'p0' }, FULL).state // p0 score 30
+  }
+
+  it('DRAW_BAK haalt 20 punten weg', () => {
+    const r = reduce(assafState(), { t: 'DRAW_BAK', playerId: 'p0' }, FULL)
+    expect(r.state.players[0].score).toBe(10)
+    expect(r.events).toContainEqual({ t: 'BAK_DRAWN', playerId: 'p0' })
   })
 
-  it('reset de ronde-slokken van iedereen bij een nieuwe ronde', () => {
-    const { state, rng } = started([card(3, 'hearts'), card(4, 'spades'), card(6, 'clubs'), card(7, 'diamonds')])
-    let s = apply(state, { t: 'ADD_SIPS', targetPlayerId: 'p1', amount: 4 }, rng).state
-    s = flip(s, rng).state // ronde 1 nog
-    s = flip(s, rng).state // ronde 2: roundSips terug naar 0
-    const p1 = s.players.find((p) => p.id === 'p1')!
-    expect(p1.roundSips).toBe(0)
-    expect(p1.sipsTotal).toBe(4) // totaal blijft staan
+  it('een speler onder de 30 kan geen bak trekken', () => {
+    const r = reduce(assafState(), { t: 'DRAW_BAK', playerId: 'p1' }, FULL)
+    expect(r.error).toBe('NO_BAK_DUE')
+  })
+
+  it('BUY_OFF kost 10 punten en levert 10 slokken op', () => {
+    const clean = reduce(
+      makePlaying([[card(4, 'hearts')], [card(9, 'hearts')], [card(8, 'hearts')]]),
+      { t: 'CALL_YOUSEF', playerId: 'p0' },
+      FULL,
+    ).state // p1 score 5
+    const r = reduce(clean, { t: 'BUY_OFF', playerId: 'p1' }, FULL)
+    expect(r.state.players[1].score).toBe(5 - 10)
+    expect(r.state.players[1].sips).toBe(10)
+  })
+
+  it('afkopen mag niet bij een score van 30 of hoger', () => {
+    const r = reduce(assafState(), { t: 'BUY_OFF', playerId: 'p0' }, FULL)
+    expect(r.error).toBe('CANNOT_BUY_OFF')
+  })
+
+  it('NEXT_ROUND is geblokkeerd zolang iemand nog een bak moet trekken', () => {
+    const r = reduce(assafState(), { t: 'NEXT_ROUND' }, FULL)
+    expect(r.error).toBe('BAK_PENDING')
+  })
+
+  it('NEXT_ROUND deelt opnieuw, houdt scores en telt de ronde op', () => {
+    const drawn = reduce(assafState(), { t: 'DRAW_BAK', playerId: 'p0' }, FULL).state // p0 -> 10
+    const r = reduce(drawn, { t: 'NEXT_ROUND' }, FULL)
+    expect(r.error).toBeUndefined()
+    expect(r.state.phase).toBe('playing')
+    expect(r.state.round).toBe(2)
+    expect(r.state.roundResult).toBeNull()
+    expect(r.state.players[0].hand).toHaveLength(5)
+    expect(r.state.players[0].score).toBe(10) // score blijft cumulatief
+  })
+})
+
+describe('beurt-beheer', () => {
+  it('FORFEIT_TURN slaat weggevallen spelers over', () => {
+    const s = makePlaying([[card(2, 'hearts')], [card(3, 'hearts')], [card(4, 'hearts')]])
+    s.players[1].connected = false
+    const r = reduce(s, { t: 'FORFEIT_TURN' }, FULL)
+    expect(r.state.turn).toEqual({ playerId: 'p2' })
+  })
+
+  it('END_GAME beëindigt het potje', () => {
+    const r = reduce(
+      makePlaying([[card(2, 'hearts')], [card(3, 'hearts')]]),
+      { t: 'END_GAME' },
+      FULL,
+    )
+    expect(r.state.phase).toBe('ended')
+    expect(r.state.turn).toBeNull()
   })
 })

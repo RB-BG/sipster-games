@@ -2,7 +2,7 @@
 
 import { cryptoDeckSource, type DeckSource } from '@/engine/deck'
 import { createGame, reduce } from '@/engine/reducer'
-import type { Command, EngineEvent, GameState, PlayerProfile, RuleConfig } from '@/engine/types'
+import type { Command, GameState, PlayerProfile, RuleConfig } from '@/engine/types'
 import type { GameEvent, Intent } from '@/protocol/messages'
 import type { HostTransport } from './transport'
 
@@ -30,17 +30,21 @@ function wellFormed(intent: Intent): boolean {
       return (
         typeof intent.rules === 'object' &&
         intent.rules !== null &&
-        Number.isInteger(intent.rules.standaardSlokken)
+        Number.isInteger(intent.rules.handSize) &&
+        Number.isInteger(intent.rules.yousefMax)
       )
-    case 'ADD_TO_CUP':
-      return Number.isInteger(intent.amount)
-    case 'SET_RULE':
-      return typeof intent.text === 'string'
-    case 'ADD_SIPS':
-      return typeof intent.targetPlayerId === 'string' && Number.isInteger(intent.amount)
+    case 'PLAY_TURN':
+      return (
+        Array.isArray(intent.discard) &&
+        intent.discard.every(isWellFormedCard) &&
+        (intent.drawFrom === 'deck' || intent.drawFrom === 'discard')
+      )
     case 'LEAVE':
     case 'START_GAME':
-    case 'FLIP_CARD':
+    case 'CALL_YOUSEF':
+    case 'DRAW_BAK':
+    case 'BUY_OFF':
+    case 'NEXT_ROUND':
     case 'FORFEIT_TURN':
     case 'END_GAME':
     case 'REQUEST_SYNC':
@@ -49,6 +53,14 @@ function wellFormed(intent: Intent): boolean {
       // Onbekend berichttype: weigeren.
       return false
   }
+}
+
+/** Vorm-check op één kaart uit een afleg-groep (een normale kaart of een joker). */
+function isWellFormedCard(c: unknown): boolean {
+  if (typeof c !== 'object' || c === null) return false
+  const card = c as { kind?: unknown; suit?: unknown; rank?: unknown; jid?: unknown }
+  if (card.kind === 'joker') return Number.isInteger(card.jid)
+  return card.kind === 'card' && typeof card.suit === 'string' && Number.isInteger(card.rank)
 }
 
 /** Neemt alleen de verwachte profielvelden over, met naam- en emoji-cap. */
@@ -62,7 +74,11 @@ function sanitizeProfile(profile: PlayerProfile): PlayerProfile {
 
 /**
  * Wat guests te zien krijgen: zonder de nog te trekken kaarten, anders leest
- * een guest met devtools de komende koningen uit. De host houdt de volledige state.
+ * een guest met devtools de komende deck-volgorde uit. De host houdt de volledige state.
+ *
+ * TODO (chunk 4, P2P-privacy): in Yousef zijn de handen geheim. Deze broadcast
+ * bevat nu nog alle handen; de netwerk-laag moet per ontvanger een gefilterde
+ * STATE sturen (eigen hand volledig, andermans hand alleen als aantal kaarten).
  */
 export function publicState(state: GameState): GameState {
   const pub = structuredClone(state)
@@ -108,13 +124,8 @@ export function createHostLoop(
       return
     }
     state = result.state
-    for (const event of result.events) {
-      const wire = toGameEvent(event, state.version)
-      if (wire) {
-        transport.broadcast(wire)
-        onEvent?.(wire)
-      }
-    }
+    // Kaart-reveal-events (voor animatie) komen in chunk 3; nu draagt de
+    // STATE-broadcast alle informatie.
     transport.broadcast({ t: 'STATE', state: publicState(state) })
     onState(state)
   }
@@ -200,6 +211,7 @@ export function createHostLoop(
       intent.t === 'SET_RULES' ||
       intent.t === 'START_GAME' ||
       intent.t === 'END_GAME' ||
+      intent.t === 'NEXT_ROUND' ||
       intent.t === 'FORFEIT_TURN'
     if (hostOnly && playerId !== state.hostId) {
       if (peerId) transport.send(peerId, { t: 'ERROR', code: 'NOT_YOUR_TURN' })
@@ -208,17 +220,6 @@ export function createHostLoop(
 
     if (intent.t === 'FORFEIT_TURN') {
       apply({ t: 'FORFEIT_TURN' }, peerId)
-      return
-    }
-
-    // Slokken uitdelen mag alleen de actieve speler (de draaier) of de host,
-    // zodat een willekeurige guest niet stiekem andermans totaal opdrijft.
-    if (
-      intent.t === 'ADD_SIPS' &&
-      playerId !== state.hostId &&
-      playerId !== state.turn?.playerId
-    ) {
-      if (peerId) transport.send(peerId, { t: 'ERROR', code: 'NOT_YOUR_TURN' })
       return
     }
 
@@ -262,33 +263,19 @@ function intentToCommand(intent: Intent, playerId: string): Command | null {
       return { t: 'SET_RULES', rules: intent.rules }
     case 'START_GAME':
       return { t: 'START_GAME' }
-    case 'FLIP_CARD':
-      return { t: 'FLIP_CARD', playerId }
-    case 'ADD_TO_CUP':
-      return { t: 'ADD_TO_CUP', playerId, amount: intent.amount }
-    case 'SET_RULE':
-      return { t: 'SET_RULE', playerId, text: intent.text }
-    case 'ADD_SIPS':
-      return { t: 'ADD_SIPS', targetPlayerId: intent.targetPlayerId, amount: intent.amount }
+    case 'PLAY_TURN':
+      return { t: 'PLAY_TURN', playerId, discard: intent.discard, drawFrom: intent.drawFrom }
+    case 'CALL_YOUSEF':
+      return { t: 'CALL_YOUSEF', playerId }
+    case 'DRAW_BAK':
+      return { t: 'DRAW_BAK', playerId }
+    case 'BUY_OFF':
+      return { t: 'BUY_OFF', playerId }
+    case 'NEXT_ROUND':
+      return { t: 'NEXT_ROUND' }
     case 'END_GAME':
       return { t: 'END_GAME' }
     default:
-      return null
-  }
-}
-
-function toGameEvent(event: EngineEvent, version: number): GameEvent | null {
-  switch (event.t) {
-    case 'CARD_FLIPPED':
-      return {
-        t: 'CARD_EVENT',
-        animId: String(version),
-        kind: 'flip',
-        card: event.card,
-        animSeed: event.animSeed,
-      }
-    default:
-      // Alle overige informatie zit al in de STATE-broadcast.
       return null
   }
 }

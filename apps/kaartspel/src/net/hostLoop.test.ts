@@ -72,26 +72,26 @@ describe('hostLoop lobby', () => {
 
   it('een onbekende peer krijgt een foutmelding', () => {
     const { transport, loop } = setup()
-    loop.handleIntent('peer-x', { t: 'FLIP_CARD' })
+    loop.handleIntent('peer-x', { t: 'CALL_YOUSEF' })
     expect(transport.sent[0]?.event).toEqual({ t: 'ERROR', code: 'UNKNOWN_PLAYER' })
   })
 
   it('alleen de host mag regels wijzigen', () => {
     const { transport, loop } = setup()
     loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
-    const rules = { standaardSlokken: 4 }
+    const rules = { handSize: 6, yousefMax: 5 }
 
     loop.handleIntent('peer-a', { t: 'SET_RULES', rules })
-    expect(loop.state.rules.standaardSlokken).toBe(1)
+    expect(loop.state.rules.handSize).toBe(5)
     expect(transport.sent.some((m) => m.to === 'peer-a' && m.event.t === 'ERROR')).toBe(true)
 
     loop.dispatchLocal({ t: 'SET_RULES', rules })
-    expect(loop.state.rules.standaardSlokken).toBe(4)
+    expect(loop.state.rules.handSize).toBe(6)
   })
 })
 
 describe('hostLoop in-game', () => {
-  it('host start het spel; de actieve speler kan flippen, de rest niet', () => {
+  it('host start het spel; de actieve speler kan spelen, de rest niet', () => {
     const { transport, loop } = setup()
     loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
     loop.dispatchLocal({ t: 'START_GAME' })
@@ -99,14 +99,18 @@ describe('hostLoop in-game', () => {
     expect(loop.state.turn?.playerId).toBe('host-1')
 
     // Guest is niet aan de beurt (host begint).
-    loop.handleIntent('peer-a', { t: 'FLIP_CARD' })
+    loop.handleIntent('peer-a', {
+      t: 'PLAY_TURN',
+      discard: [card(3, 'hearts')],
+      drawFrom: 'deck',
+    })
     expect(transport.sent.at(-1)?.event).toEqual({ t: 'ERROR', code: 'NOT_YOUR_TURN' })
 
-    // Host flipt: eerst een CARD_EVENT voor de animatie, daarna STATE.
+    // Host speelt een kaart uit zijn hand (harten 2 zit erin bij het geordende deck).
     transport.broadcasts.length = 0
-    loop.dispatchLocal({ t: 'FLIP_CARD' })
-    expect(transport.broadcasts[0]).toMatchObject({ t: 'CARD_EVENT', kind: 'flip' })
+    loop.dispatchLocal({ t: 'PLAY_TURN', discard: [card(2, 'hearts')], drawFrom: 'deck' })
     expect(transport.broadcasts.at(-1)?.t).toBe('STATE')
+    expect(loop.state.turn?.playerId).toBe('guest-1')
   })
 
   it('een guest kan het spel niet starten', () => {
@@ -134,47 +138,6 @@ describe('hostLoop in-game', () => {
 
     expect(loop.state.players).toHaveLength(2)
     expect(loop.state.players[1].connected).toBe(false)
-  })
-
-  it('een koning opent de cup-invoer; de actieve speler vult hem', () => {
-    // Deck met een koning bovenaan zodat de eerste flip de cup opent.
-    const deck = [card(13, 'spades'), card(3, 'hearts'), card(6, 'clubs')]
-    const { transport, loop } = setup(scriptedDeck(deck))
-    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
-    loop.dispatchLocal({ t: 'START_GAME' })
-
-    transport.broadcasts.length = 0
-    loop.dispatchLocal({ t: 'FLIP_CARD' })
-    expect(transport.broadcasts[0]).toMatchObject({ t: 'CARD_EVENT', kind: 'flip' })
-    expect(loop.state.kingsDrawn).toBe(1)
-    expect(loop.state.pending).toEqual({ kind: 'cup', playerId: 'host-1' })
-
-    loop.dispatchLocal({ t: 'ADD_TO_CUP', amount: 5 })
-    expect(loop.state.cup).toBe(5)
-    expect(loop.state.pending).toBeNull()
-    expect(loop.state.turn?.playerId).toBe('guest-1')
-  })
-
-  it('slokken uitdelen mag alleen de actieve speler of de host', () => {
-    const deck = [card(3, 'hearts'), card(6, 'clubs'), card(9, 'spades')]
-    const { transport, loop } = setup(scriptedDeck(deck))
-    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
-    loop.dispatchLocal({ t: 'START_GAME' }) // beurt: host-1
-
-    // Guest is niet aan de beurt: weigeren.
-    transport.sent.length = 0
-    loop.handleIntent('peer-a', { t: 'ADD_SIPS', targetPlayerId: 'host-1', amount: 2 })
-    expect(transport.sent.at(-1)?.event).toEqual({ t: 'ERROR', code: 'NOT_YOUR_TURN' })
-
-    // De host mag altijd uitdelen.
-    loop.dispatchLocal({ t: 'ADD_SIPS', targetPlayerId: 'guest-1', amount: 2 })
-    expect(loop.state.players.find((p) => p.id === 'guest-1')?.sipsTotal).toBe(2)
-
-    // Na de flip is de guest aan de beurt en mag hij zelf uitdelen.
-    loop.dispatchLocal({ t: 'FLIP_CARD' })
-    expect(loop.state.turn?.playerId).toBe('guest-1')
-    loop.handleIntent('peer-a', { t: 'ADD_SIPS', targetPlayerId: 'host-1', amount: 1 })
-    expect(loop.state.players.find((p) => p.id === 'host-1')?.sipsTotal).toBe(1)
   })
 
   it('de host-stoel is niet via JOIN te kapen', () => {
@@ -220,14 +183,14 @@ describe('hostLoop in-game', () => {
   })
 })
 
-describe('hostLoop hardening (review-fixes)', () => {
+describe('hostLoop hardening', () => {
   it('een malformed intent crasht de loop niet en krijgt MALFORMED terug', () => {
     const { transport, loop } = setup()
     loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
     loop.dispatchLocal({ t: 'START_GAME' })
 
-    loop.handleIntent('peer-a', { t: 'ADD_TO_CUP', amount: 'veel' } as never)
-    loop.handleIntent('peer-a', { t: 'SET_RULE', text: 42 } as never)
+    loop.handleIntent('peer-a', { t: 'PLAY_TURN', discard: 'nope', drawFrom: 'deck' } as never)
+    loop.handleIntent('peer-a', { t: 'PLAY_TURN', discard: [{}], drawFrom: 'space' } as never)
     loop.handleIntent('peer-a', { t: 'HACK_THE_PLANET' } as never)
     loop.handleIntent('peer-a', { t: 'JOIN', profile: { id: 7 } } as never)
 
@@ -292,24 +255,5 @@ describe('hostLoop hardening (review-fixes)', () => {
     }
     // De host zelf houdt de volledige deck.
     expect(loop.state.deck.length).toBeGreaterThan(0)
-  })
-
-  it('pending speler valt weg: host-forfeit maakt de tafel weer speelbaar', () => {
-    const rng = scriptedDeck([card(3, 'hearts'), card(13, 'spades'), card(4, 'clubs'), card(6, 'clubs')])
-    const { loop } = setup(rng)
-    loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
-    loop.dispatchLocal({ t: 'START_GAME' })
-
-    loop.dispatchLocal({ t: 'FLIP_CARD' }) // host: 3, beurt naar guest
-    loop.handleIntent('peer-a', { t: 'FLIP_CARD' }) // guest: koning -> pending cup
-    expect(loop.state.pending).toEqual({ kind: 'cup', playerId: 'guest-1' })
-
-    loop.handleIntent('peer-a', { t: 'LEAVE' })
-    expect(loop.state.players[1].connected).toBe(false)
-    expect(loop.state.pending).not.toBeNull()
-
-    loop.dispatchLocal({ t: 'FORFEIT_TURN' })
-    expect(loop.state.pending).toBeNull()
-    expect(loop.state.turn?.playerId).toBe('host-1')
   })
 })

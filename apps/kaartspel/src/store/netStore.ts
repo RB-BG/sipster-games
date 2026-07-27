@@ -48,11 +48,6 @@ interface NetStore {
   leave(): void
 }
 
-/** Commands die een kaart-reveal (en dus een animatie) uitlokken. */
-function triggersReveal(cmd: Command): boolean {
-  return cmd.t === 'FLIP_CARD'
-}
-
 export const useNetStore = create<NetStore>((set, get) => {
   function handleGameEvent(event: GameEvent) {
     switch (event.t) {
@@ -195,24 +190,8 @@ export const useNetStore = create<NetStore>((set, get) => {
     sendCommand: (cmd) => {
       const intent = commandToIntent(cmd)
       if (!intent) return
-
-      if (triggersReveal(cmd)) {
-        if (get().animating || pendingAction) return
-        // Optimistisch blokkeren tot het CARD_EVENT (of een ERROR) terugkomt;
-        // de timeout is het vangnet als de host nooit antwoordt.
-        pendingAction = true
-        set({ animating: true, lastError: null })
-        pendingActionTimer = window.setTimeout(() => {
-          if (!pendingAction) return
-          pendingAction = false
-          pendingActionTimer = null
-          set({ animating: false })
-          get().sendIntent({ t: 'REQUEST_SYNC' })
-        }, 8000)
-        get().sendIntent(intent)
-        return
-      }
-
+      // De optimistische reveal-blokkade hoort bij de kaart-animatie (chunk 3);
+      // voor nu sturen we de intent direct en rendert de UI op de STATE-broadcast.
       set({ lastError: null })
       get().sendIntent(intent)
     },
@@ -268,14 +247,16 @@ function commandToIntent(cmd: Command): Intent | null {
       return { t: 'SET_RULES', rules: cmd.rules }
     case 'START_GAME':
       return { t: 'START_GAME' }
-    case 'FLIP_CARD':
-      return { t: 'FLIP_CARD' }
-    case 'ADD_TO_CUP':
-      return { t: 'ADD_TO_CUP', amount: cmd.amount }
-    case 'SET_RULE':
-      return { t: 'SET_RULE', text: cmd.text }
-    case 'ADD_SIPS':
-      return { t: 'ADD_SIPS', targetPlayerId: cmd.targetPlayerId, amount: cmd.amount }
+    case 'PLAY_TURN':
+      return { t: 'PLAY_TURN', discard: cmd.discard, drawFrom: cmd.drawFrom }
+    case 'CALL_YOUSEF':
+      return { t: 'CALL_YOUSEF' }
+    case 'DRAW_BAK':
+      return { t: 'DRAW_BAK' }
+    case 'BUY_OFF':
+      return { t: 'BUY_OFF' }
+    case 'NEXT_ROUND':
+      return { t: 'NEXT_ROUND' }
     case 'FORFEIT_TURN':
       return { t: 'FORFEIT_TURN' }
     case 'END_GAME':
