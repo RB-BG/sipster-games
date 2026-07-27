@@ -44,4 +44,8 @@ de polish-chunk, net als bij kingsen.
 
 - Chunk 0 (regels): afgerond. Geen blokkerende open punten meer; mogelijke huisregel-toggles
   (Assaf-scoring, joker-wildcard) genoteerd voor later.
+- Chunk 1 (scaffold): afgerond (unieke namespaces, werknaam-branding, groen).
+- Chunk 2 (engine): afgerond. Pure engine + app-laag-port naar de nieuwe Intents/Commands;
+  `/?debug` speelt de engine. 72 vitest-tests, lint/typecheck/build groen. `GameScreen` is nog
+  een placeholder; kaart-animaties en P2P-hand-privacy staan als TODO voor chunk 3/4.
 - Chunk 1 t/m 5: open.
