@@ -1,55 +1,5 @@
 // Copyright © 2026 Kaartspel. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
-import type { Rank } from '@/engine/types'
-
-/**
- * De kaartacties per rang. De namen en instructies volgen `docs/kaartspel-regels.md`.
- * Los van het `nl`/`en`-object gehouden zodat de functies er netjes uit kunnen putten.
- */
-interface CardText {
-  name: string
-  instruction: string
-}
-
-const CARD_NL: Record<Rank, CardText> = {
-  2: { name: 'Jij', instruction: 'Wijs iemand aan; die drinkt.' },
-  3: { name: 'Ik', instruction: 'Je drinkt zelf.' },
-  4: { name: 'Vrouwen', instruction: 'Alle vrouwen drinken.' },
-  5: { name: 'Nieuwe regel', instruction: 'Verzin een regel die de rest van het potje geldt.' },
-  6: { name: 'Mannen', instruction: 'Alle mannen drinken.' },
-  7: { name: 'Hemel', instruction: 'Iedereen steekt zijn hand omhoog; de laatste drinkt.' },
-  8: { name: 'Maatje', instruction: 'Kies een drinkmaatje; die drinkt met je mee tot de volgende 8.' },
-  9: { name: 'Rijmen', instruction: 'Zeg een woord. Om de beurt rijmen; wie faalt, drinkt.' },
-  10: { name: 'Categorie', instruction: 'Noem een categorie. Om de beurt een voorbeeld; wie faalt of herhaalt, drinkt.' },
-  11: { name: 'Duimmeester', instruction: 'Leg ongemerkt je duim op tafel; de laatste die volgt, drinkt. Geldt de rest van het potje.' },
-  12: { name: 'Vraagmeester', instruction: 'Stel spelers vragen; wie antwoordt, drinkt. Geldt de rest van het potje.' },
-  13: { name: "King's Cup", instruction: 'Schenk slokken in het glas. De 4e koning drinkt het glas leeg: einde potje.' },
-  14: { name: 'Waterval', instruction: 'Iedereen drinkt tegelijk; stoppen mag pas als de speler vóór je stopt.' },
-}
-
-const CARD_EN: Record<Rank, CardText> = {
-  2: { name: 'You', instruction: 'Point at someone; they drink.' },
-  3: { name: 'Me', instruction: 'You drink.' },
-  4: { name: 'Women', instruction: 'All women drink.' },
-  5: { name: 'New rule', instruction: 'Make up a rule for the rest of the game.' },
-  6: { name: 'Men', instruction: 'All men drink.' },
-  7: { name: 'Heaven', instruction: 'Everyone raises a hand; the last one drinks.' },
-  8: { name: 'Mate', instruction: 'Pick a drinking mate who drinks along until the next 8.' },
-  9: { name: 'Rhyme', instruction: 'Say a word. Take turns rhyming; whoever fails, drinks.' },
-  10: { name: 'Category', instruction: 'Name a category. Take turns naming one; whoever fails or repeats, drinks.' },
-  11: { name: 'Thumb master', instruction: 'Sneak your thumb onto the table; the last to follow drinks. Lasts the whole game.' },
-  12: { name: 'Question master', instruction: 'Ask players questions; whoever answers, drinks. Lasts the whole game.' },
-  13: { name: "King's Cup", instruction: 'Pour sips into the glass. The 4th king drinks it dry: game over.' },
-  14: { name: 'Waterfall', instruction: 'Everyone drinks at once; you may stop only after the player before you does.' },
-}
-
-/** Roltekentje bij de spelerchip (taal-neutraal). */
-function roleBadgeFor(rank: Rank): string {
-  if (rank === 11) return '👍'
-  if (rank === 12) return '❓'
-  return ''
-}
-
 /**
  * Alle UI-teksten centraal. Geen i18n-lib: `nl` is de bron, `type Strings` is
  * afgeleid uit `nl` en dwingt elke andere taal af tot dezelfde keys en
@@ -71,31 +21,7 @@ export const nl = {
   playerNamePlaceholder: 'Naam',
 
   // HUD
-  turnOf: 'is aan de beurt',
-  passPhone: (name: string) => `Geef de telefoon aan ${name}`,
-  dealing: 'kaart wordt gedraaid…',
-  flipCard: 'Draai de volgende kaart',
-  waitingForFlip: (name: string) => `${name} draait de kaart…`,
-
-  // Kaartacties
-  cardName: (rank: Rank) => CARD_NL[rank].name,
-  cardInstruction: (rank: Rank) => CARD_NL[rank].instruction,
-  roleBadge: (rank: Rank) => roleBadgeFor(rank),
-  activeRulesTitle: 'Regels op tafel',
-
-  // King's Cup
-  cupTitle: "King's Cup",
-  cupSips: (n: number) => (n === 1 ? '1 slok in het glas' : `${n} slokken in het glas`),
-  kingsCount: (n: number) => `Koning ${n} van 4`,
-  pourPrompt: 'Schenk slokken in het glas',
-  pour: 'Schenk in',
-  drinkCup: (n: number) =>
-    n === 1 ? 'Drink het glas leeg (1 slok)' : `Drink het glas leeg (${n} slokken)`,
-
-  // Nieuwe regel
-  ruleInputPrompt: 'Verzin een nieuwe regel',
-  rulePlaceholder: 'Bv. niet vloeken',
-  saveRule: 'Vastleggen',
+  dealing: 'kaarten worden gedeeld…',
 
   // Einde
   finalTitle: 'Einde potje',
@@ -114,17 +40,9 @@ export const nl = {
   waitingForPlayers: 'Wachten op spelers…',
   reconnecting: 'opnieuw verbinden…',
   offline: 'offline',
-  skipTurn: 'Sla beurt over',
   round: (n: number) => `ronde ${n}`,
-  // Slokken-scorebord op de chips.
-  scoreLegend: 'deze ronde / totaal 🍺',
-  assignHint: 'tik een speler om slokken uit te delen',
-  assignGive: (n: number) => `geven +${n} 🍺`,
-  assignTake: (n: number) => `corrigeren −${n} 🍺`,
   waitForHost: 'De host gaat verder…',
   needMorePlayers: 'Wachten op minstens één medespeler…',
-  connectionLost: 'Verbinding kwijt; opnieuw verbinden…',
-  tableGone: 'De tafel is gesloten',
   soundOn: 'geluid aan',
   soundOff: 'geluid uit',
   stopGame: 'Stop het potje',
@@ -226,27 +144,7 @@ const en: Strings = {
   startGame: 'Start the game',
   playerNamePlaceholder: 'Name',
 
-  turnOf: 'is up',
-  passPhone: (name) => `Pass the phone to ${name}`,
-  dealing: 'flipping the card…',
-  flipCard: 'Flip the next card',
-  waitingForFlip: (name) => `${name} is flipping the card…`,
-
-  cardName: (rank) => CARD_EN[rank].name,
-  cardInstruction: (rank) => CARD_EN[rank].instruction,
-  roleBadge: (rank) => roleBadgeFor(rank),
-  activeRulesTitle: 'Rules on the table',
-
-  cupTitle: "King's Cup",
-  cupSips: (n) => (n === 1 ? '1 sip in the glass' : `${n} sips in the glass`),
-  kingsCount: (n) => `King ${n} of 4`,
-  pourPrompt: 'Pour sips into the glass',
-  pour: 'Pour',
-  drinkCup: (n) => (n === 1 ? 'Down the glass (1 sip)' : `Down the glass (${n} sips)`),
-
-  ruleInputPrompt: 'Make up a new rule',
-  rulePlaceholder: 'E.g. no swearing',
-  saveRule: 'Save',
+  dealing: 'dealing the cards…',
 
   finalTitle: 'Game over',
   backHome: 'Back to start',
@@ -263,16 +161,9 @@ const en: Strings = {
   waitingForPlayers: 'Waiting for players…',
   reconnecting: 'reconnecting…',
   offline: 'offline',
-  skipTurn: 'Skip turn',
   round: (n: number) => `round ${n}`,
-  scoreLegend: 'this round / total 🍺',
-  assignHint: 'tap a player to hand out sips',
-  assignGive: (n: number) => `give +${n} 🍺`,
-  assignTake: (n: number) => `fix −${n} 🍺`,
   waitForHost: 'The host continues…',
   needMorePlayers: 'Waiting for at least one other player…',
-  connectionLost: 'Connection lost; reconnecting…',
-  tableGone: 'The table has closed',
   soundOn: 'sound on',
   soundOff: 'sound off',
   stopGame: 'Stop the game',
