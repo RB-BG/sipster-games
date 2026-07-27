@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest'
 import { card, joker, orderedDeck, scriptedDeck } from './deck'
 import { createGame, reduce } from './reducer'
-import type { GameState, HandCard, PlayerProfile } from './types'
+import { DEFAULT_RULES, type GameState, type HandCard, type PlayerProfile } from './types'
 
 /** Bron met een volledig deck, voor commands die delen (START_GAME, NEXT_ROUND). */
 const FULL = scriptedDeck(orderedDeck())
@@ -34,7 +34,7 @@ function makePlaying(hands: HandCard[][], overrides: Partial<GameState> = {}): G
   return {
     version: 1,
     phase: 'playing',
-    rules: { handSize: 5, yousefMax: 5 },
+    rules: { ...DEFAULT_RULES },
     hostId: 'p0',
     players,
     round: 1,
@@ -238,6 +238,44 @@ describe('roundEnd: bakken, afkopen en de volgende ronde', () => {
     expect(r.state.roundResult).toBeNull()
     expect(r.state.players[0].hand).toHaveLength(5)
     expect(r.state.players[0].score).toBe(10) // score blijft cumulatief
+  })
+})
+
+describe('huisregels', () => {
+  it('joker-wildcard uit: een joker mag niet in een straat', () => {
+    const hand = [card(4, 'hearts'), joker(0), card(6, 'clubs')]
+    const off = makePlaying([hand, [card(2, 'spades')]], {
+      rules: { ...DEFAULT_RULES, jokerWildcard: false },
+    })
+    const r = reduce(off, { t: 'PLAY_TURN', playerId: 'p0', discard: hand, drawFrom: 'deck' }, FULL)
+    expect(r.error).toBe('INVALID_GROUP')
+
+    // Met de wildcard aan (standaard) mag het wél.
+    const on = makePlaying([hand, [card(2, 'spades')]])
+    const ok = reduce(on, { t: 'PLAY_TURN', playerId: 'p0', discard: hand, drawFrom: 'deck' }, FULL)
+    expect(ok.error).toBeUndefined()
+  })
+
+  it('assafEveryoneScores: bij Assaf scoort de rest het verschil tot de laagste', () => {
+    const s = makePlaying([[card(4, 'hearts')], [card(14, 'hearts')], [card(8, 'hearts')]], {
+      rules: { ...DEFAULT_RULES, assafEveryoneScores: true },
+    })
+    const r = reduce(s, { t: 'CALL_YOUSEF', playerId: 'p0' }, FULL)
+    // p0 (roeper) krijgt de straf, p1 is de laagste (0), p2 het verschil 8-1=7.
+    expect(r.state.players[0].score).toBe(30)
+    expect(r.state.players[1].score).toBe(0)
+    expect(r.state.players[2].score).toBe(8 - 1)
+  })
+
+  it('bakThreshold hoger: geen bak nodig en de volgende ronde mag meteen', () => {
+    const s = makePlaying([[card(4, 'hearts')], [card(14, 'hearts')], [card(8, 'hearts')]], {
+      rules: { ...DEFAULT_RULES, bakThreshold: 100 },
+    })
+    const rEnd = reduce(s, { t: 'CALL_YOUSEF', playerId: 'p0' }, FULL).state // p0 score 30 < 100
+    expect(reduce(rEnd, { t: 'DRAW_BAK', playerId: 'p0' }, FULL).error).toBe('NO_BAK_DUE')
+    const next = reduce(rEnd, { t: 'NEXT_ROUND' }, FULL)
+    expect(next.error).toBeUndefined()
+    expect(next.state.phase).toBe('playing')
   })
 })
 

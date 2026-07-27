@@ -228,10 +228,15 @@ function callYousef(draft: GameState, events: EngineEvent[], callerId: string): 
       gained.set(p.id, handValue(p.hand) - callerValue)
     }
   } else {
-    // Verkeerde call: alleen de roeper krijgt punten, de rest 0 (gegund).
+    // Verkeerde call: de roeper krijgt de straf. Standaard krijgt de rest 0
+    // (gegund); met de huisregel `assafEveryoneScores` scoort iedereen toch het
+    // verschil tot de laagste hand.
     const penalty =
       othersMin < callerValue ? (callerValue - othersMin) * ASSAF_FACTOR : ASSAF_TIE_PENALTY
-    for (const p of draft.players) gained.set(p.id, p.id === callerId ? penalty : 0)
+    for (const p of draft.players) {
+      if (p.id === callerId) gained.set(p.id, penalty)
+      else gained.set(p.id, draft.rules.assafEveryoneScores ? handValue(p.hand) - lowestValue : 0)
+    }
   }
 
   const entries: RoundEntry[] = draft.players.map((p) => ({
