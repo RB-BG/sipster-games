@@ -46,6 +46,13 @@ de polish-chunk, net als bij kingsen.
   (Assaf-scoring, joker-wildcard) genoteerd voor later.
 - Chunk 1 (scaffold): afgerond (unieke namespaces, werknaam-branding, groen).
 - Chunk 2 (engine): afgerond. Pure engine + app-laag-port naar de nieuwe Intents/Commands;
-  `/?debug` speelt de engine. 72 vitest-tests, lint/typecheck/build groen. `GameScreen` is nog
-  een placeholder; kaart-animaties en P2P-hand-privacy staan als TODO voor chunk 3/4.
+  `/?debug` speelt de engine. 72 vitest-tests, lint/typecheck/build groen.
+- Chunk 3 (hotseat + GameScreen): afgerond. Echte hand-UI: afscherm-scherm bij het doorgeven
+  van de telefoon (key-per-beurt), selecteerbare hand met afleggen (los/set/straat) + trekken
+  van stapel/aflegstapel, Yousef-knop (met drempel), scorebord met bak-meter, ronde-einde
+  (open handen, bak trekken / afkopen, volgende ronde) en eindstand. i18n NL+EN aangevuld.
+  Lint/typecheck/test/build groen; HomeScreen laadt schoon in preview. Interactief bespelen +
+  kaart-animaties (viewState-freeze) zijn bewust device-werk (preview commit geen React-updates).
+  TODO chunk 4: P2P-hand-privacy (per-ontvanger gefilterde STATE). TODO chunk 5: kaart-flip-
+  animaties, geluid/haptiek, branding; kingsen-restanten opruimen (CupMeter, oude i18n-teksten).
 - Chunk 1 t/m 5: open.
