@@ -71,6 +71,9 @@ export const nl = {
   ruleLabels: {
     handSize: 'Kaarten per hand',
     yousefMax: 'Yousef roepen onder',
+    jokerWildcard: 'Joker als wildcard',
+    assafEveryoneScores: 'Bij Assaf scoort iedereen',
+    bakThreshold: 'Bak trekken vanaf',
   },
   net: {
     hostFailed: 'Tafel maken lukt niet; check je internet en probeer opnieuw',
@@ -192,6 +195,9 @@ const en: Strings = {
   ruleLabels: {
     handSize: 'Cards per hand',
     yousefMax: 'Call Yousef below',
+    jokerWildcard: 'Joker as wildcard',
+    assafEveryoneScores: 'Everyone scores on Assaf',
+    bakThreshold: 'Draw a bak from',
   },
   net: {
     hostFailed: 'Could not create the table; check your internet and try again',

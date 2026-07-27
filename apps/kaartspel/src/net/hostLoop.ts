@@ -31,7 +31,10 @@ function wellFormed(intent: Intent): boolean {
         typeof intent.rules === 'object' &&
         intent.rules !== null &&
         Number.isInteger(intent.rules.handSize) &&
-        Number.isInteger(intent.rules.yousefMax)
+        Number.isInteger(intent.rules.yousefMax) &&
+        typeof intent.rules.jokerWildcard === 'boolean' &&
+        typeof intent.rules.assafEveryoneScores === 'boolean' &&
+        Number.isInteger(intent.rules.bakThreshold)
       )
     case 'PLAY_TURN':
       return (

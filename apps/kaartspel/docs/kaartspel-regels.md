@@ -81,7 +81,15 @@ moet er tussen de beurten een **afscherm-scherm** komen ("geef de telefoon door 
 tik om je kaarten te zien"), zodat de volgende speler bij het doorgeven niet de hand van de
 vorige ziet.
 
+## Instelbare huisregels (RulesEditor)
+
+Naast de kaarten-per-hand en de Yousef-drempel zijn deze in te stellen in de lobby/hotseat-setup:
+- **Joker als wildcard** (standaard aan): mag een joker een gat in een set/straat vullen? Uit =
+  joker alleen los te spelen.
+- **Bij Assaf scoort iedereen** (standaard uit): uit = alleen de roeper wordt gestraft; aan = de
+  overige spelers scoren óók het verschil tot de laagste hand.
+- **Bak trekken vanaf** (standaard 30): de bak-drempel.
+
 ## Open punten
 
-- Geen blokkerende open punten meer. Mogelijke latere huisregel-toggles: Assaf-scoring
-  (alleen roeper vs. iedereen) en de joker-wildcard aan/uit.
+- Joker-specialeregel (naast de wildcard-rol): nog te bepalen, bewust uitgesteld.

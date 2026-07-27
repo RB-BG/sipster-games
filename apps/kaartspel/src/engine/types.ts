@@ -21,11 +21,20 @@ export interface RuleConfig {
   handSize: number
   /** "Yousef" roepen mag zodra je handwaarde < dit is (klassiek: 5). */
   yousefMax: number
+  /** Mag een joker als wildcard een gat in een set/straat vullen? Uit = joker alleen los te spelen. */
+  jokerWildcard: boolean
+  /** Bij Assaf ook de andere spelers laten scoren (verschil tot de laagste), i.p.v. alleen de roeper straffen. */
+  assafEveryoneScores: boolean
+  /** Vanaf deze cumulatieve score moet je een bak trekken. */
+  bakThreshold: number
 }
 
 export const DEFAULT_RULES: RuleConfig = {
   handSize: 5,
   yousefMax: 5,
+  jokerWildcard: true,
+  assafEveryoneScores: false,
+  bakThreshold: 30,
 }
 
 export interface PlayerProfile {
@@ -158,8 +167,6 @@ export type ErrorCode =
   /** Bericht van buiten met een onverwachte vorm; komt nooit uit de engine zelf. */
   | 'MALFORMED'
 
-/** Drempel waarboven een speler een bak moet trekken. */
-export const BAK_THRESHOLD = 30
 /** Puntwaarde van een hele bak (gaat er bij het trekken af). */
 export const BAK_VALUE = 20
 /** Puntwaarde van een halve bak (afkopen). */

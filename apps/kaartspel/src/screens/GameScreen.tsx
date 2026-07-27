@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Eye, Trophy, Volume2, VolumeX, X } from 'lucide-react'
 import { StaticCard } from '@/cards/Card'
 import PlayerChip from '@/components/PlayerChip'
-import { BAK_THRESHOLD, type Command, type GameState, type HandCard } from '@/engine/types'
+import type { Command, GameState, HandCard } from '@/engine/types'
 import { handValue, isValidGroup, sameCard } from '@/engine/values'
 import { useGameAdapter } from '@/hooks/useGameAdapter'
 import { useWakeLock } from '@/hooks/useWakeLock'
@@ -279,7 +279,7 @@ function RoundEndView({
   const result = state.roundResult
   if (!result) return null
   const caller = state.players.find((p) => p.id === result.callerId)
-  const anyBakDue = state.players.some((p) => p.score >= BAK_THRESHOLD)
+  const anyBakDue = state.players.some((p) => p.score >= state.rules.bakThreshold)
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 p-4">
@@ -296,7 +296,7 @@ function RoundEndView({
         {result.entries.map((entry) => {
           const player = state.players.find((p) => p.id === entry.playerId)
           if (!player) return null
-          const bakDue = player.score >= BAK_THRESHOLD
+          const bakDue = player.score >= state.rules.bakThreshold
           const mayResolve = hotseat || player.id === viewerId
           return (
             <div key={entry.playerId} className="flex flex-col gap-2 rounded-xl bg-card p-3">

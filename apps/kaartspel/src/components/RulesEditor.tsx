@@ -3,6 +3,7 @@
 import Coaster from '@/components/Coaster'
 import RulesExplainer from '@/components/RulesExplainer'
 import type { RuleConfig } from '@/engine/types'
+import { cn } from '@/lib/utils'
 import { useStrings } from '@/store/localeStore'
 
 interface RulesEditorProps {
@@ -54,6 +55,43 @@ function Stepper({
   )
 }
 
+/** Aan/uit-schakelaar voor een booleaanse huisregel. */
+function Toggle({
+  label,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string
+  value: boolean
+  disabled?: boolean
+  onChange: (value: boolean) => void
+}) {
+  return (
+    <div className="flex items-center justify-between text-ivory">
+      <span>{label}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={value}
+        disabled={disabled}
+        onClick={() => onChange(!value)}
+        className={cn(
+          'flex h-7 w-12 items-center rounded-full p-0.5 transition-colors disabled:opacity-40',
+          value ? 'bg-primary' : 'bg-secondary',
+        )}
+      >
+        <span
+          className={cn(
+            'size-6 rounded-full bg-ivory transition-transform',
+            value && 'translate-x-5',
+          )}
+        />
+      </button>
+    </div>
+  )
+}
+
 /** De regelset-instellingen, gedeeld door de P2P-lobby en de hotseat-setup. */
 export default function RulesEditor({ rules, disabled, onChange }: RulesEditorProps) {
   const strings = useStrings()
@@ -77,6 +115,29 @@ export default function RulesEditor({ rules, disabled, onChange }: RulesEditorPr
         max={10}
         disabled={disabled}
         onChange={(v) => onChange({ yousefMax: v })}
+      />
+
+      <Stepper
+        label={strings.ruleLabels.bakThreshold}
+        value={rules.bakThreshold}
+        min={10}
+        max={60}
+        disabled={disabled}
+        onChange={(v) => onChange({ bakThreshold: v })}
+      />
+
+      <Toggle
+        label={strings.ruleLabels.jokerWildcard}
+        value={rules.jokerWildcard}
+        disabled={disabled}
+        onChange={(v) => onChange({ jokerWildcard: v })}
+      />
+
+      <Toggle
+        label={strings.ruleLabels.assafEveryoneScores}
+        value={rules.assafEveryoneScores}
+        disabled={disabled}
+        onChange={(v) => onChange({ assafEveryoneScores: v })}
       />
 
       <details className="text-sm text-muted-foreground">

@@ -79,7 +79,13 @@ describe('hostLoop lobby', () => {
   it('alleen de host mag regels wijzigen', () => {
     const { transport, loop } = setup()
     loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
-    const rules = { handSize: 6, yousefMax: 5 }
+    const rules = {
+      handSize: 6,
+      yousefMax: 5,
+      jokerWildcard: true,
+      assafEveryoneScores: false,
+      bakThreshold: 30,
+    }
 
     loop.handleIntent('peer-a', { t: 'SET_RULES', rules })
     expect(loop.state.rules.handSize).toBe(5)

@@ -1,7 +1,6 @@
 // Copyright © 2026 Kaartspel. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
 import type { Command, ErrorCode, GameState, HandCard, PlayerState } from './types'
-import { BAK_THRESHOLD } from './types'
 import { handValue, isValidGroup, sameCard } from './values'
 
 /** Meer stoelen dan dit is geen gezellige tafel meer; weert ook lobby-flooding. */
@@ -43,10 +42,14 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
 
     case 'SET_RULES': {
       if (state.phase !== 'lobby') return 'WRONG_PHASE'
-      const { handSize, yousefMax } = cmd.rules
+      const { handSize, yousefMax, jokerWildcard, assafEveryoneScores, bakThreshold } = cmd.rules
       if (!Number.isInteger(handSize) || handSize < MIN_HAND_SIZE || handSize > MAX_HAND_SIZE)
         return 'INVALID_RULES'
       if (!Number.isInteger(yousefMax) || yousefMax < 1 || yousefMax > 15) return 'INVALID_RULES'
+      if (typeof jokerWildcard !== 'boolean' || typeof assafEveryoneScores !== 'boolean')
+        return 'INVALID_RULES'
+      if (!Number.isInteger(bakThreshold) || bakThreshold < 10 || bakThreshold > 100)
+        return 'INVALID_RULES'
       return null
     }
 
@@ -60,7 +63,7 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
       if (state.turn.playerId !== cmd.playerId) return 'NOT_YOUR_TURN'
       const player = playerById(state, cmd.playerId)
       if (!player) return 'UNKNOWN_PLAYER'
-      if (!isValidGroup(cmd.discard)) return 'INVALID_GROUP'
+      if (!isValidGroup(cmd.discard, state.rules.jokerWildcard)) return 'INVALID_GROUP'
       if (!allInHand(player.hand, cmd.discard)) return 'CARD_NOT_IN_HAND'
       if (cmd.drawFrom === 'discard' && state.discardTop.length === 0) return 'EMPTY_DISCARD'
       return null
@@ -79,7 +82,7 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
       if (state.phase !== 'roundEnd') return 'WRONG_PHASE'
       const player = playerById(state, cmd.playerId)
       if (!player) return 'UNKNOWN_PLAYER'
-      if (player.score < BAK_THRESHOLD) return 'NO_BAK_DUE'
+      if (player.score < state.rules.bakThreshold) return 'NO_BAK_DUE'
       return null
     }
 
@@ -87,13 +90,13 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
       if (state.phase !== 'roundEnd') return 'WRONG_PHASE'
       const player = playerById(state, cmd.playerId)
       if (!player) return 'UNKNOWN_PLAYER'
-      if (player.score >= BAK_THRESHOLD) return 'CANNOT_BUY_OFF'
+      if (player.score >= state.rules.bakThreshold) return 'CANNOT_BUY_OFF'
       return null
     }
 
     case 'NEXT_ROUND':
       if (state.phase !== 'roundEnd') return 'WRONG_PHASE'
-      if (state.players.some((p) => p.score >= BAK_THRESHOLD)) return 'BAK_PENDING'
+      if (state.players.some((p) => p.score >= state.rules.bakThreshold)) return 'BAK_PENDING'
       return null
 
     case 'SET_CONNECTED':

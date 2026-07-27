@@ -70,10 +70,12 @@ function isRun(cards: HandCard[]): boolean {
 
 /**
  * Mag deze groep in één keer worden afgelegd? Losse kaart altijd; verder een
- * geldig setje of een geldige straat.
+ * geldig setje of een geldige straat. Staat de huisregel de joker-wildcard niet
+ * toe, dan mag een joker niet meespelen in een set of straat (alleen los).
  */
-export function isValidGroup(cards: HandCard[]): boolean {
+export function isValidGroup(cards: HandCard[], jokerWildcard = true): boolean {
   if (cards.length === 0) return false
   if (cards.length === 1) return true
+  if (!jokerWildcard && cards.some(isJoker)) return false
   return isSet(cards) || isRun(cards)
 }
