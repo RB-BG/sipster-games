@@ -138,16 +138,16 @@ export const nl = {
   rulesExplainTitle: 'Hoe werkt Kaartspel?',
   rulesExplain: [
     [
-      'De cirkel',
-      'Alle 52 kaarten liggen gesloten in een cirkel rond een glas. Om de beurt draai je met de klok mee een kaart om en voer je de actie uit.',
+      'De hand',
+      'Iedereen speelt met 5 kaarten. Om de beurt leg je kaarten af (een losse kaart, een setje van dezelfde rang, of een straat van opeenvolgende kaarten) en trek je één kaart, van de stapel of de bovenste afgelegde kaart. Aas telt 1, boer/vrouw/heer tellen 10, en de joker telt -1 (en mag een gat in een straat vullen).',
     ],
     [
-      'De kaarten',
-      'Elke rang heeft een eigen actie: Jij, Ik, Vrouwen, Mannen, Hemel, Categorie, Rijmen, Waterval, en meer. Sommige kaarten leveren een blijvende regel of rol op (nieuwe regel, duimmeester, vraagmeester) die op tafel blijft staan.',
+      'Yousef roepen',
+      'Zodra je handwaarde onder de 5 is, mag je aan het begin van je beurt "Yousef" roepen. Ben je dan de laagste, dan tellen de anderen het verschil met jouw hand bij hun score op. Zit iemand gelijk of lager (Assaf), dan is de call mislukt en krijg jij zelf de punten: 10 bij gelijk, anders het verschil keer 10.',
     ],
     [
-      "King's Cup",
-      'Bij elke koning schenk je een aantal slokken in het centrale glas. De 4e koning drinkt het volle glas in één keer leeg, en dan is het potje voorbij.',
+      'Bakken',
+      'De punten stapelen over de rondes. Kom je op 30 of meer, dan trek je een bak (20 punten eraf). Onder de 30 mag je een halve bak afkopen: 10 slokken voor 10 punten eraf. Je speelt zo lang je wilt.',
     ],
   ] as [string, string][],
   ruleLabels: {
@@ -286,16 +286,16 @@ const en: Strings = {
   rulesExplainTitle: 'How does Kaartspel work?',
   rulesExplain: [
     [
-      'The circle',
-      'All 52 cards lie face down in a circle around a glass. Take turns, clockwise, flipping a card and performing its action.',
+      'Your hand',
+      'Everyone plays with 5 cards. On your turn you discard cards (a single card, a set of the same rank, or a run of consecutive cards) and draw one card, from the deck or the top of the discard pile. Ace counts 1, jack/queen/king count 10, and the joker counts -1 (and may fill a gap in a run).',
     ],
     [
-      'The cards',
-      'Each rank has its own action: You, Me, Women, Men, Heaven, Category, Rhyme, Waterfall, and more. Some cards create a lasting rule or role (new rule, thumb master, question master) that stays on the table.',
+      'Calling Yousef',
+      'Once your hand value is below 5, you may call "Yousef" at the start of your turn. If you are the lowest, everyone else adds the difference with your hand to their score. If someone ties or is lower (Assaf), the call failed and you take the points yourself: 10 on a tie, otherwise the difference times 10.',
     ],
     [
-      "King's Cup",
-      'On each king you pour sips into the central glass. The 4th king downs the full glass in one go, and the game is over.',
+      'Baks',
+      'Points build up across rounds. Reach 30 or more and you draw a bak (minus 20 points). Below 30 you may buy off half a bak: 10 sips for 10 points off. Play for as long as you like.',
     ],
   ],
   ruleLabels: {

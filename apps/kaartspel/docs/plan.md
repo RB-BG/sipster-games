@@ -61,4 +61,11 @@ de polish-chunk, net als bij kingsen.
   geen afscherm-scherm; ronde-einde: alleen je eigen bak afhandelen, host start de ronde).
   Lint/typecheck/72 tests/build groen. Twee-device-rooktest staat nog open (preview kan P2P/
   animaties niet valideren, conform CLAUDE.md).
+- Chunk 5 (polish): grotendeels afgerond. Regel-uitleg herschreven naar Yousef (hand, Yousef
+  roepen, bakken) in NL+EN; geluid + haptiek bedraad op afleggen/Yousef/bak; mute-knop in de
+  game-header. Lint/typecheck/72 tests/build groen.
+  Bewust nog open (allemaal device-only of cosmetisch): kaart-flip-animaties + viewState-freeze
+  (niet in preview te valideren), definitieve branding (naam/domein/kleurthema, blijft werknaam
+  op verzoek), en opruimen van kingsen-restanten (ongebruikte `CupMeter`, `cardActions.ts` en
+  oude i18n-keys als cupTitle/cardName; laten staan omdat verwijderen bevestiging vraagt).
 - Chunk 1 t/m 5: open.

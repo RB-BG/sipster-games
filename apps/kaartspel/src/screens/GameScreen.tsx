@@ -1,13 +1,15 @@
 // Copyright © 2026 Kaartspel. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
 import { useState } from 'react'
-import { Eye, Trophy, X } from 'lucide-react'
+import { Eye, Trophy, Volume2, VolumeX, X } from 'lucide-react'
 import { StaticCard } from '@/cards/Card'
 import PlayerChip from '@/components/PlayerChip'
 import { BAK_THRESHOLD, type Command, type GameState, type HandCard } from '@/engine/types'
 import { handValue, isValidGroup, sameCard } from '@/engine/values'
 import { useGameAdapter } from '@/hooks/useGameAdapter'
 import { useWakeLock } from '@/hooks/useWakeLock'
+import { hapticDeal, hapticDrink, hapticFanfare } from '@/lib/haptics'
+import { isMuted, playDeal, playDrink, playFanfare, setMuted } from '@/lib/sound'
 import { cn } from '@/lib/utils'
 import { useStrings } from '@/store/localeStore'
 
@@ -48,18 +50,43 @@ function Scoreboard({ state, activeId }: { state: GameState; activeId?: string }
   )
 }
 
-function TopBar({ title, onLeave, label }: { title: string; onLeave: () => void; label: string }) {
+function TopBar({
+  title,
+  onLeave,
+  label,
+  strings,
+}: {
+  title: string
+  onLeave: () => void
+  label: string
+  strings: Strings
+}) {
+  const [muted, setMutedState] = useState(isMuted())
   return (
-    <header className="flex items-center justify-between">
-      <h1 className="text-lg font-bold text-ivory">{title}</h1>
-      <button
-        type="button"
-        onClick={onLeave}
-        aria-label={label}
-        className="rounded-lg bg-secondary p-2 text-secondary-foreground active:scale-95"
-      >
-        <X className="size-5" />
-      </button>
+    <header className="flex items-center justify-between gap-2">
+      <h1 className="min-w-0 truncate text-lg font-bold text-ivory">{title}</h1>
+      <div className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            const next = !muted
+            setMuted(next)
+            setMutedState(next)
+          }}
+          aria-label={muted ? strings.soundOff : strings.soundOn}
+          className="rounded-lg bg-secondary p-2 text-secondary-foreground active:scale-95"
+        >
+          {muted ? <VolumeX className="size-5" /> : <Volume2 className="size-5" />}
+        </button>
+        <button
+          type="button"
+          onClick={onLeave}
+          aria-label={label}
+          className="rounded-lg bg-secondary p-2 text-secondary-foreground active:scale-95"
+        >
+          <X className="size-5" />
+        </button>
+      </div>
     </header>
   )
 }
@@ -119,6 +146,7 @@ function TurnView({
           title={`${strings.appName} · ${strings.round(state.round)}`}
           onLeave={leave}
           label={strings.leaveTable}
+          strings={strings}
         />
         <PassGate name={viewer.name} onShow={() => setRevealed(true)} strings={strings} />
       </main>
@@ -138,13 +166,15 @@ function TurnView({
   }
 
   function play(drawFrom: 'deck' | 'discard') {
+    playDeal()
+    hapticDeal()
     dispatch({ t: 'PLAY_TURN', playerId: viewerId, discard: selected, drawFrom })
     setSelected([])
   }
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 p-4">
-      <TopBar title={`${viewer.emoji} ${viewer.name}`} onLeave={leave} label={strings.leaveTable} />
+      <TopBar title={`${viewer.emoji} ${viewer.name}`} onLeave={leave} label={strings.leaveTable} strings={strings} />
       <Scoreboard state={state} activeId={state.turn?.playerId} />
 
       {/* Trek- en aflegstapel. */}
@@ -206,7 +236,11 @@ function TurnView({
           <button
             type="button"
             disabled={!canYousef}
-            onClick={() => dispatch({ t: 'CALL_YOUSEF', playerId: viewerId })}
+            onClick={() => {
+              playFanfare()
+              hapticFanfare()
+              dispatch({ t: 'CALL_YOUSEF', playerId: viewerId })
+            }}
             className="rounded-lg bg-primary px-3 py-3 text-lg font-bold text-primary-foreground shadow-lg active:scale-95 disabled:opacity-40"
           >
             {hv < state.rules.yousefMax ? strings.yousef.callYousef : strings.yousef.yousefLocked(state.rules.yousefMax)}
@@ -249,7 +283,7 @@ function RoundEndView({
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 p-4">
-      <TopBar title={strings.yousef.roundOver} onLeave={leave} label={strings.leaveTable} />
+      <TopBar title={strings.yousef.roundOver} onLeave={leave} label={strings.leaveTable} strings={strings} />
 
       <div className="rounded-xl bg-card p-3 text-center">
         <p className="font-semibold text-ivory">{strings.yousef.called(caller?.name ?? '?')}</p>
@@ -283,9 +317,11 @@ function RoundEndView({
               {mayResolve && (
                 <button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    playDrink()
+                    hapticDrink()
                     dispatch(bakDue ? { t: 'DRAW_BAK', playerId: player.id } : { t: 'BUY_OFF', playerId: player.id })
-                  }
+                  }}
                   className={cn(
                     'self-start rounded-lg px-3 py-1.5 text-sm font-semibold active:scale-95',
                     bakDue ? 'bg-destructive text-destructive-foreground' : 'bg-secondary text-secondary-foreground',
@@ -321,7 +357,7 @@ function EndView({ state, leave, strings }: { state: GameState; leave: () => voi
   const ranked = [...state.players].sort((a, b) => a.score - b.score)
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 p-4">
-      <TopBar title={strings.finalTitle} onLeave={leave} label={strings.backHome} />
+      <TopBar title={strings.finalTitle} onLeave={leave} label={strings.backHome} strings={strings} />
       <h2 className="flex items-center gap-2 text-lg font-bold text-ivory">
         <Trophy className="size-5 text-amber-400" />
         {strings.yousef.finalStandings}
