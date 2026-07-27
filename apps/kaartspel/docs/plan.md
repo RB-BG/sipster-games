@@ -53,6 +53,12 @@ de polish-chunk, net als bij kingsen.
   (open handen, bak trekken / afkopen, volgende ronde) en eindstand. i18n NL+EN aangevuld.
   Lint/typecheck/test/build groen; HomeScreen laadt schoon in preview. Interactief bespelen +
   kaart-animaties (viewState-freeze) zijn bewust device-werk (preview commit geen React-updates).
-  TODO chunk 4: P2P-hand-privacy (per-ontvanger gefilterde STATE). TODO chunk 5: kaart-flip-
-  animaties, geluid/haptiek, branding; kingsen-restanten opruimen (CupMeter, oude i18n-teksten).
+  TODO chunk 5: kaart-flip-animaties, geluid/haptiek, branding; kingsen-restanten opruimen
+  (CupMeter, oude i18n-teksten).
+- Chunk 4 (P2P): afgerond. Net-laag was al bedraad in chunk 2; nu de P2P-kern toegevoegd:
+  per-ontvanger gefilterde STATE (`stateFor`: eigen hand volledig, andermans hand alleen als
+  aantal), en het GameScreen-perspectief (P2P toont je eigen hand, acties alleen op je beurt,
+  geen afscherm-scherm; ronde-einde: alleen je eigen bak afhandelen, host start de ronde).
+  Lint/typecheck/72 tests/build groen. Twee-device-rooktest staat nog open (preview kan P2P/
+  animaties niet valideren, conform CLAUDE.md).
 - Chunk 1 t/m 5: open.

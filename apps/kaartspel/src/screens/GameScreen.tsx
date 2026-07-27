@@ -48,15 +48,7 @@ function Scoreboard({ state, activeId }: { state: GameState; activeId?: string }
   )
 }
 
-function TopBar({
-  title,
-  onLeave,
-  label,
-}: {
-  title: string
-  onLeave: () => void
-  label: string
-}) {
+function TopBar({ title, onLeave, label }: { title: string; onLeave: () => void; label: string }) {
   return (
     <header className="flex items-center justify-between">
       <h1 className="text-lg font-bold text-ivory">{title}</h1>
@@ -73,15 +65,7 @@ function TopBar({
 }
 
 /** Afscherm-scherm bij het doorgeven van de telefoon (hotseat-privacy). */
-function PassGate({
-  name,
-  onShow,
-  strings,
-}: {
-  name: string
-  onShow: () => void
-  strings: Strings
-}) {
+function PassGate({ name, onShow, strings }: { name: string; onShow: () => void; strings: Strings }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
       <p className="text-2xl font-bold text-ivory">{strings.yousef.passTitle(name)}</p>
@@ -98,59 +82,70 @@ function PassGate({
   )
 }
 
-/** De actieve beurt: afscherm-scherm, dan de hand met afleg-/trek-acties. */
+/**
+ * De speelbeurt vanuit het perspectief van `viewerId`. Hotseat: viewer is de
+ * actieve speler, met een afscherm-scherm bij het doorgeven. P2P: viewer is dit
+ * toestel; acties kunnen alleen op de eigen beurt (`canAct`), anders wachten.
+ */
 function TurnView({
   state,
   dispatch,
   leave,
   strings,
+  viewerId,
+  hotseat,
+  canAct,
 }: {
   state: GameState
   dispatch: Dispatch
   leave: () => void
   strings: Strings
+  viewerId: string
+  hotseat: boolean
+  canAct: boolean
 }) {
-  // Deze view krijgt van de parent een key per beurt, dus lokale state (afscherming
-  // + selectie) reset vanzelf zodra de volgende speler aan zet is.
-  const active = state.turn?.playerId ?? ''
-  const player = state.players.find((p) => p.id === active)
-  const [revealed, setRevealed] = useState(false)
+  const viewer = state.players.find((p) => p.id === viewerId)
+  // Hotseat: eerst afschermen. P2P: geen afscherming (eigen toestel).
+  const [revealed, setRevealed] = useState(!hotseat)
   const [selected, setSelected] = useState<HandCard[]>([])
 
-  if (!player) return null
+  if (!viewer) return null
+  const activePlayer = state.players.find((p) => p.id === state.turn?.playerId)
 
   if (!revealed) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 p-4">
-        <TopBar title={`${strings.appName} · ${strings.round(state.round)}`} onLeave={leave} label={strings.leaveTable} />
-        <PassGate name={player.name} onShow={() => setRevealed(true)} strings={strings} />
+        <TopBar
+          title={`${strings.appName} · ${strings.round(state.round)}`}
+          onLeave={leave}
+          label={strings.leaveTable}
+        />
+        <PassGate name={viewer.name} onShow={() => setRevealed(true)} strings={strings} />
       </main>
     )
   }
 
-  const hv = handValue(player.hand)
-  const canDiscard = selected.length > 0 && isValidGroup(selected)
-  const canYousef = hv < state.rules.yousefMax
+  const hv = handValue(viewer.hand)
+  const canDiscard = canAct && selected.length > 0 && isValidGroup(selected)
+  const canYousef = canAct && hv < state.rules.yousefMax
   const top = state.discardTop[state.discardTop.length - 1]
 
   function toggle(card: HandCard) {
+    if (!canAct) return
     setSelected((prev) =>
-      prev.some((s) => sameCard(s, card))
-        ? prev.filter((s) => !sameCard(s, card))
-        : [...prev, card],
+      prev.some((s) => sameCard(s, card)) ? prev.filter((s) => !sameCard(s, card)) : [...prev, card],
     )
   }
 
   function play(drawFrom: 'deck' | 'discard') {
-    // Na de zet wisselt de beurt; de parent remount deze view (nieuwe key),
-    // waardoor de afscherming voor de volgende speler vanzelf terugkomt.
-    dispatch({ t: 'PLAY_TURN', playerId: active, discard: selected, drawFrom })
+    dispatch({ t: 'PLAY_TURN', playerId: viewerId, discard: selected, drawFrom })
+    setSelected([])
   }
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 p-4">
-      <TopBar title={`${player.emoji} ${player.name}`} onLeave={leave} label={strings.leaveTable} />
-      <Scoreboard state={state} activeId={active} />
+      <TopBar title={`${viewer.emoji} ${viewer.name}`} onLeave={leave} label={strings.leaveTable} />
+      <Scoreboard state={state} activeId={state.turn?.playerId} />
 
       {/* Trek- en aflegstapel. */}
       <div className="flex items-end justify-center gap-8 py-2">
@@ -168,14 +163,14 @@ function TurnView({
       <div className="mt-auto flex flex-col items-center gap-2">
         <span className="text-sm text-muted-foreground">{strings.yousef.handValue(hv)}</span>
         <div className="flex flex-wrap justify-center gap-1.5">
-          {player.hand.map((card, i) => {
+          {viewer.hand.map((card, i) => {
             const isSel = selected.some((s) => sameCard(s, card))
             return (
               <button
                 key={i}
                 type="button"
                 onClick={() => toggle(card)}
-                className={cn('rounded-xl transition-transform', isSel && '-translate-y-3 rounded-xl ring-2 ring-primary')}
+                className={cn('rounded-xl transition-transform', isSel && '-translate-y-3 ring-2 ring-primary')}
               >
                 <CardView card={card} size={64} />
               </button>
@@ -184,53 +179,68 @@ function TurnView({
         </div>
       </div>
 
-      {/* Acties. */}
-      <div className="flex flex-col gap-2">
-        <p className="text-center text-xs text-muted-foreground">
-          {selected.length > 0 && !canDiscard ? strings.yousef.invalidGroup : strings.yousef.pickCards}
-        </p>
-        <div className="flex gap-2">
+      {/* Acties, of een wachtmelding als het niet je beurt is (P2P). */}
+      {canAct ? (
+        <div className="flex flex-col gap-2">
+          <p className="text-center text-xs text-muted-foreground">
+            {selected.length > 0 && !canDiscard ? strings.yousef.invalidGroup : strings.yousef.pickCards}
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={!canDiscard}
+              onClick={() => play('deck')}
+              className="flex-1 rounded-lg bg-secondary px-3 py-3 text-sm font-semibold text-secondary-foreground active:scale-95 disabled:opacity-40"
+            >
+              {strings.yousef.drawDeck}
+            </button>
+            <button
+              type="button"
+              disabled={!canDiscard || !top}
+              onClick={() => play('discard')}
+              className="flex-1 rounded-lg bg-secondary px-3 py-3 text-sm font-semibold text-secondary-foreground active:scale-95 disabled:opacity-40"
+            >
+              {strings.yousef.drawDiscard}
+            </button>
+          </div>
           <button
             type="button"
-            disabled={!canDiscard}
-            onClick={() => play('deck')}
-            className="flex-1 rounded-lg bg-secondary px-3 py-3 text-sm font-semibold text-secondary-foreground active:scale-95 disabled:opacity-40"
+            disabled={!canYousef}
+            onClick={() => dispatch({ t: 'CALL_YOUSEF', playerId: viewerId })}
+            className="rounded-lg bg-primary px-3 py-3 text-lg font-bold text-primary-foreground shadow-lg active:scale-95 disabled:opacity-40"
           >
-            {strings.yousef.drawDeck}
-          </button>
-          <button
-            type="button"
-            disabled={!canDiscard || !top}
-            onClick={() => play('discard')}
-            className="flex-1 rounded-lg bg-secondary px-3 py-3 text-sm font-semibold text-secondary-foreground active:scale-95 disabled:opacity-40"
-          >
-            {strings.yousef.drawDiscard}
+            {hv < state.rules.yousefMax ? strings.yousef.callYousef : strings.yousef.yousefLocked(state.rules.yousefMax)}
           </button>
         </div>
-        <button
-          type="button"
-          disabled={!canYousef}
-          onClick={() => dispatch({ t: 'CALL_YOUSEF', playerId: active })}
-          className="rounded-lg bg-primary px-3 py-3 text-lg font-bold text-primary-foreground shadow-lg active:scale-95 disabled:opacity-40"
-        >
-          {canYousef ? strings.yousef.callYousef : strings.yousef.yousefLocked(state.rules.yousefMax)}
-        </button>
-      </div>
+      ) : (
+        <p className="rounded-lg bg-card px-4 py-3 text-center text-sm text-muted-foreground">
+          {strings.yousef.waitingFor(activePlayer?.name ?? '?')}
+        </p>
+      )}
     </main>
   )
 }
 
-/** Ronde-einde: alle handen open, de uitslag, en bak trekken / afkopen. */
+/**
+ * Ronde-einde: alle handen open, de uitslag, bak trekken / afkopen. In P2P mag
+ * je alleen je eigen bak afhandelen en start alleen de host de volgende ronde.
+ */
 function RoundEndView({
   state,
   dispatch,
   leave,
   strings,
+  viewerId,
+  hotseat,
+  isHost,
 }: {
   state: GameState
   dispatch: Dispatch
   leave: () => void
   strings: Strings
+  viewerId: string
+  hotseat: boolean
+  isHost: boolean
 }) {
   const result = state.roundResult
   if (!result) return null
@@ -253,6 +263,7 @@ function RoundEndView({
           const player = state.players.find((p) => p.id === entry.playerId)
           if (!player) return null
           const bakDue = player.score >= BAK_THRESHOLD
+          const mayResolve = hotseat || player.id === viewerId
           return (
             <div key={entry.playerId} className="flex flex-col gap-2 rounded-xl bg-card p-3">
               <div className="flex items-center justify-between">
@@ -269,34 +280,36 @@ function RoundEndView({
                   <CardView key={i} card={card} size={44} />
                 ))}
               </div>
-              <button
-                type="button"
-                onClick={() =>
-                  dispatch(bakDue ? { t: 'DRAW_BAK', playerId: player.id } : { t: 'BUY_OFF', playerId: player.id })
-                }
-                className={cn(
-                  'self-start rounded-lg px-3 py-1.5 text-sm font-semibold active:scale-95',
-                  bakDue
-                    ? 'bg-destructive text-destructive-foreground'
-                    : 'bg-secondary text-secondary-foreground',
-                )}
-              >
-                {bakDue ? strings.yousef.drawBak : strings.yousef.buyOff}
-              </button>
+              {mayResolve && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    dispatch(bakDue ? { t: 'DRAW_BAK', playerId: player.id } : { t: 'BUY_OFF', playerId: player.id })
+                  }
+                  className={cn(
+                    'self-start rounded-lg px-3 py-1.5 text-sm font-semibold active:scale-95',
+                    bakDue ? 'bg-destructive text-destructive-foreground' : 'bg-secondary text-secondary-foreground',
+                  )}
+                >
+                  {bakDue ? strings.yousef.drawBak : strings.yousef.buyOff}
+                </button>
+              )}
             </div>
           )
         })}
       </div>
 
       <div className="mt-auto flex flex-col gap-1">
-        <button
-          type="button"
-          disabled={anyBakDue}
-          onClick={() => dispatch({ t: 'NEXT_ROUND' })}
-          className="rounded-lg bg-primary px-3 py-3 text-lg font-semibold text-primary-foreground shadow-lg active:scale-95 disabled:opacity-40"
-        >
-          {strings.yousef.nextRound}
-        </button>
+        {(hotseat || isHost) && (
+          <button
+            type="button"
+            disabled={anyBakDue}
+            onClick={() => dispatch({ t: 'NEXT_ROUND' })}
+            className="rounded-lg bg-primary px-3 py-3 text-lg font-semibold text-primary-foreground shadow-lg active:scale-95 disabled:opacity-40"
+          >
+            {strings.yousef.nextRound}
+          </button>
+        )}
         {anyBakDue && <p className="text-center text-xs text-muted-foreground">{strings.yousef.bakPending}</p>}
       </div>
     </main>
@@ -336,23 +349,41 @@ function EndView({ state, leave, strings }: { state: GameState; leave: () => voi
 
 export default function GameScreen() {
   const strings = useStrings()
-  const { state, dispatch, leave, lastError } = useGameAdapter()
+  const { state, dispatch, leave, lastError, myPlayerId, isHost } = useGameAdapter()
   useWakeLock()
 
   if (!state) return null
+
+  // Hotseat: iedereen op één toestel, viewer volgt de beurt (met afscherming).
+  // P2P: dit toestel is myPlayerId; acties alleen op de eigen beurt.
+  const hotseat = myPlayerId === null
+  const activeId = state.turn?.playerId
+  const viewerId = myPlayerId ?? activeId ?? state.hostId
+  const canAct = hotseat || activeId === myPlayerId
 
   const view =
     state.phase === 'ended' ? (
       <EndView state={state} leave={leave} strings={strings} />
     ) : state.phase === 'roundEnd' ? (
-      <RoundEndView state={state} dispatch={dispatch} leave={leave} strings={strings} />
-    ) : (
-      <TurnView
-        key={state.turn?.playerId ?? 'none'}
+      <RoundEndView
         state={state}
         dispatch={dispatch}
         leave={leave}
         strings={strings}
+        viewerId={viewerId}
+        hotseat={hotseat}
+        isHost={isHost}
+      />
+    ) : (
+      <TurnView
+        key={hotseat ? activeId ?? 'none' : viewerId}
+        state={state}
+        dispatch={dispatch}
+        leave={leave}
+        strings={strings}
+        viewerId={viewerId}
+        hotseat={hotseat}
+        canAct={canAct}
       />
     )
 

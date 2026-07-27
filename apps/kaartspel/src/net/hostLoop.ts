@@ -75,16 +75,29 @@ function sanitizeProfile(profile: PlayerProfile): PlayerProfile {
 /**
  * Wat guests te zien krijgen: zonder de nog te trekken kaarten, anders leest
  * een guest met devtools de komende deck-volgorde uit. De host houdt de volledige state.
- *
- * TODO (chunk 4, P2P-privacy): in Yousef zijn de handen geheim. Deze broadcast
- * bevat nu nog alle handen; de netwerk-laag moet per ontvanger een gefilterde
- * STATE sturen (eigen hand volledig, andermans hand alleen als aantal kaarten).
  */
 export function publicState(state: GameState): GameState {
   const pub = structuredClone(state)
   pub.deck = []
   pub.drawIndex = 0
   return pub
+}
+
+/**
+ * De state zoals speler `viewerId` hem mag zien: de deck verborgen, en tijdens
+ * het spelen andermans hand vervangen door alleen een kaart-aantal. Zo lekt geen
+ * enkele guest andermans kaarten. Bij het ronde-einde (open handen) en het einde
+ * blijven alle handen zichtbaar zodat iedereen de uitslag ziet.
+ */
+export function stateFor(state: GameState, viewerId: string): GameState {
+  const view = publicState(state)
+  if (state.phase !== 'playing') return view
+  for (const player of view.players) {
+    if (player.id === viewerId) continue
+    player.handCount = player.hand.length
+    player.hand = []
+  }
+  return view
 }
 
 /**
@@ -114,7 +127,19 @@ export function createHostLoop(
   let state = createGame(hostProfile, initialRules)
   const peerToPlayer = new Map<string, string>()
   const playerToPeer = new Map<string, string>()
-  onState(state)
+  onState(stateFor(state, state.hostId))
+
+  /**
+   * Stuur elke ontvanger zijn eigen kijk op de state (eigen hand volledig,
+   * andermans hand verborgen). Per-peer i.p.v. één broadcast, want in Yousef is
+   * elke hand geheim. De host krijgt zijn kijk via onState.
+   */
+  function broadcastState(): void {
+    for (const [peerId, playerId] of peerToPlayer) {
+      transport.send(peerId, { t: 'STATE', state: stateFor(state, playerId) })
+    }
+    onState(stateFor(state, state.hostId))
+  }
 
   function apply(cmd: Command, replyPeer: string | null): void {
     const result = reduce(state, cmd, rng)
@@ -124,10 +149,9 @@ export function createHostLoop(
       return
     }
     state = result.state
-    // Kaart-reveal-events (voor animatie) komen in chunk 3; nu draagt de
-    // STATE-broadcast alle informatie.
-    transport.broadcast({ t: 'STATE', state: publicState(state) })
-    onState(state)
+    // Kaart-reveal-events (voor animatie) komen in chunk 5; nu draagt de
+    // STATE per ontvanger alle zichtbare informatie.
+    broadcastState()
   }
 
   function handleIntent(peerId: string | null, intent: Intent): void {
@@ -169,8 +193,8 @@ export function createHostLoop(
         if (claimedPeer && claimedPeer !== peerId) peerToPlayer.delete(claimedPeer)
         peerToPlayer.set(peerId, profile.id)
         playerToPeer.set(profile.id, peerId)
+        // apply -> broadcastState stuurt deze (nu gemapte) peer meteen zijn eigen kijk.
         apply({ t: 'SET_CONNECTED', playerId: profile.id, connected: true }, peerId)
-        transport.send(peerId, { t: 'STATE', state: publicState(state) })
         return
       }
       // Nieuwe speler: pas na een geslaagde ADD_PLAYER mappen, anders blijft
@@ -181,6 +205,9 @@ export function createHostLoop(
       if (state !== before) {
         peerToPlayer.set(peerId, profile.id)
         playerToPeer.set(profile.id, peerId)
+        // Pas na het mappen: stuur de nieuwe speler zijn eigen kijk op de state
+        // (broadcastState tijdens apply bereikte hem nog niet).
+        transport.send(peerId, { t: 'STATE', state: stateFor(state, profile.id) })
       }
       return
     }
@@ -192,7 +219,7 @@ export function createHostLoop(
     }
 
     if (intent.t === 'REQUEST_SYNC') {
-      if (peerId) transport.send(peerId, { t: 'STATE', state: publicState(state) })
+      if (peerId) transport.send(peerId, { t: 'STATE', state: stateFor(state, playerId) })
       return
     }
     if (intent.t === 'LEAVE') {

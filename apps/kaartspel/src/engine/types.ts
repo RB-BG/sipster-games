@@ -36,8 +36,14 @@ export interface PlayerProfile {
 
 export interface PlayerState extends PlayerProfile {
   connected: boolean
-  /** De kaarten in de hand van deze speler (host-authoritative waarheid). */
+  /**
+   * De kaarten in de hand van deze speler (host-authoritative waarheid). In een
+   * per-ontvanger gefilterde guest-state is dit voor andermans hand leeg; het
+   * aantal kaarten staat dan in `handCount`.
+   */
   hand: HandCard[]
+  /** Alleen in gefilterde guest-state: aantal kaarten in andermans (verborgen) hand. */
+  handCount?: number
   /** Cumulatieve strafpunten over het hele potje; de bak-meter. */
   score: number
   /** Cumulatief afgekochte slokken (halve bakken), puur voor het scorebord. */

@@ -36,13 +36,13 @@ function setup(rng: DeckSource = scriptedDeck(orderedDeck()), livePeers?: Set<st
 }
 
 describe('hostLoop lobby', () => {
-  it('JOIN voegt een speler toe en broadcast de volledige state', () => {
+  it('JOIN voegt een speler toe en stuurt de nieuwe speler de state', () => {
     const { transport, loop } = setup()
     loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
 
     expect(loop.state.players.map((p) => p.id)).toEqual(['host-1', 'guest-1'])
-    const stateEvent = transport.broadcasts.find((e) => e.t === 'STATE')
-    expect(stateEvent && stateEvent.t === 'STATE' && stateEvent.state.players.length).toBe(2)
+    const msg = transport.sent.find((m) => m.to === 'peer-a' && m.event.t === 'STATE')
+    expect(msg && msg.event.t === 'STATE' && msg.event.state.players.length).toBe(2)
   })
 
   it('een tweede JOIN van dezelfde peer is een resync, geen duplicaat', () => {
@@ -107,9 +107,9 @@ describe('hostLoop in-game', () => {
     expect(transport.sent.at(-1)?.event).toEqual({ t: 'ERROR', code: 'NOT_YOUR_TURN' })
 
     // Host speelt een kaart uit zijn hand (harten 2 zit erin bij het geordende deck).
-    transport.broadcasts.length = 0
+    transport.sent.length = 0
     loop.dispatchLocal({ t: 'PLAY_TURN', discard: [card(2, 'hearts')], drawFrom: 'deck' })
-    expect(transport.broadcasts.at(-1)?.t).toBe('STATE')
+    expect(transport.sent.some((m) => m.to === 'peer-a' && m.event.t === 'STATE')).toBe(true)
     expect(loop.state.turn?.playerId).toBe('guest-1')
   })
 
@@ -242,18 +242,26 @@ describe('hostLoop hardening', () => {
     expect(joined?.name.length).toBe(24)
   })
 
-  it('de gebroadcaste state lekt de nog te trekken kaarten niet', () => {
+  it('de state naar een guest lekt de deck noch andermans hand', () => {
     const { transport, loop } = setup()
     loop.handleIntent('peer-a', { t: 'JOIN', profile: GUEST })
     loop.dispatchLocal({ t: 'START_GAME' })
 
-    const lastState = [...transport.broadcasts].reverse().find((e) => e.t === 'STATE')
-    expect(lastState?.t).toBe('STATE')
-    if (lastState?.t === 'STATE') {
-      expect(lastState.state.deck).toHaveLength(0)
-      expect(lastState.state.drawIndex).toBe(0)
+    const toGuest = [...transport.sent].reverse().find((m) => m.to === 'peer-a' && m.event.t === 'STATE')
+    expect(toGuest?.event.t).toBe('STATE')
+    if (toGuest?.event.t === 'STATE') {
+      const s = toGuest.event.state
+      expect(s.deck).toHaveLength(0)
+      expect(s.drawIndex).toBe(0)
+      // De guest ziet zijn eigen hand, maar niet die van de host (alleen het aantal).
+      const me = s.players.find((p) => p.id === 'guest-1')
+      const host = s.players.find((p) => p.id === 'host-1')
+      expect(me?.hand).toHaveLength(5)
+      expect(host?.hand).toHaveLength(0)
+      expect(host?.handCount).toBe(5)
     }
-    // De host zelf houdt de volledige deck.
+    // De host zelf houdt de volledige deck en alle handen.
     expect(loop.state.deck.length).toBeGreaterThan(0)
+    expect(loop.state.players.every((p) => p.hand.length === 5)).toBe(true)
   })
 })
