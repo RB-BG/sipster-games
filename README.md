@@ -8,7 +8,7 @@ eigen Vercel-site en een eigen Capacitor-app; gedeelde, spel-agnostische code ko
 - `apps/mexxen` — Mexxen (dobbelspel), appId `nl.mexxen.app`, domein `mex.sipster.games`.
 - `apps/bussen` — Bussen (kaartspel), appId `games.sipster.bussen`, domein `bus.sipster.games`.
 - `apps/kingsen` — Kingsen (kaartspel, kings cup), appId `games.sipster.kingsen`, domein `king.sipster.games`.
-- `apps/kaartspel` — Kaartspel (werknaam, Yousef uit de Yaniv-familie), appId `games.sipster.kaartspel`, domein nog te bepalen.
+- `apps/yaniv` — Yaniv (kaartspel uit de Yaniv/Yousef-familie), appId `games.sipster.yaniv`, domein `yaniv.sipster.games`.
 
 ## Packages
 - `packages/core` — gedeelde laag (in opbouw, zie `apps/bussen/docs/monorepo-migratie.md`).
