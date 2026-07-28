@@ -81,7 +81,7 @@ export default function DebugScreen() {
               }
             />
             <DebugButton
-              label={`Yousef (${actor ? handValue(actor.hand) : '?'})`}
+              label={`Yaniv (${actor ? handValue(actor.hand) : '?'})`}
               onClick={() => dispatch({ t: 'CALL_YOUSEF', playerId: actorId })}
             />
             <DebugButton label="forfeit" onClick={() => dispatch({ t: 'FORFEIT_TURN' })} />
@@ -154,7 +154,7 @@ function beschrijfEvent(e: EngineEvent): string {
     case 'PLAYED':
       return `${e.playerId} legt ${e.discard.map(label).join(' ')} af, trekt ${label(e.drawn)}`
     case 'YOUSEF_CALLED':
-      return `${e.callerId} roept Yousef`
+      return `${e.callerId} roept Yaniv`
     case 'ROUND_SCORED':
       return `ronde gescoord${e.result.assaf ? ' (Assaf!)' : ''}`
     case 'BAK_DRAWN':
