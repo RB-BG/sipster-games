@@ -71,10 +71,13 @@ export function validateCommand(state: GameState, cmd: Command): ErrorCode | nul
 
     case 'CALL_YOUSEF': {
       if (state.phase !== 'playing' || state.turn === null) return 'WRONG_PHASE'
+      // Tijdens de laatste ronde na een eerdere Yousef mag niemand nog roepen.
+      if (state.finalTurns !== null) return 'WRONG_PHASE'
       if (state.turn.playerId !== cmd.playerId) return 'NOT_YOUR_TURN'
       const player = playerById(state, cmd.playerId)
       if (!player) return 'UNKNOWN_PLAYER'
-      if (handValue(player.hand) >= state.rules.yousefMax) return 'HAND_TOO_HIGH'
+      // "Yousef" mag bij een handwaarde van yousefMax of lager (klassiek: 5 of lager).
+      if (handValue(player.hand) > state.rules.yousefMax) return 'HAND_TOO_HIGH'
       return null
     }
 

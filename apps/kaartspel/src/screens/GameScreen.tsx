@@ -1,6 +1,6 @@
 // Copyright © 2026 Kaartspel. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { Eye, Trophy, Volume2, VolumeX, X } from 'lucide-react'
 import { StaticCard } from '@/cards/Card'
 import PlayerChip from '@/components/PlayerChip'
@@ -16,7 +16,12 @@ import { useStrings } from '@/store/localeStore'
 type Strings = ReturnType<typeof useStrings>
 type Dispatch = (cmd: Command) => void
 
-/** Kaartweergave die ook een joker aankan (core-Card kent geen joker). */
+/** Stabiele identiteit van een kaart, om de zojuist getrokken kaart te herkennen. */
+function cardKey(c: HandCard): string {
+  return c.kind === 'joker' ? `j${c.jid}` : `${c.suit}-${c.rank}`
+}
+
+/** Kaartweergave die ook een joker aankan; de joker vult de kaart net als de andere. */
 function CardView({
   card,
   size = 80,
@@ -30,8 +35,14 @@ function CardView({
   if (card.kind === 'joker') {
     return (
       <div className="card-static">
-        <div className="card-face-front card-black" style={{ width: size, height: size }}>
-          <span className="card-center-suit">🃏</span>
+        <div className="card-face-front" style={{ width: size, height: size, color: '#e0a92e' }}>
+          <span className="card-corner card-corner-tl">
+            <span className="card-corner-rank">★</span>
+          </span>
+          <span className="card-center-suit">★</span>
+          <span className="card-corner card-corner-br">
+            <span className="card-corner-rank">★</span>
+          </span>
         </div>
       </div>
     )
@@ -39,12 +50,25 @@ function CardView({
   return <StaticCard card={{ suit: card.suit, rank: card.rank }} size={size} />
 }
 
-/** Rijtje spelerchips met de bak-meter (cumulatieve score). */
-function Scoreboard({ state, activeId }: { state: GameState; activeId?: string }) {
+/** Rijtje spelerchips met de bak-meter en (tijdens het spelen) het kaart-aantal. */
+function Scoreboard({
+  state,
+  activeId,
+  showCards,
+}: {
+  state: GameState
+  activeId?: string
+  showCards: boolean
+}) {
   return (
     <div className="flex flex-wrap justify-center gap-2">
       {state.players.map((p) => (
-        <PlayerChip key={p.id} player={p} active={p.id === activeId} />
+        <PlayerChip
+          key={p.id}
+          player={p}
+          active={p.id === activeId}
+          cards={showCards ? (p.handCount ?? p.hand.length) : undefined}
+        />
       ))}
     </div>
   )
@@ -91,6 +115,61 @@ function TopBar({
   )
 }
 
+/** Trek- en aflegstapel naast elkaar. */
+function Piles({ top, strings }: { top?: HandCard | null; strings: Strings }) {
+  return (
+    <div className="flex items-end justify-center gap-8 py-2">
+      <div className="flex flex-col items-center gap-1">
+        <CardView faceDown size={72} />
+        <span className="text-xs text-muted-foreground">{strings.yousef.deck}</span>
+      </div>
+      <div className="flex flex-col items-center gap-1">
+        <CardView card={top} size={72} />
+        <span className="text-xs text-muted-foreground">{strings.yousef.discardPile}</span>
+      </div>
+    </div>
+  )
+}
+
+/** De hand als een rij kaarten; tikbaar (selecteren) of alleen-lezen. */
+function HandGrid({
+  hand,
+  selected,
+  onToggle,
+  highlightKey,
+  size = 64,
+}: {
+  hand: HandCard[]
+  selected?: HandCard[]
+  onToggle?: (card: HandCard) => void
+  highlightKey?: string
+  size?: number
+}) {
+  return (
+    <div className="flex flex-wrap justify-center gap-1.5">
+      {hand.map((card, i) => {
+        const isSel = selected?.some((s) => sameCard(s, card))
+        const isNew = highlightKey !== undefined && cardKey(card) === highlightKey
+        const inner = <CardView card={card} size={size} />
+        const cls = cn(
+          'rounded-xl transition-transform',
+          isSel && '-translate-y-3 ring-2 ring-primary',
+          isNew && 'ring-2 ring-amber-400',
+        )
+        return onToggle ? (
+          <button key={i} type="button" onClick={() => onToggle(card)} className={cls}>
+            {inner}
+          </button>
+        ) : (
+          <div key={i} className={cls}>
+            {inner}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 /** Afscherm-scherm bij het doorgeven van de telefoon (hotseat-privacy). */
 function PassGate({ name, onShow, strings }: { name: string; onShow: () => void; strings: Strings }) {
   return (
@@ -109,143 +188,228 @@ function PassGate({ name, onShow, strings }: { name: string; onShow: () => void;
   )
 }
 
+/** De afleg-/trek-/Yousef-acties onderaan de speelbeurt. */
+function ActionBar({
+  state,
+  selected,
+  hv,
+  onPlay,
+  onYousef,
+  strings,
+}: {
+  state: GameState
+  selected: HandCard[]
+  hv: number
+  onPlay: (drawFrom: 'deck' | 'discard') => void
+  onYousef: () => void
+  strings: Strings
+}) {
+  const canDiscard = selected.length > 0 && isValidGroup(selected, state.rules.jokerWildcard)
+  const canYousef = state.finalTurns === null && hv <= state.rules.yousefMax
+  const hasTop = state.discardTop.length > 0
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-center text-xs text-muted-foreground">
+        {state.finalTurns
+          ? strings.yousef.finalLap
+          : selected.length > 0 && !canDiscard
+            ? strings.yousef.invalidGroup
+            : strings.yousef.pickCards}
+      </p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={!canDiscard}
+          onClick={() => onPlay('deck')}
+          className="flex-1 rounded-lg bg-secondary px-3 py-3 text-sm font-semibold text-secondary-foreground active:scale-95 disabled:opacity-40"
+        >
+          {strings.yousef.drawDeck}
+        </button>
+        <button
+          type="button"
+          disabled={!canDiscard || !hasTop}
+          onClick={() => onPlay('discard')}
+          className="flex-1 rounded-lg bg-secondary px-3 py-3 text-sm font-semibold text-secondary-foreground active:scale-95 disabled:opacity-40"
+        >
+          {strings.yousef.drawDiscard}
+        </button>
+      </div>
+      {state.finalTurns === null && (
+        <button
+          type="button"
+          disabled={!canYousef}
+          onClick={onYousef}
+          className="rounded-lg bg-primary px-3 py-3 text-lg font-bold text-primary-foreground shadow-lg active:scale-95 disabled:opacity-40"
+        >
+          {hv <= state.rules.yousefMax
+            ? strings.yousef.callYousef
+            : strings.yousef.yousefLocked(state.rules.yousefMax)}
+        </button>
+      )}
+    </div>
+  )
+}
+
 /**
- * De speelbeurt vanuit het perspectief van `viewerId`. Hotseat: viewer is de
- * actieve speler, met een afscherm-scherm bij het doorgeven. P2P: viewer is dit
- * toestel; acties kunnen alleen op de eigen beurt (`canAct`), anders wachten.
+ * Hotseat: iedereen op één toestel. Per beurt: afscherm-scherm, dan de hand
+ * spelen, dan even je nieuwe hand bekijken en bewust doorgeven aan de volgende.
  */
-function TurnView({
+function HotseatView({
+  state,
+  dispatch,
+  leave,
+  strings,
+}: {
+  state: GameState
+  dispatch: Dispatch
+  leave: () => void
+  strings: Strings
+}) {
+  const [stage, setStage] = useState<'gate' | 'hand' | 'review'>('gate')
+  const [selected, setSelected] = useState<HandCard[]>([])
+  const [review, setReview] = useState<{ playerId: string; keptKeys: string[] } | null>(null)
+
+  const active = state.players.find((p) => p.id === state.turn?.playerId)
+  const title = `${strings.appName} · ${strings.round(state.round)}`
+
+  function frame(children: ReactNode) {
+    return (
+      <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 p-4">
+        <TopBar title={title} onLeave={leave} label={strings.leaveTable} strings={strings} />
+        {children}
+      </main>
+    )
+  }
+
+  if (stage === 'review' && review) {
+    const player = state.players.find((p) => p.id === review.playerId)
+    const drawn = player?.hand.find((c) => !review.keptKeys.includes(cardKey(c)))
+    return frame(
+      <div className="mt-4 flex flex-1 flex-col items-center gap-4">
+        <p className="text-lg font-bold text-ivory">{player?.name}</p>
+        <p className="text-sm text-muted-foreground">{strings.yousef.reviewHint}</p>
+        {player && <HandGrid hand={player.hand} highlightKey={drawn ? cardKey(drawn) : undefined} />}
+        <button
+          type="button"
+          onClick={() => {
+            setReview(null)
+            setStage('gate')
+          }}
+          className="mt-auto rounded-xl bg-primary px-8 py-4 text-lg font-semibold text-primary-foreground shadow-lg active:scale-95"
+        >
+          {strings.yousef.passButton(active?.name ?? '')}
+        </button>
+      </div>,
+    )
+  }
+
+  if (!active) return null
+
+  if (stage === 'gate') {
+    return frame(<PassGate name={active.name} onShow={() => setStage('hand')} strings={strings} />)
+  }
+
+  // stage === 'hand'
+  const hv = handValue(active.hand)
+  function toggle(card: HandCard) {
+    setSelected((prev) =>
+      prev.some((s) => sameCard(s, card)) ? prev.filter((s) => !sameCard(s, card)) : [...prev, card],
+    )
+  }
+  function play(drawFrom: 'deck' | 'discard') {
+    if (!active) return
+    const kept = active.hand.filter((c) => !selected.some((s) => sameCard(s, c)))
+    setReview({ playerId: active.id, keptKeys: kept.map(cardKey) })
+    setSelected([])
+    setStage('review')
+    playDeal()
+    hapticDeal()
+    dispatch({ t: 'PLAY_TURN', playerId: active.id, discard: selected, drawFrom })
+  }
+  function yousef() {
+    if (!active) return
+    setSelected([])
+    setStage('gate')
+    playFanfare()
+    hapticFanfare()
+    dispatch({ t: 'CALL_YOUSEF', playerId: active.id })
+  }
+
+  return frame(
+    <>
+      <Scoreboard state={state} activeId={active.id} showCards />
+      <Piles top={state.discardTop.at(-1)} strings={strings} />
+      <div className="mt-auto flex flex-col items-center gap-2">
+        <span className="text-sm text-muted-foreground">{strings.yousef.handValue(hv)}</span>
+        <HandGrid hand={active.hand} selected={selected} onToggle={toggle} />
+      </div>
+      <ActionBar
+        state={state}
+        selected={selected}
+        hv={hv}
+        onPlay={play}
+        onYousef={yousef}
+        strings={strings}
+      />
+    </>,
+  )
+}
+
+/** P2P: dit toestel toont zijn eigen hand; acties alleen op de eigen beurt. */
+function NetView({
   state,
   dispatch,
   leave,
   strings,
   viewerId,
-  hotseat,
-  canAct,
 }: {
   state: GameState
   dispatch: Dispatch
   leave: () => void
   strings: Strings
   viewerId: string
-  hotseat: boolean
-  canAct: boolean
 }) {
-  const viewer = state.players.find((p) => p.id === viewerId)
-  // Hotseat: eerst afschermen. P2P: geen afscherming (eigen toestel).
-  const [revealed, setRevealed] = useState(!hotseat)
   const [selected, setSelected] = useState<HandCard[]>([])
-
+  const viewer = state.players.find((p) => p.id === viewerId)
   if (!viewer) return null
   const activePlayer = state.players.find((p) => p.id === state.turn?.playerId)
-
-  if (!revealed) {
-    return (
-      <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 p-4">
-        <TopBar
-          title={`${strings.appName} · ${strings.round(state.round)}`}
-          onLeave={leave}
-          label={strings.leaveTable}
-          strings={strings}
-        />
-        <PassGate name={viewer.name} onShow={() => setRevealed(true)} strings={strings} />
-      </main>
-    )
-  }
-
+  const canAct = state.turn?.playerId === viewerId
   const hv = handValue(viewer.hand)
-  const canDiscard = canAct && selected.length > 0 && isValidGroup(selected)
-  const canYousef = canAct && hv < state.rules.yousefMax
-  const top = state.discardTop[state.discardTop.length - 1]
 
   function toggle(card: HandCard) {
-    if (!canAct) return
     setSelected((prev) =>
       prev.some((s) => sameCard(s, card)) ? prev.filter((s) => !sameCard(s, card)) : [...prev, card],
     )
   }
-
   function play(drawFrom: 'deck' | 'discard') {
-    playDeal()
-    hapticDeal()
     dispatch({ t: 'PLAY_TURN', playerId: viewerId, discard: selected, drawFrom })
     setSelected([])
+    playDeal()
+    hapticDeal()
   }
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 p-4">
       <TopBar title={`${viewer.emoji} ${viewer.name}`} onLeave={leave} label={strings.leaveTable} strings={strings} />
-      <Scoreboard state={state} activeId={state.turn?.playerId} />
-
-      {/* Trek- en aflegstapel. */}
-      <div className="flex items-end justify-center gap-8 py-2">
-        <div className="flex flex-col items-center gap-1">
-          <CardView faceDown size={72} />
-          <span className="text-xs text-muted-foreground">{strings.yousef.deck}</span>
-        </div>
-        <div className="flex flex-col items-center gap-1">
-          <CardView card={top} size={72} />
-          <span className="text-xs text-muted-foreground">{strings.yousef.discardPile}</span>
-        </div>
-      </div>
-
-      {/* De eigen hand. */}
+      <Scoreboard state={state} activeId={state.turn?.playerId} showCards />
+      <Piles top={state.discardTop.at(-1)} strings={strings} />
       <div className="mt-auto flex flex-col items-center gap-2">
         <span className="text-sm text-muted-foreground">{strings.yousef.handValue(hv)}</span>
-        <div className="flex flex-wrap justify-center gap-1.5">
-          {viewer.hand.map((card, i) => {
-            const isSel = selected.some((s) => sameCard(s, card))
-            return (
-              <button
-                key={i}
-                type="button"
-                onClick={() => toggle(card)}
-                className={cn('rounded-xl transition-transform', isSel && '-translate-y-3 ring-2 ring-primary')}
-              >
-                <CardView card={card} size={64} />
-              </button>
-            )
-          })}
-        </div>
+        <HandGrid hand={viewer.hand} selected={canAct ? selected : undefined} onToggle={canAct ? toggle : undefined} />
       </div>
-
-      {/* Acties, of een wachtmelding als het niet je beurt is (P2P). */}
       {canAct ? (
-        <div className="flex flex-col gap-2">
-          <p className="text-center text-xs text-muted-foreground">
-            {selected.length > 0 && !canDiscard ? strings.yousef.invalidGroup : strings.yousef.pickCards}
-          </p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={!canDiscard}
-              onClick={() => play('deck')}
-              className="flex-1 rounded-lg bg-secondary px-3 py-3 text-sm font-semibold text-secondary-foreground active:scale-95 disabled:opacity-40"
-            >
-              {strings.yousef.drawDeck}
-            </button>
-            <button
-              type="button"
-              disabled={!canDiscard || !top}
-              onClick={() => play('discard')}
-              className="flex-1 rounded-lg bg-secondary px-3 py-3 text-sm font-semibold text-secondary-foreground active:scale-95 disabled:opacity-40"
-            >
-              {strings.yousef.drawDiscard}
-            </button>
-          </div>
-          <button
-            type="button"
-            disabled={!canYousef}
-            onClick={() => {
-              playFanfare()
-              hapticFanfare()
-              dispatch({ t: 'CALL_YOUSEF', playerId: viewerId })
-            }}
-            className="rounded-lg bg-primary px-3 py-3 text-lg font-bold text-primary-foreground shadow-lg active:scale-95 disabled:opacity-40"
-          >
-            {hv < state.rules.yousefMax ? strings.yousef.callYousef : strings.yousef.yousefLocked(state.rules.yousefMax)}
-          </button>
-        </div>
+        <ActionBar
+          state={state}
+          selected={selected}
+          hv={hv}
+          onPlay={play}
+          onYousef={() => {
+            playFanfare()
+            hapticFanfare()
+            dispatch({ t: 'CALL_YOUSEF', playerId: viewerId })
+          }}
+          strings={strings}
+        />
       ) : (
         <p className="rounded-lg bg-card px-4 py-3 text-center text-sm text-muted-foreground">
           {strings.yousef.waitingFor(activePlayer?.name ?? '?')}
@@ -309,11 +473,7 @@ function RoundEndView({
                   <span className="font-bold text-ivory">{strings.yousef.points(player.score)}</span>
                 </span>
               </div>
-              <div className="flex flex-wrap gap-1">
-                {entry.hand.map((card, i) => (
-                  <CardView key={i} card={card} size={44} />
-                ))}
-              </div>
+              <HandGrid hand={entry.hand} size={40} />
               {mayResolve && (
                 <button
                   type="button"
@@ -390,12 +550,8 @@ export default function GameScreen() {
 
   if (!state) return null
 
-  // Hotseat: iedereen op één toestel, viewer volgt de beurt (met afscherming).
-  // P2P: dit toestel is myPlayerId; acties alleen op de eigen beurt.
   const hotseat = myPlayerId === null
-  const activeId = state.turn?.playerId
-  const viewerId = myPlayerId ?? activeId ?? state.hostId
-  const canAct = hotseat || activeId === myPlayerId
+  const viewerId = myPlayerId ?? state.turn?.playerId ?? state.hostId
 
   const view =
     state.phase === 'ended' ? (
@@ -410,17 +566,10 @@ export default function GameScreen() {
         hotseat={hotseat}
         isHost={isHost}
       />
+    ) : hotseat ? (
+      <HotseatView state={state} dispatch={dispatch} leave={leave} strings={strings} />
     ) : (
-      <TurnView
-        key={hotseat ? activeId ?? 'none' : viewerId}
-        state={state}
-        dispatch={dispatch}
-        leave={leave}
-        strings={strings}
-        viewerId={viewerId}
-        hotseat={hotseat}
-        canAct={canAct}
-      />
+      <NetView state={state} dispatch={dispatch} leave={leave} strings={strings} viewerId={viewerId} />
     )
 
   return (

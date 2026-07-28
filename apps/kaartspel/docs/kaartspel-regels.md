@@ -33,8 +33,10 @@ kunnen roepen. Punten stapelen over de rondes; wie te hoog komt, trekt een bak.
 ## Yousef roepen
 
 - Aan het begin van je beurt (in plaats van afleggen/trekken) mag je **"Yousef"** roepen, mits
-  je **handwaarde < 5** is (dus 0 t/m 4).
-- De ronde stopt direct; iedereen legt zijn hand open.
+  je **handwaarde 5 of lager** is (instelbaar via de huisregel `yousefMax`, standaard 5).
+- Na de call krijgt **elke andere speler nog precies één beurt** (de roeper niet); pas dáárna
+  stopt de ronde, worden alle handen open gelegd en wordt er gescoord. Zo kunnen de anderen nog
+  proberen onder de roeper te komen (Assaf).
 
 ## Ronde-scoring
 
