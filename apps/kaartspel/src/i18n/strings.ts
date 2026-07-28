@@ -61,7 +61,7 @@ export const nl = {
     ],
     [
       'Yousef roepen',
-      'Zodra je handwaarde onder de 5 is, mag je aan het begin van je beurt "Yousef" roepen. Ben je dan de laagste, dan tellen de anderen het verschil met jouw hand bij hun score op. Zit iemand gelijk of lager (Assaf), dan is de call mislukt en krijg jij zelf de punten: 10 bij gelijk, anders het verschil keer 10.',
+      'Zodra je handwaarde 5 of lager is, mag je aan het begin van je beurt "Yousef" roepen. Daarna krijgt elke andere speler nog één beurt, en pas dan wordt er gescoord. Ben je de laagste, dan tellen de anderen het verschil met jouw hand bij hun score op. Zit iemand gelijk of lager (Assaf), dan is de call mislukt en krijg jij zelf de punten: 10 bij gelijk, anders het verschil keer 10.',
     ],
     [
       'Bakken',
@@ -70,7 +70,7 @@ export const nl = {
   ] as [string, string][],
   ruleLabels: {
     handSize: 'Kaarten per hand',
-    yousefMax: 'Yousef roepen onder',
+    yousefMax: 'Yousef roepen t/m',
     jokerWildcard: 'Joker als wildcard',
     assafEveryoneScores: 'Bij Assaf scoort iedereen',
     bakThreshold: 'Bak trekken vanaf',
@@ -87,6 +87,9 @@ export const nl = {
     passHint: 'zodat niemand anders je hand ziet',
     showHand: 'Toon mijn hand',
     waitingFor: (name: string) => `Wachten op ${name}`,
+    reviewHint: 'Je nieuwe hand, denk alvast na',
+    passButton: (name: string) => `Geef door aan ${name}`,
+    finalLap: 'Laatste beurt na Yousef',
     handValue: (n: number) => `handwaarde ${n}`,
     deck: 'stapel',
     discardPile: 'aflegstapel',
@@ -95,7 +98,7 @@ export const nl = {
     pickCards: 'Kies kaart(en) om af te leggen, dan trek je één kaart',
     invalidGroup: 'Geen geldige set of straat',
     callYousef: 'Yousef!',
-    yousefLocked: (n: number) => `Yousef mag onder de ${n}`,
+    yousefLocked: (n: number) => `Yousef mag bij ${n} of lager`,
     points: (n: number) => `${n} pt`,
     roundOver: 'Ronde afgelopen',
     called: (name: string) => `${name} riep Yousef`,
@@ -185,7 +188,7 @@ const en: Strings = {
     ],
     [
       'Calling Yousef',
-      'Once your hand value is below 5, you may call "Yousef" at the start of your turn. If you are the lowest, everyone else adds the difference with your hand to their score. If someone ties or is lower (Assaf), the call failed and you take the points yourself: 10 on a tie, otherwise the difference times 10.',
+      'Once your hand value is 5 or lower, you may call "Yousef" at the start of your turn. Every other player then gets one more turn, and only then is the round scored. If you are the lowest, everyone else adds the difference with your hand to their score. If someone ties or is lower (Assaf), the call failed and you take the points yourself: 10 on a tie, otherwise the difference times 10.',
     ],
     [
       'Baks',
@@ -194,7 +197,7 @@ const en: Strings = {
   ],
   ruleLabels: {
     handSize: 'Cards per hand',
-    yousefMax: 'Call Yousef below',
+    yousefMax: 'Call Yousef up to',
     jokerWildcard: 'Joker as wildcard',
     assafEveryoneScores: 'Everyone scores on Assaf',
     bakThreshold: 'Draw a bak from',
@@ -210,6 +213,9 @@ const en: Strings = {
     passHint: 'so no one else sees your hand',
     showHand: 'Show my hand',
     waitingFor: (name) => `Waiting for ${name}`,
+    reviewHint: 'Your new hand, start thinking',
+    passButton: (name) => `Pass to ${name}`,
+    finalLap: 'Final turn after Yousef',
     handValue: (n) => `hand value ${n}`,
     deck: 'deck',
     discardPile: 'discard pile',
@@ -218,7 +224,7 @@ const en: Strings = {
     pickCards: 'Pick card(s) to discard, then draw one card',
     invalidGroup: 'Not a valid set or run',
     callYousef: 'Yousef!',
-    yousefLocked: (n) => `Yousef allowed below ${n}`,
+    yousefLocked: (n) => `Yousef allowed at ${n} or lower`,
     points: (n) => `${n} pt`,
     roundOver: 'Round over',
     called: (name) => `${name} called Yousef`,

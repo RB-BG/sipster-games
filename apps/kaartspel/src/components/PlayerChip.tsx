@@ -6,11 +6,13 @@ import { cn } from '@/lib/utils'
 interface PlayerChipProps {
   player: PlayerState
   active: boolean
+  /** Aantal kaarten in de hand; getoond tijdens het spelen. */
+  cards?: number
   /** Optioneel roltekentje. */
   badge?: string
 }
 
-export default function PlayerChip({ player, active, badge }: PlayerChipProps) {
+export default function PlayerChip({ player, active, cards, badge }: PlayerChipProps) {
   return (
     <div
       className={cn(
@@ -25,8 +27,9 @@ export default function PlayerChip({ player, active, badge }: PlayerChipProps) {
       </span>
       <span className="max-w-20 truncate font-semibold">{player.name}</span>
       <span className={active ? 'opacity-80' : 'text-muted-foreground'}>
-        {/* De bak-meter: cumulatieve strafpunten. */}
+        {/* De bak-meter: cumulatieve strafpunten, plus het aantal handkaarten. */}
         <span className="font-bold">{player.score}</span> pt
+        {cards !== undefined && <span className="ml-1">· 🂠{cards}</span>}
       </span>
     </div>
   )

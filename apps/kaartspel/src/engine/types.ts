@@ -62,6 +62,15 @@ export interface PlayerState extends PlayerProfile {
 /** Wie nu aan zet is; null buiten de speel-fase. */
 export type TurnState = { playerId: string } | null
 
+/**
+ * Actief tussen een Yousef-call en de scoring: elke andere speler krijgt nog
+ * precies één beurt (de roeper niet). `queue` is de resterende volgorde.
+ */
+export interface FinalTurns {
+  callerId: string
+  queue: string[]
+}
+
 /** De open weergave van één speler bij het eind van een ronde. */
 export interface RoundEntry {
   playerId: string
@@ -109,6 +118,8 @@ export interface GameState {
   turn: TurnState
   /** Uitslag van de zojuist afgelopen ronde; alleen gezet in `roundEnd`. */
   roundResult: RoundResult | null
+  /** Actief na een Yousef-call, tot iedereen zijn laatste beurt heeft gehad. */
+  finalTurns: FinalTurns | null
 }
 
 /** Wat een speler wil doen; de reducer valideert en voert uit. */

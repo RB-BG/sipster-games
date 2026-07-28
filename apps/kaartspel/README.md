@@ -1,6 +1,6 @@
 # Kaartspel (werknaam) 🃏
 
-Het kaart-borrelspel *Yousef* (uit de Yaniv-familie), als webgame. Iedereen speelt met een hand van 5 kaarten en probeert zijn handwaarde laag te houden: is die onder de 5, dan mag je "Yousef" roepen en stopt de ronde. Punten stapelen over de rondes; wie boven de 30 komt, trekt een bak. Spelers zitten aan dezelfde tafel, ieder op eigen telefoon. Geen backend, geen accounts: de lobby-maker is de host en alles loopt peer-to-peer over WebRTC.
+Het kaart-borrelspel *Yousef* (uit de Yaniv-familie), als webgame. Iedereen speelt met een hand van 5 kaarten en probeert zijn handwaarde laag te houden: is die 5 of lager, dan mag je "Yousef" roepen, waarna iedereen nog één beurt krijgt en de ronde stopt. Punten stapelen over de rondes; wie boven de 30 komt, trekt een bak. Spelers zitten aan dezelfde tafel, ieder op eigen telefoon. Geen backend, geen accounts: de lobby-maker is de host en alles loopt peer-to-peer over WebRTC.
 
 De spelregels staan in [docs/kaartspel-regels.md](docs/kaartspel-regels.md); het bouwplan in [docs/plan.md](docs/plan.md). Geforkt van de architectuur van het zusterspel Kingsen.
 

@@ -43,6 +43,7 @@ export function createGame(host: PlayerProfile, rules = DEFAULT_RULES): GameStat
     discardBuried: [],
     turn: null,
     roundResult: null,
+    finalTurns: null,
   }
 }
 
@@ -118,7 +119,7 @@ export function reduce(state: GameState, cmd: Command, rng: DeckSource): ReduceR
       break
 
     case 'FORFEIT_TURN':
-      advanceTurn(draft)
+      if (draft.turn) endTurn(draft, events, draft.turn.playerId)
       break
 
     case 'END_GAME':
@@ -154,6 +155,7 @@ function deal(draft: GameState, rng: DeckSource): void {
   }
   draft.discardTop = [draft.deck[draft.drawIndex++]]
   draft.turn = { playerId: firstConnected(draft).id }
+  draft.finalTurns = null
 }
 
 /** Trekt de volgende kaart; is de stapel op, schud dan de begraven aflegstapel opnieuw. */
@@ -200,15 +202,58 @@ function playTurn(
     fromDiscard,
     animSeed: rng.seed(),
   })
+  endTurn(draft, events, playerId)
+}
+
+/**
+ * Rond de beurt van `playerId` af. In een normale ronde gaat de beurt met de klok
+ * mee door. Zit de tafel in de laatste ronde na een Yousef-call, dan gaat de beurt
+ * langs de wachtrij; is die leeg, dan wordt de ronde gescoord.
+ */
+function endTurn(draft: GameState, events: EngineEvent[], playerId: string): void {
+  if (draft.finalTurns) {
+    const queue = draft.finalTurns.queue.filter((id) => id !== playerId)
+    draft.finalTurns.queue = queue
+    if (queue.length === 0) {
+      const callerId = draft.finalTurns.callerId
+      draft.finalTurns = null
+      scoreRound(draft, events, callerId)
+    } else {
+      draft.turn = { playerId: queue[0] }
+    }
+    return
+  }
   advanceTurn(draft)
 }
 
 /**
- * Iemand roept "Yousef": de ronde stopt en wordt gescoord. De roeper wint schoon
- * als hij strikt de laagste is; anders is het Assaf en wordt alleen de roeper gestraft.
+ * Iemand roept "Yousef": de ronde wordt niet meteen gescoord, maar elke andere
+ * speler krijgt nog precies één beurt (de roeper niet). Zijn er geen andere
+ * (verbonden) spelers, dan scoren we direct.
  */
 function callYousef(draft: GameState, events: EngineEvent[], callerId: string): void {
   events.push({ t: 'YOUSEF_CALLED', callerId })
+  const players = draft.players
+  const n = players.length
+  const idx = players.findIndex((p) => p.id === callerId)
+  const queue: string[] = []
+  for (let step = 1; step < n; step++) {
+    const cand = players[(idx + step) % n]
+    if (cand.connected) queue.push(cand.id)
+  }
+  if (queue.length === 0) {
+    scoreRound(draft, events, callerId)
+    return
+  }
+  draft.finalTurns = { callerId, queue }
+  draft.turn = { playerId: queue[0] }
+}
+
+/**
+ * Scoort de ronde. De roeper wint schoon als hij strikt de laagste is; anders is
+ * het Assaf. Wordt aangeroepen zodra iedereen zijn laatste beurt heeft gehad.
+ */
+function scoreRound(draft: GameState, events: EngineEvent[], callerId: string): void {
   const caller = playerById(draft, callerId)
   const callerValue = handValue(caller.hand)
 
