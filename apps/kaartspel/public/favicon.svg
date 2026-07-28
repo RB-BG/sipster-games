@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect x="12" y="6" width="40" height="52" rx="7" fill="#f7f3fb" stroke="#150a24" stroke-width="3"/>
-  <path d="M22 40l-2-14 6 5 6-9 6 9 6-5-2 14z" fill="#f5c542" stroke="#150a24" stroke-width="1.5" stroke-linejoin="round"/>
-  <text x="18.5" y="20" font-family="Georgia, serif" font-size="12" font-weight="700" fill="#e8355c" text-anchor="middle">K</text>
-  <text x="45.5" y="52" font-family="Georgia, serif" font-size="12" font-weight="700" fill="#e8355c" text-anchor="middle" transform="rotate(180 45.5 47)">K</text>
-</svg>

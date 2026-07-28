@@ -1,0 +1,18 @@
+{
+  "name": "Yaniv",
+  "short_name": "Yaniv",
+  "description": "Het kaart-borrelspel, op je telefoon",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#082430",
+  "theme_color": "#082430",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

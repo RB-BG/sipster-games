@@ -11,7 +11,7 @@ ook** als je aan één app werkt. Dit bestand beschrijft wat voor de hele repo g
 - `apps/mexxen` — Mexxen (dobbelspel), appId `nl.mexxen.app`, domein `mex.sipster.games`.
 - `apps/bussen` — Bussen (kaartspel, ride the bus), appId `games.sipster.bussen`, domein `bus.sipster.games`.
 - `apps/kingsen` — Kingsen (kaartspel, kings cup), appId `games.sipster.kingsen`, domein `king.sipster.games`.
-- `apps/kaartspel` — Kaartspel (werknaam, Yousef uit de Yaniv-familie), appId `games.sipster.kaartspel`, domein nog te bepalen. Geforkt van kingsen; engine in opbouw (zie `apps/kaartspel/docs/plan.md`).
+- `apps/yaniv` — Yaniv (kaartspel uit de Yaniv/Yousef-familie), appId `games.sipster.yaniv`, domein `yaniv.sipster.games`. Geforkt van kingsen; eigen engine (zie `apps/yaniv/docs/plan.md`).
 - `packages/core` — `@sipster/core`, de echt gedeelde laag (zie hieronder).
 
 ## Commando's
