@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+@import "@fontsource-variable/bricolage-grotesque";
 
 /* Gedeelde @sipster/core-componenten scannen op Tailwind-classes (buiten node_modules-default). */
 @source "../../../packages/core/src";
@@ -37,10 +38,20 @@
   body {
     margin: 0;
     color: var(--ivory);
-    /* Zeegroen: diepe teal radial met een zweem turquoise van boven. */
-    background: radial-gradient(120% 90% at 50% 0%, var(--night-800) 0%, var(--night-900) 55%, var(--night-950) 100%);
+    /* Zeegroen: turquoise schijnsel van boven, koraal in de hoek + fijne
+       filmgrain, zodat de achtergrond niet als een vlakke gradient leest. */
+    background:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.05'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") repeat,
+      radial-gradient(54% 38% at 50% -6%, #34d3bd28 0%, transparent 60%),
+      radial-gradient(42% 32% at 88% 8%, #ff7a591c 0%, transparent 60%),
+      radial-gradient(120% 90% at 50% 0%, var(--night-800) 0%, var(--night-900) 55%, var(--night-950) 100%);
+    background-size: 160px 160px, auto, auto, auto;
     background-attachment: fixed;
     min-height: 100dvh;
+  }
+  ::selection {
+    background: var(--cyan);
+    color: var(--night-950);
   }
   html {
     @apply font-sans;
@@ -48,7 +59,8 @@
 }
 
 @theme inline {
-  --font-heading: var(--font-sans);
+  /* Koppen in Bricolage Grotesque (eigentijdse grotesk met warmte); body blijft Geist. */
+  --font-heading: 'Bricolage Grotesque Variable', 'Geist Variable', sans-serif;
   --font-sans: 'Geist Variable', sans-serif;
 
   /*
