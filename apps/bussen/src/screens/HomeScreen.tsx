@@ -15,10 +15,14 @@ export default function HomeScreen() {
         <LocaleSwitch />
       </div>
       <div className="flex flex-col items-center gap-3">
-        <Spade className="size-14 text-cyan" aria-hidden />
-        <h1 className="font-heading text-6xl font-bold tracking-tight text-ivory">
+        <span className="relative mb-1 flex size-16 items-center justify-center" aria-hidden>
+          <span className="absolute inset-0 rounded-full bg-primary/15 blur-2xl" />
+          <Spade className="relative size-14 text-cyan" />
+        </span>
+        <h1 className="font-heading text-7xl font-bold tracking-tight text-ivory">
           {strings.appName}
         </h1>
+        <span className="h-1 w-12 rounded-full bg-primary/70" aria-hidden />
         <p className="text-lg text-muted-foreground">{strings.tagline}</p>
       </div>
 
