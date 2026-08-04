@@ -206,12 +206,15 @@ export default function Dice({ roll, flip, held, onDieClick, onSettled, onScore 
         {flash && (
           <motion.div
             key={flash.id}
-            initial={{ scale: 0.4, opacity: 0, y: 78 }}
-            animate={{ scale: 1, opacity: 1, y: 62 }}
-            exit={{ scale: 0.8, opacity: 0, y: 44 }}
+            initial={{ scale: 0.4, opacity: 0, y: 92 }}
+            animate={{ scale: 1, opacity: 1, y: 76 }}
+            exit={{ scale: 0.8, opacity: 0, y: 92 }}
             transition={{ type: 'spring', stiffness: 420, damping: 18 }}
             // Onder de stenen (top-1/2 + downward y) zodat de score de worp niet bedekt.
-            className={`pointer-events-none absolute inset-x-0 top-1/2 text-center font-heading font-extrabold drop-shadow-lg ${
+            // Schaduw alleen naar beneden: drop-shadow-lg bleedt omhoog en tekent
+            // een dun lijntje op de onderkant van de stenen.
+            style={{ filter: 'drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55))' }}
+            className={`pointer-events-none absolute inset-x-0 top-1/2 text-center font-heading font-extrabold ${
               flash.mex ? 'text-5xl text-amber-soft' : 'text-4xl text-ivory'
             }`}
           >
