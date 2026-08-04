@@ -15,6 +15,7 @@ import { createHostLoop, type HostLoop } from '@/net/hostLoop'
 import { createGuestTransport, createHostTransport } from '@/net/peerTransport'
 import type { GuestStatus, GuestTransport } from '@/net/transport'
 import type { GameEvent, Intent } from '@/protocol/messages'
+import { commandToIntent } from '@/protocol/commandIntent'
 import type { FlipAnim, RollAnim } from './gameStore'
 
 export interface AfslaanToast {
@@ -320,32 +321,3 @@ function stripRoomParam(): void {
   window.history.replaceState(null, '', url)
 }
 
-/** UI spreekt in Commands; op het netwerk gaan Intents (host bepaalt de speler-id). */
-function commandToIntent(cmd: Command): Intent | null {
-  switch (cmd.t) {
-    case 'SET_RULES':
-      return { t: 'SET_RULES', rules: cmd.rules }
-    case 'START_GAME':
-      return { t: 'START_GAME' }
-    case 'ROLL':
-      return { t: 'ROLL' }
-    case 'HOLD_DIE':
-      return { t: 'HOLD_DIE', dieId: cmd.dieId }
-    case 'PICKUP_DIE':
-      return { t: 'PICKUP_DIE', dieId: cmd.dieId }
-    case 'END_TURN':
-      return { t: 'END_TURN' }
-    case 'GIVE_SIPS_31':
-      return { t: 'GIVE_SIPS_31', targetPlayerId: cmd.targetPlayerId }
-    case 'TIEBREAK_ROLL':
-      return { t: 'TIEBREAK_ROLL' }
-    case 'NEXT_ROUND':
-      return { t: 'NEXT_ROUND' }
-    case 'END_GAME':
-      return { t: 'END_GAME' }
-    case 'FORFEIT_TURN':
-      return { t: 'FORFEIT_TURN' }
-    default:
-      return null
-  }
-}

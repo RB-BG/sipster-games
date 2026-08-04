@@ -37,7 +37,7 @@ Uitbreiding op ridder: gooit de ridder opnieuw 1 en 1, dan wordt hij dubbele rid
 - Bij twijfel wie sneller was beslissen de andere spelers (digitaal: verwerkingsvolgorde bij de host).
 
 **Onterechte afklop (2 slokken straf):**
-- De gooier was op tijd met oppakken.
+- De gooier was op tijd: hij had vóór de afslag al een steen opgepakt of alweer opnieuw gegooid (in beide gevallen is het afslaan-window dicht).
 - Een andere speler had al terecht afgeklopt.
 - Er was geen afklopbare situatie.
 - Het was sowieso de laatste worp van de gooier.
