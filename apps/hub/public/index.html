@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Sipster Games</title>
+    <meta name="description" content="Sipster, borrelspellen voor je telefoon. Maak een tafel, nodig je vrienden uit met een QR-code en speel samen." />
+    <link rel="canonical" href="https://sipster.games/" />
+    <meta name="theme-color" content="#0b0b12" />
+    <meta property="og:title" content="Sipster Games" />
+    <meta property="og:description" content="Borrelspellen voor je telefoon: Mexxen, Bussen, Kingsen en Yaniv." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sipster.games/" />
+    <!-- AdSense-eigendomsmarkering (inert: laadt zelf geen advertenties). -->
+    <meta name="google-adsense-account" content="ca-pub-4843217017760661" />
+    <style>
+      :root {
+        --bg: #0b0b12;
+        --ink: #f4f1ea;
+        --muted: #a7a2b3;
+        --card-border: rgba(255, 255, 255, 0.08);
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        min-height: 100dvh;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        line-height: 1.5;
+        /* Sfeergloed in de vier spelkleuren. */
+        background-image:
+          radial-gradient(60% 50% at 15% 0%, rgba(242, 169, 59, 0.14), transparent 70%),
+          radial-gradient(55% 45% at 85% 10%, rgba(91, 140, 255, 0.14), transparent 70%),
+          radial-gradient(55% 50% at 20% 100%, rgba(231, 193, 76, 0.12), transparent 70%),
+          radial-gradient(60% 55% at 90% 95%, rgba(45, 212, 191, 0.12), transparent 70%);
+      }
+      .wrap {
+        max-width: 60rem;
+        margin: 0 auto;
+        padding: clamp(2.5rem, 8vw, 6rem) 1.25rem 4rem;
+      }
+      header { text-align: center; margin-bottom: clamp(2rem, 6vw, 3.5rem); }
+      .brand {
+        display: inline-flex; align-items: center; gap: 0.6rem;
+        font-size: clamp(2.4rem, 9vw, 4rem);
+        font-weight: 800; letter-spacing: -0.02em; margin: 0;
+      }
+      .brand .glass { font-size: 0.9em; filter: drop-shadow(0 4px 16px rgba(242, 169, 59, 0.4)); }
+      .accent-rule {
+        width: 4rem; height: 3px; margin: 1rem auto 0;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #f2a93b, #e7c14c, #2dd4bf, #5b8cff);
+      }
+      .tagline { color: var(--muted); font-size: clamp(1rem, 3.5vw, 1.2rem); margin: 1rem 0 0; }
+      .grid {
+        display: grid; gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+      }
+      .card {
+        position: relative; display: flex; flex-direction: column; gap: 0.35rem;
+        padding: 1.5rem 1.4rem;
+        border-radius: 1.1rem;
+        border: 1px solid var(--card-border);
+        background: var(--card-bg);
+        text-decoration: none; color: var(--ink);
+        overflow: hidden;
+        transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .card::before {
+        content: ""; position: absolute; inset: 0;
+        background: radial-gradient(80% 60% at 100% 0%, var(--accent-glow), transparent 70%);
+        opacity: 0.9; pointer-events: none;
+      }
+      .card:hover, .card:focus-visible {
+        transform: translateY(-3px);
+        border-color: var(--accent);
+        box-shadow: 0 10px 30px -12px var(--accent-glow);
+        outline: none;
+      }
+      .card .emoji { font-size: 2rem; }
+      .card h2 { margin: 0.2rem 0 0; font-size: 1.4rem; font-weight: 700; }
+      .card .desc { color: var(--muted); font-size: 0.92rem; }
+      .card .go { margin-top: 0.6rem; font-size: 0.85rem; font-weight: 600; color: var(--accent); }
+
+      .mexxen { --card-bg: #241509; --accent: #f2a93b; --accent-glow: rgba(242, 169, 59, 0.28); }
+      .bussen { --card-bg: #0e1030; --accent: #5b8cff; --accent-glow: rgba(91, 140, 255, 0.28); }
+      .kingsen { --card-bg: #1a0b2e; --accent: #e7c14c; --accent-glow: rgba(231, 193, 76, 0.28); }
+      .yaniv { --card-bg: #082430; --accent: #2dd4bf; --accent-glow: rgba(45, 212, 191, 0.28); }
+
+      footer { margin-top: 3rem; text-align: center; color: var(--muted); font-size: 0.85rem; }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <header>
+        <h1 class="brand"><span class="glass">🍻</span> Sipster</h1>
+        <div class="accent-rule"></div>
+        <p class="tagline">Borrelspellen voor je telefoon. Maak een tafel, deel de QR en speel samen.</p>
+      </header>
+
+      <nav class="grid" aria-label="Spellen">
+        <a class="card mexxen" href="https://mex.sipster.games/">
+          <span class="emoji" aria-hidden="true">🎲</span>
+          <h2>Mexxen</h2>
+          <span class="desc">Dobbelspel, de klassieke mex.</span>
+          <span class="go">Spelen →</span>
+        </a>
+        <a class="card bussen" href="https://bus.sipster.games/">
+          <span class="emoji" aria-hidden="true">🚌</span>
+          <h2>Bussen</h2>
+          <span class="desc">Kaartspel, ride the bus.</span>
+          <span class="go">Spelen →</span>
+        </a>
+        <a class="card kingsen" href="https://king.sipster.games/">
+          <span class="emoji" aria-hidden="true">👑</span>
+          <h2>Kingsen</h2>
+          <span class="desc">Kaartspel, kings cup.</span>
+          <span class="go">Spelen →</span>
+        </a>
+        <a class="card yaniv" href="https://yaniv.sipster.games/">
+          <span class="emoji" aria-hidden="true">🃏</span>
+          <h2>Yaniv</h2>
+          <span class="desc">Kaartspel uit de Yaniv-familie.</span>
+          <span class="go">Spelen →</span>
+        </a>
+      </nav>
+
+      <footer>Sipster Games, drink met mate.</footer>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,4 @@
+# Sipster Games, ads.txt op de apex (sipster.games).
+# Autoritatief voor de subdomeinen mex./bus./king./yaniv.sipster.games:
+# crawlers zoeken ads.txt op de root van het domein.
+google.com, pub-4843217017760661, DIRECT, f08c47fec0942fa0
