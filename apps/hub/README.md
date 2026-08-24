@@ -22,9 +22,8 @@ Verificatie kan via alle drie de methoden: de regel in `public/ads.txt` bevat he
 publisher-ID, en `index.html` bevat zowel de `<meta name="google-adsense-account">`
 als het `adsbygoogle.js`-loader-script.
 
-Op de pagina staat één display-banner onder het spellen-overzicht. Het slot-ID is
-nog een placeholder (`data-ad-slot="0000000000"`): maak in AdSense een Display-ad-unit
-aan en vervang dat nummer, anders vult de banner niet.
+Op de pagina staat één display-banner onder het spellen-overzicht, gekoppeld aan
+de AdSense Display-ad-unit "Sipster" (`data-ad-slot="9882571867"`).
 
 Dit script hoort BEWUST alleen op de hub: AdSense in de Capacitor-apps schendt het
 beleid, dus de spel-apps laden het nooit (zie `@sipster/core/ads`, web-only).
