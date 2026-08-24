@@ -14,6 +14,8 @@
     <meta property="og:url" content="https://sipster.games/" />
     <!-- AdSense-eigendomsmarkering (inert: laadt zelf geen advertenties). -->
     <meta name="google-adsense-account" content="ca-pub-4843217017760661" />
+    <!-- AdSense-loader: alleen deze hub-pagina (web-only, hoort nooit in de app). -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4843217017760661" crossorigin="anonymous"></script>
     <style>
       :root {
         --bg: #0b0b12;
@@ -90,6 +92,18 @@
       .kingsen { --card-bg: #1a0b2e; --accent: #e7c14c; --accent-glow: rgba(231, 193, 76, 0.28); }
       .yaniv { --card-bg: #082430; --accent: #2dd4bf; --accent-glow: rgba(45, 212, 191, 0.28); }
 
+      .ad-banner {
+        margin: 2.5rem auto 0;
+        max-width: 100%;
+        min-height: 90px;
+        text-align: center;
+      }
+      .ad-banner .ad-label {
+        margin: 0 0 0.4rem;
+        font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+
       footer { margin-top: 3rem; text-align: center; color: var(--muted); font-size: 0.85rem; }
     </style>
   </head>
@@ -127,6 +141,26 @@
           <span class="go">Spelen →</span>
         </a>
       </nav>
+
+      <!--
+        Eén display-banner (bewust maar één, niet te veel). Vervang data-ad-slot
+        door het slot-ID van een Display-ad-unit uit AdSense (Ads > By ad unit >
+        Display ads). Zolang het slot een placeholder is, vult de banner niet.
+      -->
+      <aside class="ad-banner" aria-label="Advertentie">
+        <p class="ad-label">Advertentie</p>
+        <ins
+          class="adsbygoogle"
+          style="display: block"
+          data-ad-client="ca-pub-4843217017760661"
+          data-ad-slot="0000000000"
+          data-ad-format="auto"
+          data-full-width-responsive="true"
+        ></ins>
+      </aside>
+      <script>
+        ;(adsbygoogle = window.adsbygoogle || []).push({})
+      </script>
 
       <footer>Sipster Games, drink met mate.</footer>
     </main>
