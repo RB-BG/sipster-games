@@ -17,6 +17,9 @@ import { useWakeLock } from '@/hooks/useWakeLock'
 import { useStrings } from '@/store/localeStore'
 import { hapticDrink, hapticMex, hapticRidder, hapticRoll, hapticSlap } from '@/lib/haptics'
 import { isMuted, playDrink, playMex, playRidder, playRoll, playSlap, setMuted } from '@/lib/sound'
+import AdInterstitial from '@/components/AdInterstitial'
+import { adsEnabled, interstitialSlot } from '@/lib/ads'
+import { useAdPolicy } from '@/ads/adPolicy'
 
 export default function GameScreen() {
   const strings = useStrings()
@@ -190,6 +193,32 @@ export default function GameScreen() {
     playMex()
     hapticMex()
   }, [animating])
+
+  // Interstitial-advertentie op het ronde-einde: web-only en met frequency caps
+  // (zie adPolicy). Nooit tijdens het spelen, nooit bij de start van een ronde.
+  const [showAd, setShowAd] = useState(false)
+  const adFiredForRound = useRef<number | null>(null)
+  const canShowAds = adsEnabled() && interstitialSlot !== ''
+  const atRoundEnd = state?.phase === 'roundEnd' && !animating
+  // Nieuw potje (terug bij ronde 1): tellers en de fire-guard resetten.
+  useEffect(() => {
+    if (state?.phase === 'playing' && state.round.number === 1) {
+      useAdPolicy.getState().reset()
+      adFiredForRound.current = null
+    }
+  }, [state?.phase, state?.round.number])
+  useEffect(() => {
+    if (!atRoundEnd || !canShowAds) return
+    const round = stateRef.current?.round.number ?? 0
+    if (adFiredForRound.current === round) return
+    adFiredForRound.current = round
+    const policy = useAdPolicy.getState()
+    const now = Date.now()
+    if (policy.mayShow(round, now)) {
+      policy.markShown(round, now)
+      setShowAd(true)
+    }
+  }, [atRoundEnd, canShowAds])
 
   /** In hotseat (myPlayerId null) mag alles; online alleen je eigen acties. */
   const canAct = (playerId: string) => myPlayerId === null || myPlayerId === playerId
@@ -645,6 +674,18 @@ export default function GameScreen() {
 
       <DrinkShotLayer shots={shots} hits={hits} />
       <ScorePop pop={pop} />
+
+      {showAd && (
+        <AdInterstitial
+          slot={interstitialSlot}
+          strings={{
+            label: strings.adLabel,
+            continueLabel: strings.adContinue,
+            continueInLabel: strings.adContinueIn,
+          }}
+          onClose={() => setShowAd(false)}
+        />
+      )}
     </main>
   )
 }

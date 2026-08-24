@@ -120,6 +120,11 @@ export const nl = {
   shakeHint: 'of schud je telefoon 📳',
   soundOn: 'geluid aan',
   soundOff: 'geluid uit',
+
+  // Advertenties (tussen de rondes, alleen web)
+  adLabel: 'Advertentie',
+  adContinue: 'Verder',
+  adContinueIn: (seconds: number) => `Verder over ${seconds}…`,
   sipsLogTitle: 'Slokken-log',
   sipReasons: {
     verliezer: 'ronde verloren',
@@ -289,6 +294,11 @@ const en: Strings = {
   shakeHint: 'or shake your phone 📳',
   soundOn: 'sound on',
   soundOff: 'sound off',
+
+  // Ads (between rounds, web only)
+  adLabel: 'Advertisement',
+  adContinue: 'Continue',
+  adContinueIn: (seconds: number) => `Continue in ${seconds}…`,
   sipsLogTitle: 'Sips log',
   sipReasons: {
     verliezer: 'lost the round',
