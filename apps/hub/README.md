@@ -18,6 +18,13 @@ Nieuw project, root directory `apps/hub`, domein `sipster.games` (plus `www` red
 naar keuze). Framework preset: Other. Build command: leeg. Output directory: `public`.
 
 ## AdSense
-Verificatie loopt via de ads.txt-methode: de regel in `public/ads.txt` bevat het
-publisher-ID. De `<meta name="google-adsense-account">` in `index.html` staat er als
-extra eigendomssignaal en laadt zelf geen advertenties.
+Verificatie kan via alle drie de methoden: de regel in `public/ads.txt` bevat het
+publisher-ID, en `index.html` bevat zowel de `<meta name="google-adsense-account">`
+als het `adsbygoogle.js`-loader-script.
+
+Op de pagina staat één display-banner onder het spellen-overzicht. Het slot-ID is
+nog een placeholder (`data-ad-slot="0000000000"`): maak in AdSense een Display-ad-unit
+aan en vervang dat nummer, anders vult de banner niet.
+
+Dit script hoort BEWUST alleen op de hub: AdSense in de Capacitor-apps schendt het
+beleid, dus de spel-apps laden het nooit (zie `@sipster/core/ads`, web-only).
