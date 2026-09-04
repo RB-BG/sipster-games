@@ -304,7 +304,7 @@ export default function GameScreen() {
     afslaanToast && state.players.find((p) => p.id === afslaanToast.byPlayerId)
 
   return (
-    <main ref={mainRef} className="relative flex h-dvh flex-col px-safe pt-safe pb-safe">
+    <main ref={mainRef} className="game-shell relative flex h-dvh flex-col px-safe pt-safe pb-safe">
       <header className="flex items-center justify-between px-4 py-2">
         <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-ivory">
           {strings.round(state.round.number)}

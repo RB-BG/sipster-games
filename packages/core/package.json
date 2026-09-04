@@ -15,6 +15,7 @@
     "./storage": "./src/lib/storage.ts",
     "./useWakeLock": "./src/hooks/useWakeLock.ts",
     "./Coaster": "./src/components/Coaster.tsx",
+    "./ErrorBoundary": "./src/components/ErrorBoundary.tsx",
     "./cards/types": "./src/cards/types.ts",
     "./cards/rng": "./src/cards/rng.ts",
     "./cards/deck": "./src/cards/deck.ts",

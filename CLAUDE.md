@@ -44,7 +44,10 @@ en de geparameteriseerde componenten `QrShare` (QR-kleuren/kader via props), `Lo
 (actieve-tab-accent via prop) en `RulesExplainer` ([titel, tekst]-paren via props).
 Daarnaast `cards/*` (types, rng, deck, display, dealAnim, `Card`): de spel-agnostische
 kaartlaag die bussen en kingsen delen; beide apps hebben dunne re-export-adapters in
-`engine/` en `cards/`.
+`engine/` en `cards/`. In `cards/assets/faces/` staan de 52 kaartillustraties (rang +
+suit). Het zijn **alfamaskers, geen gekleurde plaatjes**: `Card.tsx` zet ze als
+`mask-image` op `.card-art` en de app kleurt ze via `currentColor` op `.card-red` /
+`.card-black`. Zo houdt elk spel zijn eigen kaartkleuren met één gedeelde assetset.
 
 **Bewust per app gebleven** (niet naar core forceren):
 - `protocol/messages.ts`, `net/transport.ts`, `net/peerTransport.ts`, de stores,
