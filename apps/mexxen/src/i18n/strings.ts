@@ -13,6 +13,8 @@ export const nl = {
   joinTable: 'Doe mee',
   comingSoon: 'Binnenkort speelbaar',
   hotseat: 'Speel op één telefoon',
+  loadError: 'Het spel kon niet laden. Check je verbinding en probeer opnieuw.',
+  loadErrorRetry: 'Probeer opnieuw',
 
   // Setup
   players: 'Spelers',
@@ -188,6 +190,8 @@ const en: Strings = {
   joinTable: 'Join',
   comingSoon: 'Playable soon',
   hotseat: 'Play on one phone',
+  loadError: 'The game failed to load. Check your connection and try again.',
+  loadErrorRetry: 'Try again',
 
   // Setup
   players: 'Players',

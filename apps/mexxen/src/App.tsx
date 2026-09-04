@@ -1,6 +1,7 @@
 // Copyright © 2026 Mexxen. PolyForm Noncommercial License 1.0.0 (see LICENSE).
 
 import { lazy, Suspense } from 'react'
+import ErrorBoundary from '@/components/ErrorBoundary'
 import HomeScreen from '@/screens/HomeScreen'
 import DebugScreen from '@/screens/DebugScreen'
 import HotseatSetupScreen from '@/screens/HotseatSetupScreen'
@@ -27,20 +28,32 @@ export default function App() {
   const params = new URLSearchParams(window.location.search)
   if (params.has('debug')) return <DebugScreen />
   if (params.has('dice')) {
-    return <Suspense fallback={loader}>{<DiceLabScreen />}</Suspense>
+    return (
+      <ErrorBoundary message={strings.loadError} retryLabel={strings.loadErrorRetry}>
+        <Suspense fallback={loader}>{<DiceLabScreen />}</Suspense>
+      </ErrorBoundary>
+    )
   }
 
   // Verbonden (host of guest): lobby tot de host start, daarna het spel.
   if (role !== 'none') {
     if (netPhase !== 'lobby') {
-      return <Suspense fallback={loader}>{<GameScreen />}</Suspense>
+      return (
+        <ErrorBoundary message={strings.loadError} retryLabel={strings.loadErrorRetry}>
+          <Suspense fallback={loader}>{<GameScreen />}</Suspense>
+        </ErrorBoundary>
+      )
     }
     return <LobbyScreen />
   }
 
   // Hotseat-potje op dit toestel.
   if (hasGame) {
-    return <Suspense fallback={loader}>{<GameScreen />}</Suspense>
+    return (
+      <ErrorBoundary message={strings.loadError} retryLabel={strings.loadErrorRetry}>
+        <Suspense fallback={loader}>{<GameScreen />}</Suspense>
+      </ErrorBoundary>
+    )
   }
 
   // Uitnodigingslink: /?room=ABCD springt direct naar het join-formulier.
