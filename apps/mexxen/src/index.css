@@ -37,12 +37,35 @@
   body {
     margin: 0;
     color: var(--ivory);
-    background: radial-gradient(120% 90% at 50% 0%, var(--wood-800) 0%, var(--wood-900) 55%, var(--wood-950) 100%);
-    background-attachment: fixed;
     min-height: 100dvh;
   }
+  /*
+   * De kroeg-gradient staat op html zodat body::before (de textuurlaag) er met
+   * z-index: -1 tussen de achtergrond en de app-inhoud past.
+   */
   html {
     @apply font-sans;
+    min-height: 100dvh;
+    background: radial-gradient(120% 90% at 50% 0%, var(--wood-800) 0%, var(--wood-900) 55%, var(--wood-950) 100%);
+  }
+  /*
+   * Plankennaad-textuur (Looping-Patterns) als eigen laag: nauwelijks zichtbaar, en
+   * door de radiale mask valt hij naar het midden toe helemaal weg, zodat het spel
+   * in beeld nooit tegen textuur aan hoeft te vechten. position: fixed is hier een
+   * eigen composited laag (in tegenstelling tot background-attachment: fixed, dat
+   * mobiel bij elke scroll het hele patroon opnieuw laat tekenen).
+   */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: url('/textures/planks.png');
+    background-size: 420px 420px;
+    opacity: 0.14;
+    -webkit-mask-image: radial-gradient(85% 62% at 50% 45%, transparent 0%, transparent 24%, #000 100%);
+    mask-image: radial-gradient(85% 62% at 50% 45%, transparent 0%, transparent 24%, #000 100%);
   }
 }
 
@@ -122,10 +145,34 @@
   --radius: 0.625rem;
 }
 
+/*
+ * Het speelscherm dekt de body-textuur af met dezelfde gradient: de HUD-balken
+ * boven en onder blijven zo strak, alleen het speelveld zelf krijgt hout (zie
+ * .dice-stage::before).
+ */
+.game-shell {
+  background: radial-gradient(120% 90% at 50% 0%, var(--wood-800) 0%, var(--wood-900) 55%, var(--wood-950) 100%);
+}
+
 /* 2.5D dobbelstenen: CSS-3D-kubussen, geen WebGL. */
 .dice-stage {
   background: radial-gradient(70% 60% at 50% 40%, #3a2410 0%, #241509 70%, #170e07 100%);
   perspective-origin: 50% 32%;
+}
+/*
+ * Het speelveld dekt de body-textuur af, dus krijgt het zijn eigen, nog zwakkere
+ * laag: alleen aan de randen een hint van hout, rond de stenen niets.
+ */
+.dice-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url('/textures/planks.png');
+  background-size: 420px 420px;
+  opacity: 0.05;
+  -webkit-mask-image: radial-gradient(70% 58% at 50% 42%, transparent 0%, transparent 42%, #000 100%);
+  mask-image: radial-gradient(70% 58% at 50% 42%, transparent 0%, transparent 42%, #000 100%);
 }
 .die-wrap {
   perspective: 620px;
