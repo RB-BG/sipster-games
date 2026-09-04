@@ -2,9 +2,26 @@
 
 import { useEffect, useRef } from 'react'
 import { motion, useAnimationControls, useReducedMotion } from 'framer-motion'
-import { color, rankLabel, suitSymbol } from './display'
+import { cardLabel, color } from './display'
 import type { Card as CardValue } from './types'
 import { flipTarget, restingRotation } from './dealAnim'
+import backArt from './assets/back.png'
+
+/**
+ * De 52 kaartillustraties (rang + suit als los teken; het kaartlichaam blijft CSS).
+ * Het zijn alfamaskers, geen gekleurde plaatjes: de app kleurt ze via currentColor
+ * op .card-red / .card-black, zodat elk spel z'n eigen kaartkleuren houdt.
+ * Vite bundelt ze via de glob, vandaar de lookup op pad.
+ */
+const FACES = import.meta.glob('./assets/faces/*.png', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>
+
+function faceArt(card: CardValue): string {
+  return FACES[`./assets/faces/${card.suit}-${card.rank}.png`]
+}
 
 export interface FlipRequest {
   /** Nieuw id triggert een nieuwe flip-animatie. */
@@ -16,27 +33,34 @@ export interface FlipRequest {
 
 const FLIP_MS = 620
 
-/** De voorkant van een kaart: grote rank + suit, hoog contrast, rood/zwart. */
+/** De voorkant van een kaart: de illustratie op het kaartlichaam van de app. */
 export function CardFace({ card, size = 120 }: { card: CardValue; size?: number }) {
   const isRed = color(card) === 'red'
-  const rank = rankLabel(card.rank)
-  const suit = suitSymbol(card.suit)
   return (
     <div className={`card-face-front ${isRed ? 'card-red' : 'card-black'}`} style={faceSize(size)}>
-      <span className="card-corner card-corner-tl">
-        <span className="card-corner-rank">{rank}</span>
-      </span>
-      <span className="card-center-suit">{suit}</span>
-      <span className="card-corner card-corner-br">
-        <span className="card-corner-rank">{rank}</span>
-      </span>
+      <span
+        className="card-art"
+        role="img"
+        aria-label={cardLabel(card)}
+        style={{ '--card-art': `url(${faceArt(card)})` } as React.CSSProperties}
+      />
     </div>
   )
 }
 
-/** De achterkant: thema-patroon voor een dichte kaart. */
+/**
+ * De achterkant: hetzelfde kaartlichaam als de voorkant, met het donkere veld als
+ * masker eroverheen. De decoratie zijn de gaten in dat masker, dus die krijgt de
+ * kleur van het lichaam en kleurt vanzelf mee met het thema van de app.
+ */
 export function CardBack({ size = 120 }: { size?: number }) {
-  return <div className="card-back" style={faceSize(size)} aria-label="dichte kaart" />
+  return (
+    <div
+      className="card-back"
+      aria-label="dichte kaart"
+      style={{ ...faceSize(size), '--card-back-art': `url(${backArt})` } as React.CSSProperties}
+    />
+  )
 }
 
 /** Statische kaart (voor grids, handen en rijen): open of dicht. */
@@ -115,10 +139,10 @@ export default function Card({ flip, faceDown = true, size = 120, onSettled, onR
   }, [])
 
   return (
-    <div className="card-stage" style={{ width: size, height: size }}>
+    <div className="card-stage" style={faceSize(size)}>
       <motion.div
         className="card-3d"
-        style={{ width: size, height: size }}
+        style={faceSize(size)}
         initial={{ rotateY: 180 }}
         animate={controls}
       >
@@ -140,6 +164,14 @@ function forwardResting(current: number, faceUp: boolean): number {
   return base + delta
 }
 
+/**
+ * Kaartverhouding, gelijk aan het sjabloon van de illustraties (150 x 200), zodat de
+ * rang + suit exact vullen zoals in de pack en niets vervormt. `size` is de hoogte, de
+ * breedte volgt daaruit: kaarten worden dus smaller dan de oude vierkanten, nooit
+ * hoger, zodat bestaande layouts niet verticaal kunnen overlopen.
+ */
+const CARD_RATIO = 0.75
+
 function faceSize(size: number): React.CSSProperties {
-  return { width: size, height: size }
+  return { width: Math.round(size * CARD_RATIO), height: size }
 }
